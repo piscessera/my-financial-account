@@ -1,0 +1,4 @@
+.claude/runs/
+.claude/settings.local.json
+.worktrees/
+.claude/gate.env
