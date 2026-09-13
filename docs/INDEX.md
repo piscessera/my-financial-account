@@ -6,7 +6,7 @@ sub-agents receive their IDs in the dispatch payload.
 
 | ID | Title | Type | Status | Size | Links | Updated |
 |----|-------|------|--------|------|-------|---------|
-| REQ-0001 | Annual tax income/expense tracker | requirement | draft | L | — | 2026-09-13 |
+| REQ-0001 | Annual tax income/expense tracker | requirement | active | L | — | 2026-09-13 |
 
 ## ID counters (next value to use)
 
@@ -23,4 +23,4 @@ investigations/ideas may be `parked` (visible in dev-status, never silently drop
 
 | ID | Gate | Since |
 |----|------|-------|
-| REQ-0001 | Scope + size (L) approval | 2026-09-13 |
+| — | *(none)* | |
