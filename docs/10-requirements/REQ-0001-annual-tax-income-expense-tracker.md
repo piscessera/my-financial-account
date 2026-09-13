@@ -6,7 +6,7 @@ status: active
 size: L
 created: 2026-09-13
 updated: 2026-09-13
-links: [ANA-0001, TC-0001]
+links: [ANA-0001, TC-0001, PLAN-0001]
 ---
 
 # REQ-0001: Annual tax income/expense tracker

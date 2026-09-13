@@ -5,7 +5,7 @@ title: Annual tax income/expense tracker — test cases
 status: active
 created: 2026-09-13
 updated: 2026-09-13
-links: [ANA-0001]
+links: [ANA-0001, PROTO-0001, PLAN-0001]
 ---
 
 # TC-0001: Annual tax income/expense tracker — test cases
@@ -64,8 +64,11 @@ fills the `Result` and `Test ref` columns (dev-implement).
 | 45 | Import preview flags invalid rows without writing anything | Given a CSV with one well-formed row and one row missing a required field, When the user loads it for import, Then the preview shows both rows with correct valid/error status and no database write has occurred yet. | Unit | AC-22 / AC-23 | | |
 | 46 | Import rejects rows targeting an already-closed year | Given a CSV row whose `tax_year` is closed in this install, When previewed, Then that row is always shown as invalid/excluded, regardless of how well-formed its other fields are, and cannot be force-imported. | Unit | AC-23 / INV-2b | | |
 | 47 | Committing an import only inserts the confirmed subset | Given a preview with 5 valid rows where the user unchecks 2, When the user commits, Then exactly 3 transactions are created (`source='import'`), and one batch `audit_log` entry records the filename plus counts (3 imported, 2 skipped). | Unit | AC-24 | | |
+| 48 | Ledger renders month-grouped, not a flat list (source: prototype) | Given a tax year with transactions across multiple months, When the ledger renders, Then it shows a subtotal header row per month (spanning the full row) and an annual totals strip above, matching the accepted PROTO-0001 layout. | Manual | PROTO-0001 | | |
+| 49 | Tax and general sections stay visually distinct (source: prototype) | Given a year with both tax-relevant and general transactions, When Dashboard or the ledger renders, Then the general section is visually set apart (amber accent) from the tax section, matching the accepted PROTO-0001 layout — not just numerically separate totals. | Manual | PROTO-0001 | | |
 
 ## Coverage summary
 - ACs covered: 29 / 29 (AC-1, 2, 3, 3a, 4, 5, 6, 7, 7a, 7b, 7c, 8, 9, 9a, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 — all present; AC-11 covered by #27–28, #40)
-- Unit cases: 40 · Manual cases: 8
+- Plus 2 UI-acceptance cases sourced from PROTO-0001 (#48-49, not tied to a single AC)
+- Unit cases: 40 · Manual cases: 10
 - Invariants covered: 8 / 8 (INV-1 #23/#31, INV-2 #16, INV-2b #18/#19, INV-3 #32, INV-4 #24, INV-5 #33, INV-6 #8/#9/#10, INV-7 #20/#27, INV-8 #35)

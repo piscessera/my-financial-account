@@ -6,7 +6,7 @@ status: active
 size: L
 created: 2026-09-13
 updated: 2026-09-13
-links: [REQ-0001, TC-0001]
+links: [REQ-0001, TC-0001, PLAN-0001]
 ---
 
 # ANA-0001: Annual tax income/expense tracker — design
@@ -253,10 +253,33 @@ IPC surface exposed on `window.api` (all logic lives in the main process):
   summary.
 - **Transaction history panel**: chronological before/after list for one transaction (AC-9a).
 
-## UX decisions (from prototype, filled by dev-prototype)
-(Not yet run — the rough mockup shared during requirement discovery was informal chat-level
-sketching, not a formal `dev-prototype` round. Recommended before `dev-plan` given the number
-of screens; see gate note below.)
+## UX decisions (from PROTO-0001, accepted 2026-09-13)
+`PROTO-0001` ran 9 feedback rounds over the rough mockup shared during requirement discovery.
+Accepted decisions, now the UI reference for `dev-implement`/`dev-review`:
+
+- **Visual direction: B — "Slate & Amber"** (see `PROTO-0001/design/DESIGN.md`) — indigo accent,
+  amber for bracket/highlight states, Chakra Petch/Sarabun/JetBrains Mono type pairing, full
+  light+dark token sets. Chosen over the initially-sketched "Ledger Jade" direction.
+- **Screens, final set:** `onboarding` (first-run folder picker) → `dashboard` (live tax
+  figures + separate general-transactions section) → `entry` (tax/general toggle, month-grouped
+  ledger with a separate amber-bordered general ledger panel) → `deductions` → `settings`
+  (category caps/names, add/archive category, tax brackets, data-location panel) →
+  `import-export` (CSV export/import with mandatory preview) → `summary` (year close/reopen).
+- **Ledger grouping:** transactions display grouped by month with a per-month subtotal header
+  row spanning the table, plus an annual totals strip above linking to the full year summary —
+  not a flat chronological list.
+- **Tax vs. general transactions:** never visually merged. Same entry form with a toggle swaps
+  income-section chips for a general-category chip row and hides WHT; the ledger and Dashboard
+  each render general figures in a distinct, amber-accented section below the tax section.
+- **Settings category management:** an "add category" form exposes all three cap shapes
+  (fixed/per-count/shared-group); archived categories stay in the list muted with a
+  "reactivate" action rather than disappearing; both name and cap are editable per category.
+- **Data location, not "sync":** onboarding asks for a folder once; Settings shows that folder
+  path and the DB file's last-modified time read-only — deliberately no "sync" control anywhere,
+  since the app has no Drive API integration.
+- **CSV import safety:** import is never a direct write. A dropzone leads to a preview table
+  with a checkbox per row, a valid/error pill, and closed-year rows permanently disabled
+  (unchecked, greyed) — commit only acts on what stays checked.
 
 ## Dependencies & risks
 - **`better-sqlite3` native module**: must be rebuilt against Electron's Node ABI
