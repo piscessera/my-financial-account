@@ -13,6 +13,7 @@
     <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
     <a href="deductions.html">ค่าลดหย่อน</a>
     <a href="settings.html" class="active">ตั้งค่า</a>
+    <a href="import-export.html">นำเข้า/ส่งออก</a>
     <a href="summary.html">สรุปปี</a>
   </div>
   <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
@@ -27,23 +28,47 @@
   </div>
 
   <div class="panel">
-    <div class="section-label">เพดานค่าลดหย่อน</div>
-    <table>
-      <thead><tr><th style="text-align:right;">หมวด</th><th style="text-align:right;">รูปแบบเพดาน</th><th style="text-align:right;">ค่าเพดาน</th><th style="text-align:right;"></th></tr></thead>
-      <tbody>
-        <tr><td style="text-align:right;">ส่วนตัวผู้ยื่นภาษี</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">60,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-        <tr><td style="text-align:right;">บุตร (ต่อคน)</td><td style="text-align:right;"><span class="muted">นับจำนวนคน</span></td><td style="text-align:right;" class="num">30,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-        <tr><td style="text-align:right;">ประกันชีวิต+สุขภาพตนเอง (กลุ่มรวม)</td><td style="text-align:right;"><span class="muted">รวมกลุ่ม</span></td><td style="text-align:right;" class="num">100,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-        <tr><td style="text-align:right;">ประกันสุขภาพตนเอง (sub-cap)</td><td style="text-align:right;"><span class="muted">คงที่ (ในกลุ่ม)</span></td><td style="text-align:right;" class="num">25,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-        <tr><td style="text-align:right;">SSF / Thai ESG</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">200,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-        <tr><td style="text-align:right;">เงินประกันสังคม</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">9,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
-      </tbody>
-    </table>
+    <div class="section-label">ที่จัดเก็บข้อมูล (AC-19)</div>
+    <div class="field span2">
+      <label>โฟลเดอร์ปัจจุบัน</label>
+      <div class="control" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <span class="num" style="font-size:13px;">G:\My Drive\สมุดภาษีรายปี\tax-tracker.db</span>
+        <a class="row-action" href="onboarding.html">เปลี่ยนโฟลเดอร์...</a>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+      <span class="status-dot open"></span> แก้ไขล่าสุด: วันนี้ 22:41 น. · ขนาดไฟล์ 2.4 MB
+    </div>
+    <div class="muted" style="margin-top:4px;">ไม่มีปุ่ม "ซิงค์" ในแอปนี้ — Google Drive Desktop จะซิงค์โฟลเดอร์นี้ให้อัตโนมัติอยู่เบื้องหลัง แอปไม่ได้เชื่อมต่อ Google Drive โดยตรง</div>
   </div>
 
   <div class="panel" style="margin-top:20px;">
-    <div class="section-label">กำลังแก้ไข: SSF / Thai ESG</div>
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+      <span>เพดานค่าลดหย่อน</span>
+      <a class="btn btn-primary" style="padding:8px 14px; font-size:13px;" href="#add-category">+ เพิ่มหมวดหมู่ใหม่</a>
+    </div>
+    <table>
+      <thead><tr><th style="text-align:right;">หมวด</th><th style="text-align:right;">รูปแบบเพดาน</th><th style="text-align:right;">ค่าเพดาน</th><th style="text-align:right;">สถานะ</th><th style="text-align:right;"></th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:right;">ส่วนตัวผู้ยื่นภาษี</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">60,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">บุตร (ต่อคน)</td><td style="text-align:right;"><span class="muted">นับจำนวนคน</span></td><td style="text-align:right;" class="num">30,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">ประกันชีวิต+สุขภาพตนเอง (กลุ่มรวม)</td><td style="text-align:right;"><span class="muted">รวมกลุ่ม</span></td><td style="text-align:right;" class="num">100,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">ประกันสุขภาพตนเอง (sub-cap)</td><td style="text-align:right;"><span class="muted">คงที่ (ในกลุ่ม)</span></td><td style="text-align:right;" class="num">25,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">SSF / Thai ESG</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">200,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">เงินประกันสังคม</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">9,000</td><td style="text-align:right;"><span class="pill active">ใช้งานอยู่</span></td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr style="opacity:.55;"><td style="text-align:right;">ช้อปดีมีคืน (มาตรการปี 2568)</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">50,000</td><td style="text-align:right;"><span class="pill voided">เก็บถาวรแล้ว</span></td><td style="text-align:right;"><a class="row-action" href="#">เปิดใช้อีกครั้ง</a></td></tr>
+      </tbody>
+    </table>
+    <div class="muted" style="margin-top:10px;">หมวดหมู่ที่ "เก็บถาวรแล้ว" จะไม่ปรากฏเป็นตัวเลือกใหม่ในหน้าค่าลดหย่อนของปีที่เปิดอยู่ แต่ปีภาษีที่เคยใช้อยู่แล้วจะยังเห็นข้อมูลและคำนวณเหมือนเดิมทุกประการ (AC-17)</div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">กำลังแก้ไข: SSF / Thai ESG (AC-11 — แก้ได้ทั้งชื่อและเพดาน)</div>
     <div class="form-grid">
+      <div class="field span2">
+        <label>ชื่อหมวดหมู่</label>
+        <div class="control">กองทุนรวมเพื่อการออม (SSF) / Thai ESG</div>
+      </div>
       <div class="field">
         <label>ค่าเพดานใหม่ (บาท)</label>
         <div class="control num">210,000</div>
@@ -52,6 +77,36 @@
     <div class="form-actions">
       <div class="btn btn-ghost">ยกเลิก</div>
       <div class="btn btn-primary">บันทึกการเปลี่ยนแปลง</div>
+    </div>
+  </div>
+
+  <div class="panel" id="add-category" style="margin-top:20px;">
+    <div class="section-label">+ เพิ่มหมวดหมู่ค่าลดหย่อนใหม่ (AC-16) — ตัวอย่าง: มาตรการกระตุ้นเศรษฐกิจปี 2569</div>
+    <div class="form-grid">
+      <div class="field span2">
+        <label>ชื่อหมวดหมู่</label>
+        <div class="control">Easy e-Receipt 2569</div>
+      </div>
+      <div class="field span2">
+        <label>รูปแบบเพดาน</label>
+        <div class="chip-row">
+          <div class="chip active">คงที่</div>
+          <div class="chip">นับตามจำนวนคน</div>
+          <div class="chip">รวมกลุ่มกับหมวดอื่น</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>ค่าเพดาน (บาท)</label>
+        <div class="control num">50,000</div>
+      </div>
+      <div class="field">
+        <label>คำอธิบาย/อ้างอิงกฎหมาย (ถ้ามี)</label>
+        <div class="control">ค่าซื้อสินค้า/บริการผ่านใบกำกับภาษีอิเล็กทรอนิกส์ 1 ม.ค. - 15 ก.พ. 2569</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <div class="btn btn-ghost">ยกเลิก</div>
+      <div class="btn btn-primary">เพิ่มหมวดหมู่</div>
     </div>
   </div>
 

@@ -13,6 +13,7 @@
     <a href="entry.html" class="active">บันทึกรายรับ-รายจ่าย</a>
     <a href="deductions.html">ค่าลดหย่อน</a>
     <a href="settings.html">ตั้งค่า</a>
+    <a href="import-export.html">นำเข้า/ส่งออก</a>
     <a href="summary.html">สรุปปี</a>
   </div>
   <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
@@ -28,6 +29,13 @@
 
   <div class="panel">
     <div class="form-grid">
+      <div class="field span2">
+        <label>นับเป็นรายการภาษีหรือไม่</label>
+        <div class="chip-row">
+          <div class="chip active">รายการภาษี — นำไปคำนวณภาษี</div>
+          <div class="chip">รายการทั่วไป — ไม่นับภาษี</div>
+        </div>
+      </div>
       <div class="field span2">
         <label>ประเภทรายการ</label>
         <div class="chip-row">
@@ -86,8 +94,43 @@
   </div>
 
   <div class="panel" style="margin-top:20px;">
+    <div class="section-label">ตัวอย่าง: สลับเป็น "รายการทั่วไป — ไม่นับภาษี" (AC-13, TC-0001 #34)</div>
+    <div class="form-grid">
+      <div class="field span2">
+        <label>นับเป็นรายการภาษีหรือไม่</label>
+        <div class="chip-row">
+          <div class="chip">รายการภาษี — นำไปคำนวณภาษี</div>
+          <div class="chip active">รายการทั่วไป — ไม่นับภาษี</div>
+        </div>
+      </div>
+      <div class="field span2">
+        <label>หมวดหมู่</label>
+        <div class="chip-row">
+          <div class="chip active">อาหาร</div>
+          <div class="chip">ช้อปปิ้ง</div>
+          <div class="chip">ที่อยู่อาศัย</div>
+          <div class="chip">อื่นๆ</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>วันที่</label>
+        <div class="control">20 ก.ย. 2569</div>
+      </div>
+      <div class="field">
+        <label>จำนวนเงิน (บาท)</label>
+        <div class="control num">450.00</div>
+      </div>
+      <div class="field span2">
+        <label>หมายเหตุ (ถ้ามี)</label>
+        <div class="control">ค่าข้าวเที่ยงทีมงาน</div>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:10px;">รายการทั่วไปไม่ต้องกรอก WHT/แหล่งที่มา และจะไม่ถูกนำไปคำนวณภาษีเลย (AC-14)</div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
     <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
-      <span>รายการของปีภาษี 2569 — จัดกลุ่มรายเดือน</span>
+      <span>🧾 รายการภาษี — ปี 2569 (จัดกลุ่มรายเดือน)</span>
       <a class="row-action" href="summary.html">ดูสรุปรวมทั้งปีแบบเต็ม →</a>
     </div>
 
@@ -145,6 +188,42 @@
           <td style="text-align:right;">
             <a class="row-action" href="#">แก้ไข</a><a class="row-action" href="#history">ประวัติ</a><a class="row-action muted" href="#">Void</a>
           </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel" id="general" style="margin-top:20px; border-color:var(--amber);">
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+      <span>🛒 รายการทั่วไป (ไม่นับภาษี) — ปี 2569</span>
+      <span class="muted">ไม่ถูกนำไปคำนวณภาษีเลย (AC-14)</span>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr); margin-bottom:18px;">
+      <div class="tile"><div class="k">อาหาร</div><div class="v num">450.00</div></div>
+      <div class="tile"><div class="k">ช้อปปิ้ง</div><div class="v num">1,290.00</div></div>
+      <div class="tile"><div class="k">ที่อยู่อาศัย</div><div class="v num">0.00</div></div>
+      <div class="tile"><div class="k">อื่นๆ</div><div class="v num">0.00</div></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th style="text-align:right;">วันที่</th><th style="text-align:right;">หมวดหมู่</th><th style="text-align:right;">หมายเหตุ</th><th style="text-align:right;">จำนวนเงิน</th><th style="text-align:right;">การจัดการ</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align:right;">20 ก.ย. 69</td>
+          <td style="text-align:right;"><span class="tag" style="background:var(--amber-soft); color:var(--amber);">อาหาร</span></td>
+          <td style="text-align:right;">ค่าข้าวเที่ยงทีมงาน</td>
+          <td style="text-align:right;" class="num">450.00</td>
+          <td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a><a class="row-action muted" href="#">Void</a></td>
+        </tr>
+        <tr>
+          <td style="text-align:right;">12 ก.ย. 69</td>
+          <td style="text-align:right;"><span class="tag" style="background:var(--amber-soft); color:var(--amber);">ช้อปปิ้ง</span></td>
+          <td style="text-align:right;">เสื้อผ้า</td>
+          <td style="text-align:right;" class="num">1,290.00</td>
+          <td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a><a class="row-action muted" href="#">Void</a></td>
         </tr>
       </tbody>
     </table>

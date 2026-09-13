@@ -84,6 +84,16 @@ already-filed year's displayed numbers (INV-7). Reopening a closed year is allow
 audit-logged. Multiple `tax_years` rows can be `open` simultaneously (AC-7c) — there is no
 "current year" singleton in the schema, only a `tax_year_id` the UI is currently viewing.
 
+### Tax-relevant vs. general transactions (implements REQ AC-13/14/15)
+A `tax_years` row is really just "the record-keeping bucket for that year" — it now holds both
+kinds of transaction, distinguished by `transactions.tax_relevant`. A general transaction
+(`tax_relevant=false`) skips `income_section`/WHT entirely and instead takes a
+`general_category` from a small fixed set (Food/Shopping/Housing/Other — no percentages, no
+budgets; recording only, per the user's explicit scope call). `calc.computeYear()` filters
+`WHERE tax_relevant = true` for every tax figure (income, expenses, deductions, WHT, bracket
+calculation) — a general transaction can never influence a tax number. The Dashboard and ledger
+render tax-relevant and general transactions as two separate sections/totals, never merged.
+
 ### Deduction cap shapes (implements REQ AC-3a)
 `deduction_categories.cap_type` is one of:
 - `fixed` — `cap_amount_minor` is the ceiling for that category alone.
@@ -96,6 +106,36 @@ audit-logged. Multiple `tax_years` rows can be `open` simultaneously (AC-7c) —
 The calculation engine applies whichever rule a category declares — there is no code path that
 assumes "one flat cap per category."
 
+### CSV export/import (implements REQ AC-20/21/22/23/24)
+Export is two independent CSV writers, both read-only reports over existing data: a per-year
+**ledger export** (one row per transaction, active/voided/reversal alike, every column needed
+to recreate it — date, kind, `tax_relevant`, `income_section`/`general_category`, amount, WHT,
+`source_payer`, `payer_tax_id`, note, status, `reversal_of_id`) and a per-year **summary
+export** (the same figures `calc.computeYear()` shows on-screen). The summary export is
+one-way — it is never a valid import source, only the ledger export's column format is.
+
+Import is a three-step flow, never a direct write: (1) parse the CSV, (2) validate every row
+independently — required fields present, amounts parse as valid money, `tax_year` either
+matches an existing *open* year or will create a new one, and reject any row whose `tax_year`
+already exists as *closed* in this install (closed-year immutability, INV-2b, applies to
+imported rows exactly like manually-entered ones) — and (3) show a preview table where the
+user can also manually exclude any row before confirming. Only step 3's confirmed subset is
+ever inserted, each as a normal `transactions` row through the same repository path as manual
+entry (so INV-1/2/4/5/6 all apply unchanged), plus one extra `audit_log` row summarizing the
+batch (source filename, counts) for AC-24. A `transactions.source` column
+(`manual`/`import`, default `manual`) records how each row was created, for traceability.
+
+### Adding and archiving deduction categories (implements REQ AC-16/17)
+Settings can create a new `deduction_categories` row with any of the three `cap_type` shapes
+above — this is how a new one-off government measure (e.g. a "ช้อปดีมีคืน"-style scheme
+introduced for a single tax year) gets added without a code change. Archiving a category sets
+`is_active=false`: the Deductions entry screen filters it out of the "add a category" list for
+any *open* tax year, but existing `deduction_entries` rows referencing it are untouched, still
+display (read-only where the year is closed, editable where still open, same as any other
+category), and still feed the calculation exactly as before — archiving only affects
+*discoverability* for new entries, never historical data or math (consistent with the
+project's "archive, never delete" convention).
+
 ## Invariants
 | INV | Rule | Enforced by (code / DB constraint / test) |
 |-----|------|--------------------------------------------|
@@ -107,6 +147,7 @@ assumes "one flat cap per category."
 | INV-5 | Currency is always explicit and fixed at THB for this MVP (no silent assumption). | `currency` column present on every amount-bearing table, `CHECK (currency = 'THB')`; TC-0001 #32 |
 | INV-6 | A deduction category's effective cap is computed per its declared `cap_type` (fixed / per-count × count / shared-group sum), and the calculation never lets a category or shared group contribute more than its cap to net taxable income. | `computeDeductions()` branches on `cap_type`; TC-0001 #8, #9, #10 |
 | INV-7 | Once a tax year is closed, its displayed summary is the frozen snapshot from close time and does not change if global settings (caps/brackets) are edited afterward. | Closed-year read path serves `frozen_result_json`, never a live recompute; TC-0001 #33 |
+| INV-8 | A transaction marked `tax_relevant=false` (general) never contributes to any tax figure — income, deductions, WHT netting, or bracket calculation. | `calc.computeYear()`'s base query filters `WHERE tax_relevant = true`; TC-0001 #35 |
 
 ## Data model changes
 New SQLite schema (all tables new — greenfield):
@@ -114,17 +155,24 @@ New SQLite schema (all tables new — greenfield):
 - **tax_years**(`id`, `year` UNIQUE, `status` CHECK(open|closed), `expense_method`
   CHECK(lump_sum|actual) NULL, `lump_sum_rate_bp` INTEGER NULL, `closed_at` NULL,
   `frozen_result_json` NULL, `created_at`, `updated_at`)
-- **transactions**(`id`, `tax_year_id` FK, `kind` CHECK(income|expense), `income_section`
-  CHECK(40_1|40_2|40_5_8) NULL — required when `kind='income'`, `date`, `amount_minor`,
-  `currency` CHECK(='THB'), `wht_minor` DEFAULT 0, `source_payer`, `payer_tax_id` NULL (13-digit
-  Thai tax ID, not validated/required — useful for matching against WHT certificates but not
-  every payer provides it), `note` NULL, `status` CHECK(active|voided) DEFAULT active,
-  `reversal_of_id` NULL FK self, `created_at`, `updated_at`)
+- **transactions**(`id`, `tax_year_id` FK, `kind` CHECK(income|expense), `tax_relevant` BOOLEAN
+  NOT NULL DEFAULT true, `income_section` CHECK(40_1|40_2|40_5_8) NULL — required when
+  `tax_relevant=true AND kind='income'`, `general_category` CHECK(food|shopping|housing|other)
+  NULL — required when `tax_relevant=false`, `date`, `amount_minor`, `currency` CHECK(='THB'),
+  `wht_minor` DEFAULT 0, `source_payer` NULL (not required for general transactions),
+  `payer_tax_id` NULL (13-digit Thai tax ID, not validated/required — useful for matching
+  against WHT certificates but not every payer provides it), `note` NULL, `status`
+  CHECK(active|voided) DEFAULT active, `reversal_of_id` NULL FK self, `source`
+  CHECK(manual|import) NOT NULL DEFAULT manual, `created_at`, `updated_at`)
 - **attachments**(`id`, `transaction_id` FK, `relative_path`, `original_filename`,
   `mime_type`, `added_at`)
 - **deduction_categories**(`id`, `code` UNIQUE, `name`, `cap_type`
   CHECK(fixed|per_count|shared_group_member), `cap_amount_minor` NULL, `shared_group_id` NULL FK
-  `shared_caps`, `sort_order`, `description`) — seeded from `TAX-2025` at first run.
+  `shared_caps`, `sort_order`, `description`, `is_active` BOOLEAN NOT NULL DEFAULT true,
+  `is_builtin` BOOLEAN NOT NULL DEFAULT false) — the built-in ~17 categories are seeded from
+  `TAX-2025` at first run (`is_builtin=true`); user-added ones (AC-16) have `is_builtin=false`
+  but are otherwise identical rows, so the calculation engine treats every category the same
+  way regardless of origin.
 - **shared_caps**(`id`, `name`, `cap_amount_minor`)
 - **deduction_entries**(`id`, `tax_year_id` FK, `category_id` FK, `amount_minor`, `count` NULL,
   `updated_at`; unique on (`tax_year_id`, `category_id`))
@@ -144,34 +192,60 @@ IPC surface exposed on `window.api` (all logic lives in the main process):
   `createReversal(originalId, input)` (only if year closed), `listByYear(yearId)`,
   `getHistory(id)`.
 - `deductions`: `listCategories()`, `setEntry(yearId, categoryId, amount, count?)`.
-- `settings`: `getCaps()`, `updateCap(categoryId, newCapAmountMinor)` (audit-logged),
+- `settings`: `getCaps()`, `updateCategory(categoryId, { name?, capAmountMinor? })`
+  (audit-logged — covers both a rename and a cap change, together or separately),
   `getSharedCaps()`, `updateSharedCap(id, newCapAmountMinor)`, `getBrackets()`,
-  `updateBracket(id, rateBp, bounds)`.
+  `updateBracket(id, rateBp, bounds)`, `createCategory(input)` (name, `cap_type`, cap value(s),
+  optional shared-group; audit-logged), `setCategoryActive(id, isActive)` (archive/reactivate,
+  audit-logged).
 - `calc`: `computeYear(yearId)` → `{ totalIncome, totalExpense, totalDeductions, netTaxable,
   bracketBreakdown[], taxTotal, whtTotal, balance: {direction: 'due'|'refund', amountMinor} }`
   — the single pure function used by the Dashboard (live), the Close action (freeze), and every
   calculation-related unit test.
 - `attachments`: `add(transactionId, filePath)`, `list(transactionId)` (no remove — evidence is
   not deletable, matching the no-hard-delete stance in AC-7).
+- `dataLocation`: `get()` (current folder path + DB file size/last-modified — read-only,
+  AC-19), `chooseFolder()` / `createInFolder(path)` (first-run only, AC-18).
+- `csv`: `exportLedger(yearId, destPath)` (AC-20), `exportSummary(yearId, destPath)` (AC-21,
+  read-only report), `parseForPreview(filePath)` → per-row `{ data, valid, errors[] }` without
+  writing anything (AC-22/23), `commitImport(rows, sourceFilename)` (only the rows the preview
+  step confirmed; each becomes a normal `transactions.create()` call with `source='import'`,
+  plus one batch `audit_log` entry, AC-24).
 
 ## UI changes
-- **Onboarding** (first run only): choose/create the data folder; creates the DB + seeds
-  reference data (categories, shared caps, brackets from `TAX-2025`).
+- **Onboarding** (first run only, AC-18): choose or create the data folder (guidance points the
+  user at a Google Drive–synced location, but any folder works); creates the DB there + seeds
+  reference data (categories, shared caps, brackets from `TAX-2025`). The chosen path is
+  remembered (a small local config file outside the synced folder, e.g. Electron's userData
+  dir) so every later launch skips this screen.
 - **Tax-year switcher**: list of years (open/closed badge), create a new year, set
   40(5)-(8) expense method for the selected year.
-- **Dashboard** (per open year, AC-12): stat tiles (income, WHT, estimated tax), deduction
-  headroom list (used vs. remaining per category/shared group) — all from a live
-  `calc.computeYear()` call.
-- **Income/Expense entry** (from the earlier mockup): form + ledger table, transactions grouped
-  by month with a per-month subtotal header row and an annual totals strip above the table
-  (linking to the full year summary) — easier to scan month-by-month while the annual figures
-  stay one click away; each row has an "Edit" action (open-year only) and a "History" action
-  (AC-9a) opening the audit trail for that transaction.
+- **Dashboard** (per open year, AC-12/15): two clearly separated sections — "ภาษี" (stat tiles:
+  income, WHT, estimated tax; deduction headroom list) computed from tax-relevant transactions
+  only, and "ทั่วไป" (general income/expense totals by category) below it — never blended into
+  one number.
+- **Income/Expense entry** (from the earlier mockup): one form for both kinds, with a
+  tax-relevant/general toggle (AC-13) that swaps the income-section chips for a general-category
+  chip row (Food/Shopping/Housing/Other) and hides WHT for general entries. The ledger groups by
+  month with a per-month subtotal header row and an annual totals strip above the table (split
+  into tax-relevant vs. general totals) linking to the full year summary; each row has an "Edit"
+  action (open-year only) and a "History" action (AC-9a) opening the audit trail for that
+  transaction.
 - **Deductions**: grouped list (personal/family, insurance & retirement, donations) matching
   `TAX-2025`'s sections; each row shows its cap (and, for shared-group members, the group's
   running total) — editable only while the year is open.
-- **Settings**: edit deduction caps, shared-cap group ceilings, and the tax bracket table
-  (AC-11); every save is audit-logged and takes effect for open years' live calculations only.
+- **Settings**: edit a deduction category's name and cap, shared-cap group ceilings, and the
+  tax bracket table (AC-11); every save is audit-logged and takes effect for open years' live
+  calculations (and display, for a name) only. Also: "+ add category" (AC-16) with a cap-shape
+  picker (fixed / per-count / shared-group) and an archive/reactivate toggle per row (AC-17) —
+  archived categories show a muted "archived" state instead of being removed from the list.
+  Also (AC-19): a read-only "data location" panel showing the folder path and the DB file's
+  last-modified time — informational only, no in-app sync action (there is nothing to sync;
+  Google Drive Desktop does that outside the app).
+- **Import/Export** (AC-20/21/22/23/24, its own screen): year picker + two export buttons
+  (ledger CSV, summary CSV); an import section with a file picker leading to a preview table
+  (per-row valid/error pill, a checkbox to exclude any row, closed-year rows shown as
+  permanently excluded) and a "commit" button that only acts on what stayed checked.
 - **Year summary / Close**: full breakdown (income, deductions, bracket table with the hit
   bracket highlighted, WHT netting, due/refund strip — matching the earlier mockup) plus the
   "Close tax year" action behind a confirmation modal that states exactly what will lock; a
@@ -216,6 +290,11 @@ of screens; see gate note below.)
 | 6 | Drizzle instead of Kysely | Same SQL-close, non-magic philosophy, but larger and faster-growing community/backing — lower long-term risk for a project with no dedicated maintenance team. | 2026-09-13 |
 | 7 | **Gate: approved.** Proceed to `dev-prototype`, then `dev-plan`. | — | 2026-09-13 |
 | 8 | Added `payer_tax_id` (optional) to `transactions` | PROTO-0001 feedback: user wants the payer's Thai tax ID captured alongside source/payer, useful for matching WHT certificates at filing time. | 2026-09-13 |
+| 9 | Added `tax_relevant` + `general_category` to `transactions`, new INV-8 | PROTO-0001 feedback: pulled the recording half of `PL-0001` into REQ-0001 (AC-13/14/15) — general transactions share the same table/form as tax transactions (simplest schema, one ledger to scan) but are excluded from every tax figure via a boolean filter, not a separate table. | 2026-09-13 |
+| 10 | Added `is_active`/`is_builtin` to `deduction_categories`, `createCategory`/`setCategoryActive` | PROTO-0001 feedback: user needs to add categories for new yearly stimulus measures without a code change, and archive one-year measures without deleting history — soft `is_active` flag chosen over hard delete, consistent with the project's archive-never-delete convention (AC-16/17). | 2026-09-13 |
+| 11 | `updateCap` widened to `updateCategory({ name?, capAmountMinor? })` | PROTO-0001 feedback: category names must be editable too (e.g. wording changes when a measure is renamed year to year), not just their cap amount — one endpoint covers both instead of adding a parallel `renameCategory`. | 2026-09-13 |
+| 12 | No in-app "Sync" action; added explicit Onboarding screen + Settings data-location panel | PROTO-0001 feedback: user expected a sync button since none exists by design (no Google Drive API integration, per REQ-0001 constraints). Rather than leave that invisible, made the folder choice an explicit first-run step (AC-18) and surfaced the folder path/last-modified in Settings (AC-19) so the architecture is legible to the user, not just documented. | 2026-09-13 |
+| 13 | Added CSV export (ledger + summary) and a narrowly-scoped CSV import (this app's own format only, mandatory preview, closed-year rows always rejected) | PROTO-0001 feedback reversed the earlier "no export" call. Import is deliberately not a general bank-statement importer — user's stated purpose is machine/account migration and backup restore, so round-tripping this app's own export format is sufficient and keeps validation simple (the column set is known exactly). Reused the existing repository/audit-log path for every imported row so no invariant gets a separate code path (AC-20/21/22/23/24). | 2026-09-13 |
 
 ## Task list (size S only)
 N/A — REQ-0001 is size L; tasks are broken out in `dev-plan`.

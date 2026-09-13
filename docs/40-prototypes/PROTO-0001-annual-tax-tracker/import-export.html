@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>นำเข้า/ส่งออกข้อมูล — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html">ค่าลดหย่อน</a>
+    <a href="settings.html">ตั้งค่า</a>
+    <a href="import-export.html" class="active">นำเข้า/ส่งออก</a>
+    <a href="summary.html">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2570 (เปิด)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>นำเข้า/ส่งออกข้อมูล (CSV)</h1>
+    <p>สำหรับสำรองข้อมูล ย้ายเครื่อง หรือย้ายไปใช้ account ใหม่ — ไม่ใช่เครื่องมือนำเข้า statement ธนาคารหรือไฟล์จากแหล่งอื่น รองรับเฉพาะไฟล์ที่ส่งออกจากแอปนี้เอง (AC-20–24)</p>
+  </div>
+
+  <div class="panel">
+    <div class="section-label">ส่งออกข้อมูล</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>เลือกปีภาษี</label>
+        <div class="control">ปีภาษี 2569</div>
+      </div>
+      <div class="field" style="justify-content:flex-end; flex-direction:row; gap:10px; display:flex;">
+        <a class="btn btn-ghost" href="#">⬇ ส่งออกรายการ (CSV)</a>
+        <a class="btn btn-ghost" href="#">⬇ ส่งออกสรุปภาษี (CSV)</a>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:10px;">"ส่งออกรายการ" ได้ไฟล์ที่ใช้นำเข้ากลับได้ในอนาคต ส่วน "ส่งออกสรุปภาษี" เป็นรายงานอ่านอย่างเดียว ใช้นำเข้ากลับไม่ได้</div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">นำเข้าข้อมูล</div>
+    <div class="dropzone">ลากไฟล์ CSV มาวาง หรือคลิกเพื่อเลือก (เฉพาะไฟล์ที่ส่งออกจากแอปนี้)</div>
+    <div class="muted" style="margin-top:10px;">เลือกไฟล์แล้ว: <b>tax-tracker-2568-ledger-backup.csv</b> — กด "ตรวจสอบไฟล์" เพื่อดูตัวอย่างก่อนนำเข้าจริง</div>
+    <div class="form-actions">
+      <div class="btn btn-primary">ตรวจสอบไฟล์ →</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+      <span>ตัวอย่างก่อนนำเข้า (AC-23) — ยังไม่มีการบันทึกข้อมูลใดๆ จนกว่าจะกด "ยืนยันนำเข้า"</span>
+      <span class="muted">เลือกไว้ 3 จาก 5 แถว</span>
+    </div>
+    <table>
+      <thead>
+        <tr><th></th><th style="text-align:right;">วันที่</th><th style="text-align:right;">ประเภท</th><th style="text-align:right;">รายละเอียด</th><th style="text-align:right;">จำนวนเงิน</th><th style="text-align:right;">สถานะตรวจสอบ</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td style="text-align:right;">12 มี.ค. 68</td>
+          <td style="text-align:right;"><span class="tag">40(1)</span></td>
+          <td style="text-align:right;">เงินเดือน มี.ค.</td>
+          <td style="text-align:right;" class="num">65,000.00</td>
+          <td style="text-align:right;"><span class="pill active">พร้อมนำเข้า</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td style="text-align:right;">15 มี.ค. 68</td>
+          <td style="text-align:right;"><span class="tag">40(2)</span></td>
+          <td style="text-align:right;">งานฟรีแลนซ์</td>
+          <td style="text-align:right;" class="num">8,000.00</td>
+          <td style="text-align:right;"><span class="pill active">พร้อมนำเข้า</span></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td style="text-align:right;">20 มี.ค. 68</td>
+          <td style="text-align:right;"><span class="tag" style="background:var(--amber-soft); color:var(--amber);">อาหาร</span></td>
+          <td style="text-align:right;">ค่าข้าว (ทั่วไป)</td>
+          <td style="text-align:right;" class="num">320.00</td>
+          <td style="text-align:right;"><span class="pill active">พร้อมนำเข้า</span></td>
+        </tr>
+        <tr style="opacity:.6;">
+          <td><input type="checkbox" disabled></td>
+          <td style="text-align:right;">02 เม.ย. 68</td>
+          <td style="text-align:right;"><span class="tag">40(1)</span></td>
+          <td style="text-align:right;">เงินเดือน เม.ย. — ไม่มีจำนวนเงิน</td>
+          <td style="text-align:right;" class="num">—</td>
+          <td style="text-align:right;"><span class="pill voided">ข้อผิดพลาด: ไม่มีจำนวนเงิน</span></td>
+        </tr>
+        <tr style="opacity:.6;">
+          <td><input type="checkbox" disabled></td>
+          <td style="text-align:right;">10 ม.ค. 67</td>
+          <td style="text-align:right;"><span class="tag">40(1)</span></td>
+          <td style="text-align:right;">เงินเดือน ปี 2567 (ปีนี้ปิดแล้วในเครื่องนี้)</td>
+          <td style="text-align:right;" class="num">62,000.00</td>
+          <td style="text-align:right;"><span class="pill voided">ปีภาษีปิดแล้ว — นำเข้าไม่ได้</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="form-actions">
+      <div class="btn btn-ghost">ยกเลิก</div>
+      <div class="btn btn-primary">ยืนยันนำเข้า 3 รายการที่เลือก</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

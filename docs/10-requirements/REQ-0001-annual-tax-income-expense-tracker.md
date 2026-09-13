@@ -52,9 +52,28 @@ preparing the annual personal income tax filing (ภ.ง.ด.90/91).
   a future tax year in advance, without needing to close the current one first.
 - Mark a tax year as filed/closed once its return has been submitted, locking its transactions;
   a confirmation step states plainly what becomes locked before it takes effect.
-- Settings screen listing every deduction category's cap and the progressive tax bracket
-  table, editable by the user (fixed values, not income-relative formulas) so figures can be
-  updated if the law changes; edits apply per tax year going forward and are audit-logged.
+- Settings screen listing every deduction category's name and cap, and the progressive tax
+  bracket table, all editable by the user (fixed cap values, not income-relative formulas) so
+  wording/figures can be updated if the law changes; edits apply per tax year going forward and
+  are audit-logged.
+- CSV export/import as a portable backup/migration path (not a bank-statement importer): export
+  a tax year's full transaction ledger (tax-relevant + general) to CSV, and separately export
+  its computed annual tax summary to CSV (read-only report). Import re-reads a CSV this app
+  previously exported — e.g. after moving to a new computer or restoring from a backup copy —
+  through a mandatory preview step where invalid or unwanted rows can be excluded before
+  anything is committed.
+- Settings also lets the user add a brand-new deduction category (any of the 3 cap shapes —
+  fixed / per-count / shared-group) to support a new one-off government measure introduced in a
+  given tax year, and archive/deactivate a category that no longer applies (e.g. a one-year
+  stimulus measure) — an archived category is hidden from new deduction entries but its
+  existing data and historical calculations are never deleted or altered.
+- Recording general (non-tax) income/expense transactions in the same entry form, toggled as
+  "tax-relevant" or "general" — a general transaction takes a simple fixed category (Food /
+  Shopping / Housing / Other) instead of an income section, and is excluded from every tax
+  calculation. Dashboard and the year's ledger show tax-relevant and general figures as two
+  clearly separate sections, never blended into one total. Category-based budgeting/allocation
+  (percentages, spending limits per category) stays out of scope — see `PL-0001` — this is
+  recording only.
 - Dashboard (home screen) for the open tax year the user is currently viewing: running income
   and WHT totals, each deduction category's amount used vs. its remaining headroom, and an
   estimated tax position — all computed live from the same engine as the year-end summary, so
@@ -72,8 +91,10 @@ preparing the annual personal income tax filing (ภ.ง.ด.90/91).
   `*-Asset` sheets) — parked for a later phase.
 - Generating official filing documents (PDF, ภ.ง.ด.90/91 forms) — MVP shows the summary
   on-screen only; the user files manually using the displayed figures.
-- CSV/bank-statement import and OCR receipt scanning — manual entry only for MVP; import may
-  be reconsidered later if manual entry volume becomes a burden.
+- Importing bank-statement CSVs or OCR receipt scanning as an ongoing entry method — manual
+  entry stays the primary way to record transactions. CSV import (AC-22/23/24) is scoped
+  narrowly as a migration/restore path for this app's own export format, not a general-purpose
+  bank-statement importer.
 - Multi-user access, authentication, or any server/cloud backend.
 - Concurrent use of the same data file from two machines at once (Google Drive sync is
   treated as backup/single-writer-at-a-time, not real-time multi-device collaboration).
@@ -113,13 +134,53 @@ preparing the annual personal income tax filing (ภ.ง.ด.90/91).
   (until/unless explicitly reopened, which is itself an audit-logged action).
 - AC-7c: The user can open a new (e.g. future) tax year and record transactions in it while an
   earlier tax year is still open — tax years are not required to be closed in order.
-- AC-11: Deduction category caps and the progressive tax bracket table are visible and editable
-  on a Settings screen; a change is audit-logged and applies to calculations for the tax
-  year(s) the user chooses going forward, without altering already-closed years.
+- AC-11: Deduction category names and caps, and the progressive tax bracket table, are visible
+  and editable on a Settings screen; a change is audit-logged and applies to calculations
+  (and, for a name change, to display) for the tax year(s) the user chooses going forward,
+  without altering already-closed years.
 - AC-12: For the tax year currently selected, a Dashboard shows running totals (income, WHT),
   each deduction category's used amount vs. remaining headroom against its cap, and an
   estimated tax position — updating live as transactions are added, without requiring the year
   to be closed first.
+- AC-13: When creating or editing a transaction, the user can mark it "tax-relevant" (default)
+  or "general"; a general transaction requires a category from a fixed set (Food, Shopping,
+  Housing, Other) instead of an income section, and does not require WHT/income-section fields.
+- AC-14: General transactions are excluded from every tax calculation — net taxable income,
+  deduction eligibility, and WHT netting are computed only from tax-relevant transactions.
+- AC-15: The Dashboard and the year's ledger present tax-relevant and general transactions as
+  two clearly separate sections/totals — general figures are visible but never combined into
+  the tax summary numbers.
+- AC-16: From Settings, the user can create a new deduction category — name, cap shape (fixed /
+  per-count / shared-group), and its cap value(s) — which then appears on the Deductions screen
+  for entry like any built-in category.
+- AC-17: From Settings, the user can archive/deactivate a deduction category; an archived
+  category no longer appears as an entry option for new/open tax years, but any tax year that
+  already has an entry under it keeps that entry and its historical calculation unchanged, and
+  the category can be viewed (read-only) wherever it was already used.
+- AC-18: On first run, the app asks the user to choose or create the data folder (intended to
+  be a Google Drive–synced location); on every later launch it reuses that same folder
+  automatically without asking again.
+- AC-19: Settings shows the current data folder's path and basic file info (e.g. last
+  modified) so the user can confirm data is where they expect — this is informational only;
+  the app performs no sync action itself, since Google Drive Desktop syncs that folder in the
+  background independently of the app.
+- AC-20: User can export a chosen tax year's full transaction ledger (every tax-relevant and
+  general transaction, active or voided/reversal) to a CSV file with enough columns to fully
+  reconstruct each transaction.
+- AC-21: User can export a chosen tax year's computed annual tax summary (income, deductions
+  used per category, net taxable income, tax by bracket, WHT, due/refund) to a CSV file; this
+  export is a read-only report and is not a supported import source.
+- AC-22: User can import a CSV file previously produced by AC-20's export (this app's own
+  format) to recreate its transactions — intended for moving to a new computer or restoring
+  from a backup copy, not for importing bank statements or other external formats.
+- AC-23: Before anything is committed, import shows a preview listing every row with a
+  valid/error status and lets the user exclude any row (valid or not) from the import; rows
+  targeting a tax year that is already closed in this install are always flagged invalid,
+  since closed-year transactions are immutable (INV-2b) — a closed year can never receive
+  imported rows, only a new or already-open one can.
+- AC-24: A completed import writes one audit-log entry summarizing the batch (source filename,
+  rows imported, rows skipped, timestamp), in addition to each imported transaction being
+  individually audit-logged as normal.
 - AC-8: All monetary fields are stored and calculated as integer minor units or exact decimal
   types; no floating-point arithmetic is used for money.
 - AC-9: Every create, reversal, or configuration change (e.g. expense-method choice) writes an
@@ -163,3 +224,8 @@ summary + close/reopen lifecycle, (4) attachments.
 | 2026-09-13 | Clarified deduction caps are not all flat single amounts — fixed, per-count-multiplier, and shared-across-line-items shapes must all be supported (AC-3a). Made the audit log user-visible per transaction, not just internally recorded (AC-9a). | user |
 | 2026-09-13 | **Gate: approved.** Size L confirmed. Proceed to `dev-analyze`. | user |
 | 2026-09-13 | PROTO-0001 feedback: added the payer's tax ID (optional) to AC-1's income transaction fields. | user |
+| 2026-09-13 | PROTO-0001 feedback: pulled the *recording* half of parked `PL-0001` into REQ-0001 — general (non-tax) transactions with a simple fixed category, excluded from tax calculation, shown as a separate section from tax figures (AC-13/14/15). Category-based budgeting/allocation (percentages, spending limits) stays parked in `PL-0001`. | user |
+| 2026-09-13 | PROTO-0001 feedback: Settings can add brand-new deduction categories (all 3 cap shapes) for new yearly stimulus measures, and archive/deactivate ones that stop applying without deleting history (AC-16/17). | user |
+| 2026-09-13 | PROTO-0001 feedback: a category's name (not just its cap) is editable in Settings too (AC-11 extended). | user |
+| 2026-09-13 | PROTO-0001 feedback: user asked where the "Sync Google Drive" button was — clarified there isn't one by design (no Drive API integration; Drive syncs the folder externally). Added an explicit first-run folder picker (AC-18) and a read-only data-location/status display in Settings (AC-19) so the absence of a sync button doesn't read as a missing feature. | user |
+| 2026-09-13 | PROTO-0001 feedback: reversed the earlier "no CSV export" decision — added CSV export (ledger + summary, AC-20/21) and CSV import scoped narrowly as a restore/migration path for this app's own export format, with a mandatory preview/exclude step and closed-year protection (AC-22/23/24). General bank-statement import stays out of scope. | user |
