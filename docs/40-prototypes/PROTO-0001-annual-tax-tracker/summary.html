@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>สรุปปี — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html">ค่าลดหย่อน</a>
+    <a href="settings.html">ตั้งค่า</a>
+    <a href="summary.html" class="active">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2568 (ปิดแล้ว)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>สรุปภาษีท้ายปี — ปีภาษี 2569 (เปิดอยู่)</h1>
+    <p>คำนวณสดจากรายการที่บันทึกไว้ทั้งหมด — กด "ปิดปีภาษี" เมื่อยื่นแบบจริงแล้วเพื่อล็อกตัวเลขนี้ไว้ (AC-7b)</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">รายได้รวมทั้งปี</div><div class="v num">1,225,951</div></div>
+    <div class="tile"><div class="k">ค่าใช้จ่าย + ค่าลดหย่อนรวม</div><div class="v num">431,320</div></div>
+    <div class="tile"><div class="k">เงินได้สุทธิ</div><div class="v num">793,831</div></div>
+    <div class="tile"><div class="k">ภาษีคำนวณได้</div><div class="v num">73,766</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-label">อัตราภาษีขั้นบันไดที่ใช้คำนวณ</div>
+    <table class="bracket-table">
+      <thead><tr><th>ช่วงเงินได้สุทธิ (บาท)</th><th>อัตรา</th><th>ภาษีในช่วงนี้</th></tr></thead>
+      <tbody>
+        <tr><td>0 – 150,000</td><td>ยกเว้น</td><td>0.00</td></tr>
+        <tr><td>150,001 – 300,000</td><td>5%</td><td>7,500.00</td></tr>
+        <tr><td>300,001 – 500,000</td><td>10%</td><td>20,000.00</td></tr>
+        <tr><td>500,001 – 750,000</td><td>15%</td><td>37,500.00</td></tr>
+        <tr class="hit"><td>750,001 – 1,000,000</td><td>20%</td><td>8,766.21</td></tr>
+        <tr><td>1,000,001 – 2,000,000</td><td>25%</td><td>0.00</td></tr>
+      </tbody>
+    </table>
+    <div class="result-strip refund">
+      <div>
+        <div class="label">ภาษีคำนวณได้ 73,766.21 − ภาษีหัก ณ ที่จ่ายสะสม 93,963.71</div>
+        <div class="label" style="margin-top:2px;">ผลลัพธ์: <b style="color:var(--good)">ขอคืนภาษีได้</b></div>
+      </div>
+      <div class="amount">฿20,197.50</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="confirm-modal">
+      <h3>ยืนยันปิดปีภาษี 2569?</h3>
+      <p class="muted" style="margin:0 0 8px;">เมื่อกดยืนยัน สิ่งต่อไปนี้จะเกิดขึ้นทันที (AC-7b):</p>
+      <ul>
+        <li>รายรับ/รายจ่ายทั้งหมดของปีนี้จะ<strong>ล็อก แก้ไขตรงไม่ได้อีก</strong></li>
+        <li>ค่าลดหย่อนของปีนี้จะล็อกเช่นกัน</li>
+        <li>ตัวเลขสรุปด้านบนจะถูก "แช่แข็ง" ไว้ — ต่อให้แก้ไขเพดาน/อัตราภาษีที่หน้าตั้งค่าทีหลัง ปีนี้จะไม่เปลี่ยน (INV-7)</li>
+        <li>แก้ไขอะไรหลังจากนี้ต้องทำผ่าน "รายการกลับรายการ" เท่านั้น</li>
+      </ul>
+      <div class="form-actions" style="margin-top:0;">
+        <div class="btn btn-ghost">ยกเลิก</div>
+        <div class="btn" style="background:var(--amber); color:#fff;">ยืนยันปิดปีภาษี</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-head" style="margin-top:48px;">
+    <h1>ตัวอย่าง: ปีภาษี 2568 (ปิดแล้ว)</h1>
+    <p>แสดงค่าที่ "แช่แข็ง" ไว้ตอนปิดปี ไม่ใช่การคำนวณสด</p>
+  </div>
+
+  <div class="locked-banner">🔒 ปีภาษีนี้ปิดแล้วเมื่อ 28 มี.ค. 2569 — ตัวเลขด้านล่างคือค่าที่บันทึกไว้ ณ ตอนปิด แก้ไขตรงไม่ได้</div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">รายได้รวมทั้งปี</div><div class="v num">1,102,400</div></div>
+    <div class="tile"><div class="k">เงินได้สุทธิ</div><div class="v num">680,120</div></div>
+    <div class="tile"><div class="k">ภาษีคำนวณได้ (แช่แข็ง)</div><div class="v num">57,018</div></div>
+    <div class="tile bad"><div class="k">ผลลัพธ์ — ต้องจ่ายเพิ่ม</div><div class="v num">฿4,120.00</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-label">แก้ไขหลังปิดปี — ตัวอย่างรายการกลับรายการ (AC-7a)</div>
+    <table>
+      <thead><tr><th style="text-align:right;">วันที่</th><th style="text-align:right;">รายการ</th><th style="text-align:right;">จำนวนเงิน</th><th style="text-align:right;">สถานะ</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="text-align:right;">10 พ.ย. 68</td>
+          <td style="text-align:right;">ค่าคอมมิชชั่นเพิ่มเติม (ต้นฉบับ)</td>
+          <td style="text-align:right;" class="num">12,000.00</td>
+          <td style="text-align:right;"><span class="pill active">active</span></td>
+        </tr>
+        <tr>
+          <td style="text-align:right;">15 ก.ย. 69</td>
+          <td style="text-align:right;">รายการกลับรายการ — ยอดจริงคือ 9,500 ไม่ใช่ 12,000</td>
+          <td style="text-align:right;" class="num">-2,500.00</td>
+          <td style="text-align:right;"><span class="pill reversal">reversal</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="form-actions">
+      <div class="btn btn-ghost">🔓 เปิดปีภาษีนี้อีกครั้ง</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

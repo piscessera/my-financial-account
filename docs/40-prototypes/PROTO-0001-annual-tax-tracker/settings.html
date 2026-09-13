@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ตั้งค่า — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html">ค่าลดหย่อน</a>
+    <a href="settings.html" class="active">ตั้งค่า</a>
+    <a href="summary.html">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2570 (เปิด)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>ตั้งค่า</h1>
+    <p>แก้ไขเพดานค่าลดหย่อนและอัตราภาษีขั้นบันได (AC-11) — มีผลกับปีภาษีที่ "เปิด" อยู่เท่านั้น ปีที่ปิดแล้วจะยังแสดงยอดเดิมที่ปิดไว้ (ดูตัวอย่างที่หน้าสรุปปี) ทุกการแก้ไขถูกบันทึกไว้</p>
+  </div>
+
+  <div class="panel">
+    <div class="section-label">เพดานค่าลดหย่อน</div>
+    <table>
+      <thead><tr><th style="text-align:right;">หมวด</th><th style="text-align:right;">รูปแบบเพดาน</th><th style="text-align:right;">ค่าเพดาน</th><th style="text-align:right;"></th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:right;">ส่วนตัวผู้ยื่นภาษี</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">60,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">บุตร (ต่อคน)</td><td style="text-align:right;"><span class="muted">นับจำนวนคน</span></td><td style="text-align:right;" class="num">30,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">ประกันชีวิต+สุขภาพตนเอง (กลุ่มรวม)</td><td style="text-align:right;"><span class="muted">รวมกลุ่ม</span></td><td style="text-align:right;" class="num">100,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">ประกันสุขภาพตนเอง (sub-cap)</td><td style="text-align:right;"><span class="muted">คงที่ (ในกลุ่ม)</span></td><td style="text-align:right;" class="num">25,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">SSF / Thai ESG</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">200,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td style="text-align:right;">เงินประกันสังคม</td><td style="text-align:right;"><span class="muted">คงที่</span></td><td style="text-align:right;" class="num">9,000</td><td style="text-align:right;"><a class="row-action" href="#">แก้ไข</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">กำลังแก้ไข: SSF / Thai ESG</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>ค่าเพดานใหม่ (บาท)</label>
+        <div class="control num">210,000</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <div class="btn btn-ghost">ยกเลิก</div>
+      <div class="btn btn-primary">บันทึกการเปลี่ยนแปลง</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">อัตราภาษีขั้นบันได</div>
+    <table class="bracket-table">
+      <thead><tr><th>ช่วงเงินได้สุทธิ (บาท)</th><th>อัตรา</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>0 – 150,000</td><td>ยกเว้น</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>150,001 – 300,000</td><td>5%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>300,001 – 500,000</td><td>10%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>500,001 – 750,000</td><td>15%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>750,001 – 1,000,000</td><td>20%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>1,000,001 – 2,000,000</td><td>25%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>2,000,001 – 5,000,000</td><td>30%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+        <tr><td>5,000,001 ขึ้นไป</td><td>35%</td><td><a class="row-action" href="#">แก้ไข</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

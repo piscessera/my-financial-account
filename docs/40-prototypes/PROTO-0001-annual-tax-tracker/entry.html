@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>บันทึกรายรับ-รายจ่าย — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="entry.html" class="active">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html">ค่าลดหย่อน</a>
+    <a href="settings.html">ตั้งค่า</a>
+    <a href="summary.html">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2570 (เปิด)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>บันทึกรายรับ-รายจ่าย</h1>
+    <p>ปีภาษีนี้ยัง "เปิด" อยู่ — แก้ไขรายการที่บันทึกไว้ได้โดยตรง ทุกการแก้ไขจะถูกบันทึกไว้ (ดูได้ที่ "ประวัติ")</p>
+  </div>
+
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field span2">
+        <label>ประเภทรายการ</label>
+        <div class="chip-row">
+          <div class="chip active">รายรับ</div>
+          <div class="chip">รายจ่าย (เฉพาะปีที่เลือกหักตามจริง)</div>
+        </div>
+      </div>
+      <div class="field span2">
+        <label>ประเภทเงินได้ (มาตรา 40)</label>
+        <div class="chip-row">
+          <div class="chip active">40(1) เงินเดือน/ค่าจ้าง</div>
+          <div class="chip">40(2) ฟรีแลนซ์</div>
+          <div class="chip">40(5)–(8) ธุรกิจ/ขายของ</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>วันที่รับเงิน</label>
+        <div class="control">25 ก.ย. 2569</div>
+      </div>
+      <div class="field">
+        <label>จำนวนเงิน (บาท)</label>
+        <div class="control num">68,870.00</div>
+      </div>
+      <div class="field">
+        <label>ภาษีหัก ณ ที่จ่าย (ถ้ามี)</label>
+        <div class="control num">0.00</div>
+      </div>
+      <div class="field">
+        <label>แหล่งที่มา / ผู้จ่าย</label>
+        <div class="control">บริษัท ไฮเลเวล จำกัด</div>
+      </div>
+      <div class="field">
+        <label>เลขประจำตัวผู้เสียภาษีของผู้จ่าย (ถ้ามี)</label>
+        <div class="control num">0-1055-45xxx-xx-x</div>
+      </div>
+      <div class="field span2">
+        <label>หลักฐานประกอบ (ใบเสร็จ / สลิปเงินเดือน / ใบหัก ณ ที่จ่าย)</label>
+        <div class="dropzone">ลากไฟล์มาวาง หรือคลิกเพื่อเลือก — รองรับ JPG, PNG, PDF</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <div class="btn btn-ghost">ยกเลิก</div>
+      <div class="btn btn-primary">บันทึกรายการ</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">ตัวอย่าง: กรอกไม่ครบ (AC-1, TC-0001 #2)</div>
+    <div class="form-grid">
+      <div class="field span2">
+        <label>ประเภทเงินได้ (มาตรา 40)</label>
+        <div class="control err">— ยังไม่ได้เลือก —</div>
+        <div class="error-msg">กรุณาเลือกประเภทเงินได้ก่อนบันทึก</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+      <span>รายการของปีภาษี 2569 — จัดกลุ่มรายเดือน</span>
+      <a class="row-action" href="summary.html">ดูสรุปรวมทั้งปีแบบเต็ม →</a>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(3,1fr); margin-bottom:18px;">
+      <div class="tile"><div class="k">รวมทั้งปี — รายรับ</div><div class="v num">83,870.00</div></div>
+      <div class="tile"><div class="k">รวมทั้งปี — WHT</div><div class="v num">450.00</div></div>
+      <div class="tile"><div class="k">จำนวนรายการ</div><div class="v num">4</div></div>
+    </div>
+
+    <table class="month-ledger">
+      <thead>
+        <tr><th style="text-align:right;">วันที่</th><th style="text-align:right;">ประเภท</th><th style="text-align:right;">แหล่งที่มา</th><th style="text-align:right;">จำนวนเงิน</th><th style="text-align:right;">WHT</th><th style="text-align:right;">สถานะ</th><th style="text-align:right;">การจัดการ</th></tr>
+      </thead>
+      <tbody>
+        <tr class="month-row"><td colspan="7"><div class="month-row-inner"><span>กันยายน 2569</span><span class="num">3 รายการ · รวม 83,870.00</span></div></td></tr>
+        <tr>
+          <td style="text-align:right;">25 ก.ย. 69</td>
+          <td style="text-align:right;"><span class="tag">40(1)</span></td>
+          <td style="text-align:right;">บจก. ไฮเลเวล</td>
+          <td style="text-align:right;" class="num">68,870.00</td>
+          <td style="text-align:right;" class="num">0.00</td>
+          <td style="text-align:right;"><span class="pill active">active</span></td>
+          <td style="text-align:right;">
+            <a class="row-action" href="#">แก้ไข</a><a class="row-action" href="#history">ประวัติ</a><a class="row-action muted" href="#">Void</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;">18 ก.ย. 69</td>
+          <td style="text-align:right;"><span class="tag">40(2)</span></td>
+          <td style="text-align:right;">งานฟรีแลนซ์ออกแบบ</td>
+          <td style="text-align:right;" class="num">15,000.00</td>
+          <td style="text-align:right;" class="num">450.00</td>
+          <td style="text-align:right;"><span class="pill active">active</span></td>
+          <td style="text-align:right;">
+            <a class="row-action" href="#">แก้ไข</a><a class="row-action" href="#history">ประวัติ</a><a class="row-action muted" href="#">Void</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align:right;">02 ก.ย. 69</td>
+          <td style="text-align:right;"><span class="tag">40(5)-(8)</span></td>
+          <td style="text-align:right;">ขายของออนไลน์ (แก้ยอดผิด)</td>
+          <td style="text-align:right;" class="num">0.00</td>
+          <td style="text-align:right;" class="num">0.00</td>
+          <td style="text-align:right;"><span class="pill voided">voided</span></td>
+          <td style="text-align:right;"><span class="muted">ปรับเป็นศูนย์แล้ว — ดูประวัติ</span></td>
+        </tr>
+        <tr class="month-row"><td colspan="7"><div class="month-row-inner"><span>สิงหาคม 2569</span><span class="num">1 รายการ · รวม 0.00</span></div></td></tr>
+        <tr>
+          <td style="text-align:right;">30 ส.ค. 69</td>
+          <td style="text-align:right;"><span class="tag">40(5)-(8)</span></td>
+          <td style="text-align:right;">ขายของออนไลน์</td>
+          <td style="text-align:right;" class="num">0.00</td>
+          <td style="text-align:right;" class="num">0.00</td>
+          <td style="text-align:right;"><span class="pill active">active</span></td>
+          <td style="text-align:right;">
+            <a class="row-action" href="#">แก้ไข</a><a class="row-action" href="#history">ประวัติ</a><a class="row-action muted" href="#">Void</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel" style="margin-top:20px;" id="history">
+    <div class="section-label">ประวัติการแก้ไข — รายการ "บจก. ไฮเลเวล" (AC-9a)</div>
+    <div class="history-item"><div class="when">25 ก.ย. 69<br>14:02</div><div>สร้างรายการ — จำนวนเงิน 65,000.00</div></div>
+    <div class="history-item"><div class="when">25 ก.ย. 69<br>14:10</div><div>แก้ไขจำนวนเงิน: <span class="num">65,000.00</span> → <span class="num">68,870.00</span> (ยอดจริงจากสลิป)</div></div>
+  </div>
+</div>
+</body>
+</html>

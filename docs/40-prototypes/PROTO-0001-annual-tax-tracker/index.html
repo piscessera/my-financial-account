@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>PROTO-0001 — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page" style="max-width:760px;">
+  <div class="page-head">
+    <h1>PROTO-0001 · สมุดภาษีรายปี</h1>
+    <p>ต้นแบบหน้าจอ (Direction B — Slate &amp; Amber) ของ REQ-0001 / ANA-0001 เปิดแต่ละหน้าจอด้านล่าง
+    ทุกหน้าเชื่อมกันผ่านเมนูด้านบนของหน้านั้นๆ ได้เลย ตัวเลขทั้งหมดเป็นข้อมูลตัวอย่าง</p>
+  </div>
+  <div class="panel">
+    <div class="section-label">หน้าจอทั้งหมด</div>
+    <table>
+      <tbody>
+        <tr><td><a class="row-action" href="dashboard.html" style="font-size:14px;">1. Dashboard</a></td><td class="muted">ภาพรวมปีภาษีที่เปิดอยู่ — รายได้/WHT สะสม, เพดานค่าลดหย่อนคงเหลือ, ประมาณการภาษี</td></tr>
+        <tr><td><a class="row-action" href="entry.html" style="font-size:14px;">2. บันทึกรายรับ-รายจ่าย</a></td><td class="muted">ฟอร์มบันทึกรายการ + ตารางรายการ พร้อม edit/history/void และ state ผิดพลาด</td></tr>
+        <tr><td><a class="row-action" href="deductions.html" style="font-size:14px;">3. ค่าลดหย่อน</a></td><td class="muted">กรอกค่าลดหย่อนแยกกลุ่ม พร้อมเพดาน 3 รูปแบบ (คงที่ / นับจำนวนคน / รวมกลุ่ม)</td></tr>
+        <tr><td><a class="row-action" href="settings.html" style="font-size:14px;">4. ตั้งค่า</a></td><td class="muted">แก้ไขเพดานค่าลดหย่อน + อัตราภาษีขั้นบันได</td></tr>
+        <tr><td><a class="row-action" href="summary.html" style="font-size:14px;">5. สรุปปี / ปิดปีภาษี</a></td><td class="muted">สรุปท้ายปี ปิดปี (พร้อม confirm) และตัวอย่างปีที่ปิดแล้ว (ล็อก)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

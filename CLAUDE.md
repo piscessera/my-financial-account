@@ -10,17 +10,24 @@ system, 2026-09-12). These instructions apply to every session in this repositor
   (progressive rate, statutory deductions, WHT netting), replacing a manual Excel workbook.
   First feature: `REQ-0001` (annual tax income/expense tracker).
 - **Main users:** single user (the account owner), no login/multi-user.
-- **Stack:**
-  - Runtime: Windows desktop app — Electron vs Tauri to be decided at `REQ-0001` analyze and
-    recorded here once chosen.
-  - Storage: local file-based DB (SQLite assumed) at a path the user chooses, intended to be a
-    folder synced by the Google Drive desktop client. No Google API/OAuth integration — the
-    app only reads/writes a local file; Drive handles sync/backup outside the app.
+- **Stack** (chosen at `REQ-0001` / `ANA-0001` analyze):
+  - Runtime: **Electron** + TypeScript, Windows desktop app.
+  - Main process: Node.js, **`better-sqlite3`** (synchronous SQLite driver) + **Drizzle**
+    (type-safe SQL query builder, not a full ORM — money-affecting queries stay explicit SQL).
+  - Renderer: **React** + Vite, no heavy component library.
+  - IPC: `preload.ts` exposes a narrow typed API via `contextBridge`; the renderer never
+    touches SQLite directly — all business logic/invariant enforcement lives in the main
+    process.
+  - Storage: local file-based DB (SQLite) at a path the user chooses, intended to be a folder
+    synced by the Google Drive desktop client. No Google API/OAuth integration — the app only
+    reads/writes local files; Drive handles sync/backup outside the app.
+  - Test runner: **Vitest** (main-process/calculation-engine unit tests).
+  - Lint/format: ESLint + Prettier.
+  - Packaging: `electron-builder` (Windows target — NSIS/portable exe, finalized at first
+    `/dev-release`).
   - Currency: THB only.
-  - Backend/frontend framework, language, test runner, formatter/linter: TBD, to be recorded
-    here once `REQ-0001` analyze picks the concrete stack.
-- **Standards:** Conventional Commits · formatter/linter per stack (TBD) · single-repo desktop
-  app (not a monorepo — revisit if a second deployable is added).
+- **Standards:** Conventional Commits · ESLint + Prettier · single-repo desktop app (not a
+  monorepo — revisit if a second deployable is added).
 - **Domain invariants (always):** money as integer minor units or decimal — never float;
   transactions are directly editable while their tax year is open, and every edit is
   audit-logged (before/after values, timestamp); once a tax year is marked filed/closed, its

@@ -6,13 +6,16 @@ sub-agents receive their IDs in the dispatch payload.
 
 | ID | Title | Type | Status | Size | Links | Updated |
 |----|-------|------|--------|------|-------|---------|
-| REQ-0001 | Annual tax income/expense tracker | requirement | active | L | — | 2026-09-13 |
+| REQ-0001 | Annual tax income/expense tracker | requirement | active | L | ANA-0001, TC-0001 | 2026-09-13 |
+| ANA-0001 | Annual tax income/expense tracker — design | analysis | active | L | REQ-0001, TC-0001 | 2026-09-13 |
+| TC-0001 | Annual tax income/expense tracker — test cases | test-cases | active | — | ANA-0001 | 2026-09-13 |
+| PROTO-0001 | Annual tax income/expense tracker — prototype | prototype | draft | — | ANA-0001 | 2026-09-13 |
 
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 2 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| 2 | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
 
 ## Status vocabulary
 
@@ -23,4 +26,4 @@ investigations/ideas may be `parked` (visible in dev-status, never silently drop
 
 | ID | Gate | Since |
 |----|------|-------|
-| — | *(none)* | |
+| PROTO-0001 | 5 screens built (Direction B) — awaiting feedback/acceptance | 2026-09-13 |

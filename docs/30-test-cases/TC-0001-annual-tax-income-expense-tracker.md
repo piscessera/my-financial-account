@@ -1,0 +1,57 @@
+---
+id: TC-0001
+type: test-cases
+title: Annual tax income/expense tracker — test cases
+status: active
+created: 2026-09-13
+updated: 2026-09-13
+links: [ANA-0001]
+---
+
+# TC-0001: Annual tax income/expense tracker — test cases
+
+Rule: every AC (or GAP fix) **and every ANA invariant (INV-n)** has ≥ 1 case; `Level = Unit`
+cases must be implementable in the project test runners (Vitest, main-process code) — coding
+fills the `Result` and `Test ref` columns (dev-implement).
+
+| # | Case | Given / When / Then | Level | Maps to | Result | Test ref |
+|---|------|---------------------|-------|---------|--------|----------|
+| 1 | Create income transaction, happy path | Given an open tax year, When the user submits an income transaction (40(1), date, amount, WHT, source, the payer's tax ID, one attachment), Then it is stored with the entered values (including the payer tax ID) and appears in that year's ledger. | Unit | AC-1 | | |
+| 1a | Create income transaction without payer tax ID | Given an open tax year, When the user submits an income transaction leaving the payer's tax ID blank, Then it is stored successfully with `payer_tax_id` null — the field is optional. | Unit | AC-1 | | |
+| 2 | Reject income transaction missing required field | Given an open tax year, When the user submits an income transaction without an `income_section`, Then the create is rejected with a validation error and nothing is stored. | Unit | AC-1 | | |
+| 3 | Lump-sum expense method | Given a tax year set to `lump_sum` with a rate, When 40(5)-(8) income is recorded, Then the calculation deducts `income × rate` (capped per law) instead of any recorded expense transactions. | Unit | AC-2 | | |
+| 4 | Actual-expense method | Given a tax year set to `actual` with recorded expense transactions, When the year is calculated, Then total recorded expenses (not the lump-sum rate) are deducted from 40(5)-(8) income. | Unit | AC-2 | | |
+| 5 | Change expense method mid-year with existing transactions | Given a tax year already has 40(5)-(8) income and lump-sum selected, When the user switches to `actual`, Then the UI warns that expenses must now be recorded and the calculation is not silently wrong once switched. | Manual | AC-2 | | |
+| 6 | Deduction entry within fixed cap | Given the "general donation" category (fixed cap), When the user enters an amount at or below the cap, Then the full amount is used in the calculation. | Unit | AC-3 | | |
+| 7 | Deduction entry exceeding fixed cap | Given the same category, When the user enters an amount above the cap, Then the calculation uses only the cap amount, and the UI indicates the entry is capped. | Unit | AC-3 | | |
+| 8 | Per-count cap scales with count | Given the "children" category (`cap_type=per_count`, per-unit cap 30,000) with `count=2`, When the year is calculated, Then the effective cap used is 60,000, not 30,000. | Unit | AC-3a / INV-6 | | |
+| 9 | Shared-group cap sums across categories | Given "life insurance" and "health insurance (self)" both belong to a shared cap of 100,000, When their combined entered amounts exceed 100,000, Then the calculation caps their combined contribution at 100,000. | Unit | AC-3a / INV-6 | | |
+| 10 | Shared-group member's own sub-cap still applies | Given "health insurance (self)" also has its own 25,000 sub-cap inside the 100,000 shared group, When the user enters 30,000 for it alone (group total still under 100,000), Then only 25,000 of it counts, per its sub-cap. | Unit | AC-3a / INV-6 | | |
+| 11 | Progressive bracket calculation, multi-bracket | Given a tax year with net taxable income of 793,831.04 THB (the `TAX-2025` reference figure), When the year is calculated, Then the tax total equals 73,766.21 THB (reference: `TAX-2025` row 75) computed bracket-by-bracket. | Unit | AC-4 | | |
+| 12 | Zero or negative net taxable income | Given a tax year where deductions exceed income, When the year is calculated, Then tax payable is 0 (never negative). | Unit | AC-4 | | |
+| 13 | WHT exceeds computed tax → refund | Given computed tax of 73,766.21 and total WHT of 93,963.71 (the `TAX-2025` reference figures), When the year is calculated, Then the result shows a refund of 20,197.50. | Unit | AC-5 | | |
+| 14 | Computed tax exceeds WHT → additional due | Given computed tax greater than total recorded WHT, When the year is calculated, Then the result shows an additional-tax-due amount equal to the difference. | Unit | AC-5 | | |
+| 15 | Independent multi-year summaries | Given two tax years with different transactions and deductions, When each is viewed, Then each summary reflects only its own year's data. | Unit | AC-6 | | |
+| 16 | Edit transaction while year open | Given a transaction in an open tax year, When the user edits its amount, Then the update succeeds and an `audit_log` row records the before/after values. | Unit | AC-7 / INV-2 | | |
+| 17 | Hard delete is never available | Given any transaction, When the user wants to remove it, Then no hard-delete action exists — only editing the amount to zero / a voiding action that preserves the row and its history. | Unit | AC-7 | | |
+| 18 | Edit rejected on closed year | Given a transaction in a closed tax year, When the user attempts to edit it, Then the update is rejected. | Unit | AC-7a / INV-2b | | |
+| 19 | Reversal entry after close | Given a closed tax year needs a correction, When the user creates a reversal for a transaction, Then a new transaction with `reversal_of_id` set is stored, and both the original and the reversal remain visible. | Unit | AC-7a / INV-2b | | |
+| 20 | Closing a year freezes its result | Given an open tax year with recorded data, When the user confirms "close tax year", Then `status` becomes `closed`, `closed_at` is set, and `frozen_result_json` is populated with the computed result. | Unit | AC-7b / INV-7 | | |
+| 21 | Close confirmation states what locks | Given the user opens the close dialog, When it renders, Then it explicitly lists that transactions will lock and further corrections require reversals. | Manual | AC-7b | | |
+| 22 | Multiple open tax years coexist | Given tax year 2569 is open, When the user creates tax year 2570 and adds transactions to it, Then year 2569 remains open and unaffected, and each year's transactions are scoped correctly. | Unit | AC-7c | | |
+| 23 | Exact decimal summation, no float drift | Given many transactions with 2-decimal baht amounts (e.g. from the `TAX-2025` fixture), When their total is computed, Then the result matches the exact expected sum to the satang, with no floating-point rounding error. | Unit | AC-8 / INV-1 | | |
+| 24 | Every mutation writes an audit-log row | Given any create, edit, reversal, or settings change, When the action completes, Then exactly one corresponding `audit_log` row exists with entity, action, before/after, and timestamp. | Unit | AC-9 / INV-4 | | |
+| 25 | Transaction history is user-visible | Given a transaction with two prior edits, When the user opens its history panel, Then both edits are listed in order with their before/after values and timestamps. | Manual | AC-9a | | |
+| 26 | No outbound network calls | Given the app is running normally (entry, calculation, settings), When network activity is monitored, Then zero requests to Google or any other external API occur. | Manual | AC-10 | | |
+| 27 | Setting change applies to open years only going forward | Given an open year and a closed year, When a deduction cap is edited in Settings, Then the open year's live calculation reflects the new cap and the closed year's frozen summary does not change. | Unit | AC-11 / INV-7 | | |
+| 28 | Bracket edit reflected in Dashboard estimate | Given an open year, When a tax bracket's rate is edited in Settings, Then the Dashboard's estimated tax updates on next view. | Unit | AC-11 | | |
+| 29 | Dashboard reflects new transaction immediately | Given an open year's Dashboard is showing totals, When a new income transaction is added, Then the Dashboard's running totals update without requiring the year to be closed. | Unit | AC-12 | | |
+| 30 | Deduction headroom never shows negative | Given a category's used amount exceeds its cap, When the Dashboard shows remaining headroom for it, Then it displays 0, not a negative number. | Unit | AC-12 | | |
+| 31 | Half-up rounding at input boundary | Given a user enters "1,234.567" THB, When it is converted to storage, Then it is stored as 123457 satang (rounded half-up), deterministically. | Unit | INV-1 | | |
+| 32 | Closed-year recompute matches frozen snapshot | Given a closed tax year, When its transactions are independently recomputed via `calc.computeYear()`, Then the result equals the stored `frozen_result_json` from close time. | Unit | INV-3 | | |
+| 33 | Currency is always THB | Given any amount-bearing row, When it is inserted, Then its `currency` column is `'THB'`; an insert attempting another value is rejected by the schema constraint. | Unit | INV-5 | | |
+
+## Coverage summary
+- ACs covered: 18 / 18 (AC-1, 2, 3, 3a, 4, 5, 6, 7, 7a, 7b, 7c, 8, 9, 9a, 10, 11, 12 — all present; AC-11 covered by #27–28)
+- Unit cases: 29 · Manual cases: 5
+- Invariants covered: 7 / 7 (INV-1 #23/#31, INV-2 #16, INV-2b #18/#19, INV-3 #32, INV-4 #24, INV-5 #33, INV-6 #8/#9/#10, INV-7 #20/#27)

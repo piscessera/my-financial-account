@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html">ค่าลดหย่อน</a>
+    <a href="settings.html">ตั้งค่า</a>
+    <a href="summary.html">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2570 (เปิด)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>Dashboard — ปีภาษี 2569</h1>
+    <p>ตัวเลขนี้คำนวณสดจากรายการที่บันทึกไว้ ไม่ต้องรอปิดปีถึงจะเห็นภาพรวม (AC-12)</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile accent"><div class="k">รายได้สะสม</div><div class="v num">1,240,951.31</div></div>
+    <div class="tile"><div class="k">ภาษีหัก ณ ที่จ่ายสะสม</div><div class="v num">93,963.71</div></div>
+    <div class="tile"><div class="k">เงินได้สุทธิโดยประมาณ</div><div class="v num">793,831.04</div></div>
+    <div class="tile good"><div class="k">ประมาณการ — ขอคืนได้</div><div class="v num">฿20,197.50</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="section-label">เพดานค่าลดหย่อน — ใช้ไปแล้ว / คงเหลือ</div>
+    <div class="ded-group">
+      <div class="ded-row" style="grid-template-columns:1fr 160px;">
+        <div>
+          <div class="ded-name">ประกันชีวิต + สุขภาพตนเอง <span class="muted">(กลุ่มรวม เพดาน 100,000)</span></div>
+          <div class="headroom-bar"><span style="width:31%"></span></div>
+        </div>
+        <div class="num" style="text-align:right;">30,996 / 100,000</div>
+      </div>
+      <div class="ded-row" style="grid-template-columns:1fr 160px;">
+        <div>
+          <div class="ded-name">SSF / Thai ESG <span class="muted">(เพดาน 200,000)</span></div>
+          <div class="headroom-bar"><span style="width:28%"></span></div>
+        </div>
+        <div class="num" style="text-align:right;">55,552 / 200,000</div>
+      </div>
+      <div class="ded-row" style="grid-template-columns:1fr 160px;">
+        <div>
+          <div class="ded-name">ดอกเบี้ยที่อยู่อาศัย <span class="muted">(เพดาน 100,000)</span></div>
+          <div class="headroom-bar"><span style="width:78%"></span></div>
+        </div>
+        <div class="num" style="text-align:right;">78,496 / 100,000</div>
+      </div>
+      <div class="ded-row" style="grid-template-columns:1fr 160px;">
+        <div>
+          <div class="ded-name">เงินประกันสังคม <span class="muted">(เพดาน 9,000)</span></div>
+          <div class="headroom-bar"><span style="width:100%; background:var(--bad);"></span></div>
+        </div>
+        <div class="num" style="text-align:right; color:var(--ink-soft);">2,250 / 9,000</div>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:6px;">ดูค่าลดหย่อนทั้งหมดที่ <a class="row-action" href="deductions.html">หน้าค่าลดหย่อน</a></div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">ตัวอย่าง: ปีภาษีที่เพิ่งเปิด ยังไม่มีข้อมูล (2570)</div>
+    <div class="empty-state">
+      <div class="icon">🗓️</div>
+      <div>ยังไม่มีรายการในปีภาษี 2570</div>
+      <div style="margin-top:12px;"><a class="btn btn-primary" href="entry.html">+ บันทึกรายการแรก</a></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

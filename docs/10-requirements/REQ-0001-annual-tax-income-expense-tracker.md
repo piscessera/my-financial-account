@@ -6,7 +6,7 @@ status: active
 size: L
 created: 2026-09-13
 updated: 2026-09-13
-links: []
+links: [ANA-0001, TC-0001]
 ---
 
 # REQ-0001: Annual tax income/expense tracker
@@ -80,7 +80,8 @@ preparing the annual personal income tax filing (ภ.ง.ด.90/91).
 
 ## Acceptance criteria
 - AC-1: User can create an income transaction with date, amount, income type (40(1)/40(2)/
-  40(5)-(8)), source/payer, WHT withheld, and zero or more attached evidence files.
+  40(5)-(8)), source/payer (with the payer's tax ID, optional), WHT withheld, and zero or more
+  attached evidence files.
 - AC-2: User can set, per tax year, whether 40(5)-(8) business income uses lump-sum (%) or
   actual-expense deduction; when actual is selected, expense transactions can be recorded and
   are used in the calculation instead of the lump-sum amount.
@@ -161,3 +162,4 @@ summary + close/reopen lifecycle, (4) attachments.
 | 2026-09-13 | Added a live Dashboard for the currently-open tax year (income/WHT running totals, deduction headroom per category, estimated tax) so the user has an in-year view rather than only a year-end summary (AC-12). | user |
 | 2026-09-13 | Clarified deduction caps are not all flat single amounts — fixed, per-count-multiplier, and shared-across-line-items shapes must all be supported (AC-3a). Made the audit log user-visible per transaction, not just internally recorded (AC-9a). | user |
 | 2026-09-13 | **Gate: approved.** Size L confirmed. Proceed to `dev-analyze`. | user |
+| 2026-09-13 | PROTO-0001 feedback: added the payer's tax ID (optional) to AC-1's income transaction fields. | user |

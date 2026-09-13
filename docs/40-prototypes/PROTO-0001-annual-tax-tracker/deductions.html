@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ค่าลดหย่อน — สมุดภาษีรายปี</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="app-nav">
+  <div class="brand">🧾 สมุดภาษีรายปี</div>
+  <div class="links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="entry.html">บันทึกรายรับ-รายจ่าย</a>
+    <a href="deductions.html" class="active">ค่าลดหย่อน</a>
+    <a href="settings.html">ตั้งค่า</a>
+    <a href="summary.html">สรุปปี</a>
+  </div>
+  <div class="year-pill"><span class="status-dot open"></span>ปีภาษี
+    <select><option>2569 (เปิด)</option><option>2570 (เปิด)</option></select>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <h1>ค่าลดหย่อนภาษี — ปีภาษี 2569</h1>
+    <p>เพดานแต่ละช่องมี 3 รูปแบบ (AC-3a): คงที่ / คูณตามจำนวนคน / รวมเพดานข้ามหลายช่อง — ดูตัวเลขคงที่ทั้งหมดที่ <a class="row-action" href="settings.html">หน้าตั้งค่า</a></p>
+  </div>
+
+  <div class="panel">
+    <div class="ded-group">
+      <div class="ded-group-title">ส่วนบุคคลและครอบครัว</div>
+      <div class="ded-row">
+        <div><div class="ded-name">ส่วนตัวผู้ยื่นภาษี</div><div class="ded-cap">คงที่ — 60,000 บาท</div></div>
+        <div class="muted">อัตโนมัติ</div>
+        <div class="ded-input num">60,000</div>
+      </div>
+      <div class="ded-row">
+        <div><div class="ded-name">บุตร</div><div class="ded-cap">นับตามจำนวนคน — คนละ 30,000 บาท</div></div>
+        <div class="muted">จำนวนคน: <input class="ded-input num" style="width:44px; text-align:center;" value="2"></div>
+        <div class="ded-input num" style="color:var(--ink-soft);">= 60,000</div>
+      </div>
+      <div class="ded-row">
+        <div><div class="ded-name">บิดามารดา (อายุ 60+, รายได้ไม่เกิน 30,000/ปี)</div><div class="ded-cap">นับตามจำนวนคน (สูงสุด 4) — คนละ 30,000 บาท</div></div>
+        <div class="muted">จำนวนคน: <input class="ded-input num" style="width:44px; text-align:center;" value="1"></div>
+        <div class="ded-input num" style="color:var(--ink-soft);">= 30,000</div>
+      </div>
+    </div>
+
+    <div class="ded-group">
+      <div class="ded-group-title">ประกันและการออมเพื่อเกษียณ</div>
+      <div class="ded-row">
+        <div><div class="ded-name">ประกันชีวิต (ทั่วไป)</div><div class="ded-cap">รวมกลุ่มกับประกันสุขภาพตนเอง เพดานรวม 100,000 · sub-cap ตัวเอง 100,000</div></div>
+        <div class="muted">กลุ่ม: 30,996 / 100,000</div>
+        <div class="ded-input num">18,262</div>
+      </div>
+      <div class="ded-row">
+        <div><div class="ded-name">ประกันสุขภาพตนเอง</div><div class="ded-cap">รวมกลุ่มเดียวกัน · sub-cap ตัวเอง 25,000</div></div>
+        <div class="muted">กลุ่ม: 30,996 / 100,000</div>
+        <div class="ded-input num">12,734</div>
+      </div>
+      <div class="ded-row">
+        <div><div class="ded-name">กองทุนรวมเพื่อการออม (SSF) / Thai ESG</div><div class="ded-cap">คงที่ (จากการตั้งค่า) — 200,000 บาท</div></div>
+        <div class="muted">–</div>
+        <div class="ded-input num">55,552</div>
+      </div>
+      <div class="ded-row">
+        <div><div class="ded-name">เงินประกันสังคม</div><div class="ded-cap">คงที่ — 9,000 บาท</div></div>
+        <div class="muted">–</div>
+        <div class="ded-input num">2,250</div>
+      </div>
+    </div>
+
+    <div class="ded-group">
+      <div class="ded-group-title">เงินบริจาค</div>
+      <div class="ded-row">
+        <div><div class="ded-name">เงินบริจาคทั่วไป</div><div class="ded-cap">คงที่ (คำนวณจาก 10% ของเงินได้หลังหักฯ) — ปัจจุบัน 79,383</div></div>
+        <div class="muted">–</div>
+        <div class="ded-input num">800</div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <div class="btn btn-primary">บันทึกค่าลดหย่อน</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <div class="section-label">ตัวอย่าง: กรอกเกินเพดาน (AC-3, TC-0001 #7)</div>
+    <div class="ded-row">
+      <div><div class="ded-name">เงินบริจาคทั่วไป</div><div class="ded-cap">เกินเพดาน — ระบบจะใช้แค่ 79,383 ในการคำนวณ</div></div>
+      <div class="muted" style="color:var(--bad);">เกินเพดาน</div>
+      <div class="ded-input num" style="border-color:var(--bad); background:var(--bad-soft); color:var(--bad);">120,000</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
