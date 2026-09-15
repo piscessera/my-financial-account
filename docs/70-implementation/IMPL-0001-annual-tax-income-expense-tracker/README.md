@@ -18,6 +18,7 @@ the contract; this folder is the audit trail.
 ## Task log
 | Task | Commit | Note | Deviation? |
 |------|--------|------|------------|
+| AT-1.1 | `b9818c7` | [AT-1.1.md](./AT-1.1.md) | yes — eslint flat config filename; dev window verified via build+process-launch, not a screenshot (no display in sandbox) |
 
 ## Setup & config notes
 (Env vars, scheduler entries, migrations, deploy steps — cumulative, short.)
