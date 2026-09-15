@@ -21,6 +21,7 @@ the contract; this folder is the audit trail.
 | AT-1.1 | `b9818c7` | [AT-1.1.md](./AT-1.1.md) | yes — eslint flat config filename; dev window verified via build+process-launch, not a screenshot (no display in sandbox) |
 | AT-1.2 | `ccaad19` | [AT-1.2.md](./AT-1.2.md) | no |
 | AT-1.3 | `8eaab0e` | [AT-1.3.md](./AT-1.3.md) | yes — DDL hand-written instead of drizzle-kit-generated (conditional CHECKs); several CHECKs added beyond the ANA's literal column list; `currency` kept on `transactions` only |
+| AT-1.4 | `964db04` | [AT-1.4.md](./AT-1.4.md) | yes — fractional `number` input rejected (decimals must be passed as strings); reverse `formatSatangAsBaht()` included, judged in scope |
 | AT-1.9 | `6e3b199` | [AT-1.9.md](./AT-1.9.md) | yes — TC #26 is `Level: Manual`; this task's static lint guard is a proxy, recorded as `manual (static guard only)`, not `pass` |
 
 ## Setup & config notes
