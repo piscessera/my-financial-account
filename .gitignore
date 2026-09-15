@@ -2,3 +2,11 @@
 .claude/settings.local.json
 .worktrees/
 .claude/gate.env
+
+# app scaffold (AT-1.1)
+node_modules/
+dist/
+dist-electron/
+release/
+*.local
+.DS_Store
