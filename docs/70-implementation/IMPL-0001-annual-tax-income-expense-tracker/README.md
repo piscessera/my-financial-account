@@ -20,6 +20,7 @@ the contract; this folder is the audit trail.
 |------|--------|------|------------|
 | AT-1.1 | `b9818c7` | [AT-1.1.md](./AT-1.1.md) | yes — eslint flat config filename; dev window verified via build+process-launch, not a screenshot (no display in sandbox) |
 | AT-1.2 | `ccaad19` | [AT-1.2.md](./AT-1.2.md) | no |
+| AT-1.9 | `6e3b199` | [AT-1.9.md](./AT-1.9.md) | yes — TC #26 is `Level: Manual`; this task's static lint guard is a proxy, recorded as `manual (static guard only)`, not `pass` |
 
 ## Setup & config notes
 (Env vars, scheduler entries, migrations, deploy steps — cumulative, short.)
