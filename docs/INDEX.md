@@ -11,7 +11,7 @@ sub-agents receive their IDs in the dispatch payload.
 | TC-0001 | Annual tax income/expense tracker — test cases | test-cases | active | — | ANA-0001, PROTO-0001, PLAN-0001 | 2026-09-13 |
 | PROTO-0001 | Annual tax income/expense tracker — prototype | prototype | active | — | ANA-0001, REQ-0001, TC-0001 | 2026-09-13 |
 | PLAN-0001 | Annual tax income/expense tracker | plan | active | L | ANA-0001, TC-0001, PROTO-0001 | 2026-09-17 |
-| IMPL-0001 | Annual tax income/expense tracker | implementation | active | — | PLAN-0001 | 2026-09-15 |
+| IMPL-0001 | Annual tax income/expense tracker | implementation | active | — | PLAN-0001 | 2026-09-17 |
 
 ## ID counters (next value to use)
 
