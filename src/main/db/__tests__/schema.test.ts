@@ -364,6 +364,15 @@ describe('deduction_categories', () => {
     );
   });
 
+  it('accepts a shared_group_member with its own sub-cap on top of the group total (INV-6, TC-0001 #10)', () => {
+    const withSubCap = run(
+      `INSERT INTO deduction_categories (code, name, cap_type, cap_amount_minor, shared_group_id, sort_order)
+       VALUES ('health_insurance_self', 'Health insurance (self)', 'shared_group_member', 2500000, ?, 4)`,
+      sharedCapId,
+    );
+    expect(withSubCap).toBeGreaterThan(0);
+  });
+
   it('rejects an unknown cap_type', () => {
     expectRejected(() =>
       run(

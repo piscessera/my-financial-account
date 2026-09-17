@@ -23,7 +23,11 @@ export interface DeductionCategorySeed {
   readonly code: string;
   readonly name: string;
   readonly capType: 'fixed' | 'per_count' | 'shared_group_member';
-  /** Required for `fixed`/`per_count`, omitted for `shared_group_member` (INV-6). */
+  /**
+   * Required for `fixed`/`per_count`. Optional for `shared_group_member` — a member may carry
+   * its own sub-cap on top of the group total (e.g. health insurance's own 25,000 sub-cap
+   * inside a 100,000 shared group with life insurance, which has none) — INV-6.
+   */
   readonly capAmountMinor?: number;
   /** Required for `shared_group_member` — must match a `name` in `sharedCaps` (INV-6). */
   readonly sharedGroupName?: string;
