@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 
 import { createInFolder, getDataLocationInfo } from '../src/main/dataLocation';
+import { checkAndClaimLock } from '../src/main/lockFile';
 
 // Populated by vite-plugin-electron in dev; undefined in a packaged build.
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
@@ -13,7 +14,7 @@ function configDir(): string {
   return app.getPath('userData');
 }
 
-function registerDataLocationIpc(): void {
+function registerIpcHandlers(): void {
   ipcMain.handle('dataLocation:get', () => getDataLocationInfo(configDir()));
 
   ipcMain.handle('dataLocation:chooseFolder', async () => {
@@ -27,6 +28,8 @@ function registerDataLocationIpc(): void {
   ipcMain.handle('dataLocation:createInFolder', (_event, folderPath: string) =>
     createInFolder(configDir(), folderPath),
   );
+
+  ipcMain.handle('lockFile:check', (_event, folderPath: string) => checkAndClaimLock(folderPath));
 }
 
 function createWindow(): void {
@@ -52,7 +55,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerDataLocationIpc();
+  registerIpcHandlers();
   createWindow();
 });
 

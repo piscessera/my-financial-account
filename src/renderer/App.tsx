@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import type { DataLocationInfo } from '../main/dataLocation';
+import type { LockInfo } from '../main/lockFile';
+import LockWarningBanner from './components/LockWarningBanner';
 import Onboarding from './pages/Onboarding';
 
 type LoadState =
@@ -19,8 +21,23 @@ function DashboardPlaceholder({ info }: { info: DataLocationInfo }): JSX.Element
   );
 }
 
+/** Runs the AT-1.8 launch-time lock check once a data folder is known. */
+function useLockWarning(folderPath: string | null): LockInfo | null {
+  const [warning, setWarning] = useState<LockInfo | null>(null);
+
+  useEffect(() => {
+    if (!folderPath) return;
+    void window.api.lockFile.check(folderPath).then((result) => {
+      setWarning(result.warn ? result.previous : null);
+    });
+  }, [folderPath]);
+
+  return warning;
+}
+
 export default function App(): JSX.Element {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const lockWarning = useLockWarning(state.status === 'ready' ? state.info.folderPath : null);
 
   useEffect(() => {
     void window.api.dataLocation.get().then((info) => {
@@ -32,5 +49,10 @@ export default function App(): JSX.Element {
   if (state.status === 'needsOnboarding') {
     return <Onboarding onComplete={(info) => setState({ status: 'ready', info })} />;
   }
-  return <DashboardPlaceholder info={state.info} />;
+  return (
+    <>
+      {lockWarning !== null && <LockWarningBanner previous={lockWarning} />}
+      <DashboardPlaceholder info={state.info} />
+    </>
+  );
 }

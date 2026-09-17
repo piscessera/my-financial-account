@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type { DataLocationInfo } from '../src/main/dataLocation';
+import type { LockCheckResult } from '../src/main/lockFile';
 
 // Narrow typed API surface for the renderer. The renderer never touches
 // SQLite/Node APIs directly — every method here is added by a later plan
@@ -15,6 +16,11 @@ const api = {
     /** First-run only (AC-18): creates+seeds the DB in `folderPath` and remembers it. */
     createInFolder: (folderPath: string): Promise<DataLocationInfo> =>
       ipcRenderer.invoke('dataLocation:createInFolder', folderPath),
+  },
+  lockFile: {
+    /** Launch-time check (AT-1.8): claims the lock, reporting if another instance looked recent. */
+    check: (folderPath: string): Promise<LockCheckResult> =>
+      ipcRenderer.invoke('lockFile:check', folderPath),
   },
 } as const;
 
