@@ -37,4 +37,16 @@
 - Open via `openDatabase(filePath)`; tests use `db/__tests__/helpers.ts::openTempDatabase()`.
 - `amount_minor` sign is unconstrained beyond non-zero — the reversal task must fix the
   convention (negative amount vs. flipped `kind`) at repository level.
-- AT-1.5 seeding: `sort_order` unique; `shared_group_member` rows leave `cap_amount_minor` NULL.
+- AT-1.5 seeding: `sort_order` unique; `shared_group_member` rows may carry their own
+  `cap_amount_minor` sub-cap or leave it NULL (see correction below).
+
+## Correction (2026-09-17, REV-0001)
+
+The original `deduction_categories_cap_amount_matches_cap_type` CHECK forced `shared_group_member`
+rows to have `cap_amount_minor IS NULL`, contradicting ANA-0001 §Deduction cap shapes (a member
+may carry its own sub-cap on top of the group total) and making TC-0001 #10 unimplementable.
+Fixed directly in migration 001 (not a new migration — nothing had shipped yet): the CHECK now
+only requires `cap_amount_minor IS NOT NULL` for `fixed`/`per_count`; `shared_group_member`'s
+`cap_amount_minor` is unconstrained by cap_type (still NULL-or-non-negative-integer per the
+column's own CHECK). `schema.test.ts` gained an acceptance test for a member with a sub-cap;
+`seed.ts`'s doc comment corrected to match.

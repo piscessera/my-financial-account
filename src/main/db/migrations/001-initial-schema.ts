@@ -134,10 +134,12 @@ CREATE TABLE deduction_categories (
     OR (cap_type <> 'shared_group_member' AND shared_group_id IS NULL)
   ),
   -- INV-6: fixed = own ceiling, per_count = amount per unit; both need an amount.
-  -- shared_group_member takes its ceiling from shared_caps instead.
+  -- shared_group_member's cap_amount_minor is its own OPTIONAL sub-cap (ANA-0001 §Deduction
+  -- cap shapes), on top of the group total from shared_caps -- e.g. health insurance keeps its
+  -- own 25,000 sub-cap inside a 100,000 shared group, while life insurance in the same group
+  -- has none (NULL is still valid for a member).
   CONSTRAINT deduction_categories_cap_amount_matches_cap_type CHECK (
-    (cap_type IN ('fixed', 'per_count') AND cap_amount_minor IS NOT NULL)
-    OR (cap_type = 'shared_group_member' AND cap_amount_minor IS NULL)
+    cap_type = 'shared_group_member' OR cap_amount_minor IS NOT NULL
   )
 );
 

@@ -5,7 +5,7 @@ title: Annual tax income/expense tracker
 status: active
 size: L
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 links: [ANA-0001, TC-0001, PLAN-0001]
 ---
 
@@ -196,12 +196,13 @@ preparing the annual personal income tax filing (ภ.ง.ด.90/91).
 - Storage: local file-based DB (SQLite assumed; confirm at analyze), path chosen by the user
   so it can live inside their existing Google Drive sync folder.
 - Currency: THB only.
-- The deduction category list and caps are sourced from the user's own workbook
+- The deduction category list and caps are intended to be sourced from the user's own workbook
   (`Puy Money Management.xlsx`, sheet `TAX-2025`) as of tax year 2025; caps and brackets are
   set by Thai Revenue Department rules and can change yearly, so they are stored as editable
-  configuration (Settings screen, AC-11) seeded from the 2025 sheet, not hard-coded constants —
-  the analyze stage should confirm current-year figures rather than assume the 2025 sheet is
-  still accurate for future years.
+  configuration (Settings screen, AC-11), not hard-coded constants. That workbook data is not
+  currently available (2026-09-17): the app must not require it to function — first run seeds
+  zero categories/brackets and the user builds them via Settings (AC-16/AC-11); real 2025
+  figures can be supplied and seeded later without a schema or code change.
 - No existing codebase/stack yet — this is the first feature; analyze stage picks and records
   the concrete stack (Electron vs Tauri, SQLite access library, language) in `CLAUDE.md`.
 
@@ -228,4 +229,5 @@ summary + close/reopen lifecycle, (4) attachments.
 | 2026-09-13 | PROTO-0001 feedback: Settings can add brand-new deduction categories (all 3 cap shapes) for new yearly stimulus measures, and archive/deactivate ones that stop applying without deleting history (AC-16/17). | user |
 | 2026-09-13 | PROTO-0001 feedback: a category's name (not just its cap) is editable in Settings too (AC-11 extended). | user |
 | 2026-09-13 | PROTO-0001 feedback: user asked where the "Sync Google Drive" button was — clarified there isn't one by design (no Drive API integration; Drive syncs the folder externally). Added an explicit first-run folder picker (AC-18) and a read-only data-location/status display in Settings (AC-19) so the absence of a sync button doesn't read as a missing feature. | user |
+| 2026-09-17 | `TAX-2025` workbook figures aren't available. App must work with no seed data: first run creates the DB with zero deduction categories/brackets rather than blocking; user adds them manually via Settings (AC-11/16), matching decision 14 in ANA-0001. Unblocks PLAN-0001 AT-1.5/AT-1.6. | user |
 | 2026-09-13 | PROTO-0001 feedback: reversed the earlier "no CSV export" decision — added CSV export (ledger + summary, AC-20/21) and CSV import scoped narrowly as a restore/migration path for this app's own export format, with a mandatory preview/exclude step and closed-year protection (AC-22/23/24). General bank-statement import stays out of scope. | user |

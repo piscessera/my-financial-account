@@ -70,7 +70,7 @@ requirement → analyze(+TC) → [prototype loop] → plan(phases+tasks) → imp
   worktrees from writing shared files, and keeps `qa-reviewer` read-only.
 - **Archive, never delete:** closed docs move to `docs/archive/` with INDEX tombstones.
 - **Continuous execution:** `/dev-execute [PLAN-id | all]` (user-only) runs ready plans to
-  completion — dependency-aware, max 2 parallel streams (branch `dev/PLAN-NNNN-slug` + git
+  completion — dependency-aware, max 2 parallel streams (branch `plan/PLAN-NNNN-slug` + git
   worktree per plan), sync-before-commit, merge queue into `main`. `orchestrator.md` §11.
 
 ## Skills & roles

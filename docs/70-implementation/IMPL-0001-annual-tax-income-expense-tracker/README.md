@@ -24,6 +24,9 @@ the contract; this folder is the audit trail.
 | AT-1.4 | `964db04` | [AT-1.4.md](./AT-1.4.md) | yes — fractional `number` input rejected (decimals must be passed as strings); reverse `formatSatangAsBaht()` included, judged in scope |
 | AT-1.7 | `78c81cd` | [AT-1.7.md](./AT-1.7.md) | no (two judgement calls: sorted-key snapshot JSON; optional `occurredAt` override) |
 | AT-1.9 | `6e3b199` | [AT-1.9.md](./AT-1.9.md) | yes — TC #26 is `Level: Manual`; this task's static lint guard is a proxy, recorded as `manual (static guard only)`, not `pass` |
+| AT-1.5 | `f7a3c2f` | [AT-1.5.md](./AT-1.5.md) | no (redefined by PLAN-0001's 2026-09-17 re-plan log / ANA-0001 decision 14, not a deviation from the current design) |
+| AT-1.6 | `83231ae` | [AT-1.6.md](./AT-1.6.md) | yes — `electron/main.ts` now imports `src/main/`, which `tsconfig.electron.json`'s `rootDir` will reject at `npm run build` time; flagged, not fixed (packaging is TBD) |
+| AT-1.8 | `ea13ba2` | [AT-1.8.md](./AT-1.8.md) | no |
 
 ## Setup & config notes
 (Env vars, scheduler entries, migrations, deploy steps — cumulative, short.)
