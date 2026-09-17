@@ -5,9 +5,11 @@
   "description": "Personal finance app: annual Thai personal income tax income/expense tracker.",
   "main": "dist-electron/main.js",
   "scripts": {
+    "predev": "electron-rebuild -f -w better-sqlite3",
     "dev": "vite",
     "build": "tsc --noEmit && vite build && tsc -p tsconfig.electron.json",
     "preview": "vite preview",
+    "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -19,6 +21,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^9.15.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.10.0",
