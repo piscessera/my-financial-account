@@ -29,7 +29,7 @@ If none given, list plans passing the readiness check and ask which to execute.
 
 1. `.claude/runs/PLAN-NNNN.state` exists and is `executing`/`paused` → **resume**, skip setup.
 2. `git fetch origin` (if a remote exists) → `git switch main` → `git pull --ff-only`.
-3. Branch `dev/PLAN-NNNN-slug` from main; `git worktree add .worktrees/PLAN-NNNN <branch>`.
+3. Branch `plan/PLAN-NNNN-slug` from main; `git worktree add .worktrees/PLAN-NNNN <branch>`.
 4. Write state: `plan:`, `branch:`, `worktree:`, `status: executing`, `started: <ISO>`, `continuations: 0`.
 5. Create `docs/70-implementation/IMPL-NNNN-slug/README.md` from `.claude/templates/IMPL.md`
    (allocate the IMPL id now) if it doesn't exist.
@@ -70,7 +70,7 @@ If none given, list plans passing the readiness check and ask which to execute.
 
 1. Take the merge lock (other streams wait).
 2. Re-run the sync check: merge main into the branch, resolve, re-test.
-3. `git switch main` → `git merge --no-ff dev/PLAN-NNNN-slug` → `bash .claude/scripts/gate.sh` on main.
+3. `git switch main` → `git merge --no-ff plan/PLAN-NNNN-slug` → `bash .claude/scripts/gate.sh` on main.
 4. Green → push (if origin), remove worktree, delete branch, state → `done`.
    Not green → abort the merge, keep branch + worktree, escalate.
 5. Every other stream syncs `main` into its branch before its next commit.

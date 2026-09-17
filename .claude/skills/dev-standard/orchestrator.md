@@ -11,7 +11,7 @@ Never delete. Move closed/superseded docs to `docs/archive/<TYPE>/`, add a row t
 
 ## 11. Execution & branches (used by `dev-execute`)
 
-- Integration branch is **`main`**. Each executing plan gets branch `dev/PLAN-NNNN-slug` cut from
+- Integration branch is **`main`**. Each executing plan gets branch `plan/PLAN-NNNN-slug` cut from
   latest main and worktree `.worktrees/PLAN-NNNN/` (gitignored) — all coding happens there.
 - **Shared files change only on main, only by the orchestrator:** `docs/INDEX.md`,
   `docs/PARKING-LOT.md`, `docs/90-daily-logs/`, `CLAUDE.md`, `.claude/`. A feature branch edits
