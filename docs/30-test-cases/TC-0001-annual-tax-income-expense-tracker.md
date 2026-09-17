@@ -4,7 +4,7 @@ type: test-cases
 title: Annual tax income/expense tracker — test cases
 status: active
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 links: [ANA-0001, PROTO-0001, PLAN-0001]
 ---
 
@@ -57,7 +57,7 @@ fills the `Result` and `Test ref` columns (dev-implement).
 | 38 | Archived category hidden from new entry, history intact | Given a category with an existing deduction entry in tax year 2568, When the user archives it in Settings, Then it no longer appears as an option to add on any open tax year's Deductions screen, but year 2568's entry and calculation remain exactly as before. | Unit | AC-17 | | |
 | 39 | Reactivating an archived category | Given an archived category, When the user reactivates it, Then it reappears as an addable option on open tax years, unchanged from before archiving. | Unit | AC-17 | | |
 | 40 | Rename a deduction category | Given any category (built-in or user-added), When the user edits its name in Settings, Then the new name is stored, audit-logged, and shown everywhere the category appears — its cap and existing entries are unaffected. | Unit | AC-11 | | |
-| 41 | First-run folder picker persists | Given a fresh install with no saved data folder, When the user completes onboarding by choosing a folder, Then the DB is created there and every later launch opens directly to the Dashboard using that same folder, without re-prompting. | Manual | AC-18 | | |
+| 41 | First-run folder picker persists | Given a fresh install with no saved data folder, When the user completes onboarding by choosing a folder, Then the DB is created there and every later launch opens directly to the Dashboard using that same folder, without re-prompting. | Manual | AC-18 | manual (structural only) | Sandbox has no display server (same limitation as AT-1.1) — verified `createInFolder`/`getDataLocationInfo` round-trip via unit tests (AT-1.6) and that `electron/main.ts`'s new IPC wiring + `preload.js` build clean; a real two-launch click-through is still owed once the app runs on a real desktop |
 | 42 | Settings shows data location, no sync action exists | Given the app is running, When the user opens Settings, Then the current folder path and the DB file's last-modified time are displayed, and there is no control anywhere in the app that triggers a "sync" — Google Drive Desktop syncing that folder is entirely outside the app's awareness. | Manual | AC-19 | | |
 | 43 | Export a tax year's ledger to CSV | Given a tax year with tax-relevant and general transactions (including a voided one and a reversal), When the user exports its ledger, Then the CSV has one row per transaction with every field needed to reconstruct it. | Unit | AC-20 | | |
 | 44 | Export a tax year's summary to CSV | Given a calculated tax year, When the user exports its summary, Then the CSV matches the on-screen summary figures exactly, and the app never offers this file back as an import source. | Unit | AC-21 | | |
