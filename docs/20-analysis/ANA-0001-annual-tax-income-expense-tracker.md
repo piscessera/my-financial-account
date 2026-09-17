@@ -5,7 +5,7 @@ title: Annual tax income/expense tracker — design
 status: active
 size: L
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 links: [REQ-0001, TC-0001, PLAN-0001]
 ---
 
@@ -169,15 +169,20 @@ New SQLite schema (all tables new — greenfield):
 - **deduction_categories**(`id`, `code` UNIQUE, `name`, `cap_type`
   CHECK(fixed|per_count|shared_group_member), `cap_amount_minor` NULL, `shared_group_id` NULL FK
   `shared_caps`, `sort_order`, `description`, `is_active` BOOLEAN NOT NULL DEFAULT true,
-  `is_builtin` BOOLEAN NOT NULL DEFAULT false) — the built-in ~17 categories are seeded from
-  `TAX-2025` at first run (`is_builtin=true`); user-added ones (AC-16) have `is_builtin=false`
-  but are otherwise identical rows, so the calculation engine treats every category the same
-  way regardless of origin.
+  `is_builtin` BOOLEAN NOT NULL DEFAULT false) — when `TAX-2025` reference figures are supplied,
+  the ~17 built-in categories seed from them (`is_builtin=true`); with no reference data supplied
+  (current state, 2026-09-17 decision) the table starts empty and the user adds categories from
+  Settings (AC-16), which land with `is_builtin=false`. Either way rows are otherwise identical,
+  so the calculation engine treats every category the same way regardless of origin — a zero-row
+  table is a valid, supported state, not an error.
 - **shared_caps**(`id`, `name`, `cap_amount_minor`)
 - **deduction_entries**(`id`, `tax_year_id` FK, `category_id` FK, `amount_minor`, `count` NULL,
   `updated_at`; unique on (`tax_year_id`, `category_id`))
 - **tax_brackets**(`id`, `lower_bound_minor`, `upper_bound_minor` NULL, `rate_bp`,
-  `sort_order`) — seeded from `TAX-2025` rows 65–72.
+  `sort_order`) — seeds from `TAX-2025` rows 65–72 if supplied; otherwise starts empty and the
+  user enters brackets via Settings' bracket table edit (AC-11). `calc.computeYear()` with zero
+  brackets yields zero tax rather than erroring (net taxable income has nothing to multiply
+  against) — an expected empty state, not a bug.
 - **audit_log**(`id`, `entity_type`, `entity_id`, `action`, `before_json` NULL,
   `after_json` NULL, `occurred_at`)
 
@@ -214,10 +219,13 @@ IPC surface exposed on `window.api` (all logic lives in the main process):
 
 ## UI changes
 - **Onboarding** (first run only, AC-18): choose or create the data folder (guidance points the
-  user at a Google Drive–synced location, but any folder works); creates the DB there + seeds
-  reference data (categories, shared caps, brackets from `TAX-2025`). The chosen path is
-  remembered (a small local config file outside the synced folder, e.g. Electron's userData
-  dir) so every later launch skips this screen.
+  user at a Google Drive–synced location, but any folder works); creates the DB there and runs
+  the seed loader, which seeds reference data (categories, shared caps, brackets) from
+  `TAX-2025` when that data is available, or completes with zero rows in those tables when it
+  isn't (current state) — either way Onboarding finishes and hands off to the Dashboard, which
+  must render its empty state (no categories, no brackets, zero tax) rather than block. The
+  chosen path is remembered (a small local config file outside the synced folder, e.g.
+  Electron's userData dir) so every later launch skips this screen.
 - **Tax-year switcher**: list of years (open/closed badge), create a new year, set
   40(5)-(8) expense method for the selected year.
 - **Dashboard** (per open year, AC-12/15): two clearly separated sections — "ภาษี" (stat tiles:
@@ -318,6 +326,7 @@ Accepted decisions, now the UI reference for `dev-implement`/`dev-review`:
 | 11 | `updateCap` widened to `updateCategory({ name?, capAmountMinor? })` | PROTO-0001 feedback: category names must be editable too (e.g. wording changes when a measure is renamed year to year), not just their cap amount — one endpoint covers both instead of adding a parallel `renameCategory`. | 2026-09-13 |
 | 12 | No in-app "Sync" action; added explicit Onboarding screen + Settings data-location panel | PROTO-0001 feedback: user expected a sync button since none exists by design (no Google Drive API integration, per REQ-0001 constraints). Rather than leave that invisible, made the folder choice an explicit first-run step (AC-18) and surfaced the folder path/last-modified in Settings (AC-19) so the architecture is legible to the user, not just documented. | 2026-09-13 |
 | 13 | Added CSV export (ledger + summary) and a narrowly-scoped CSV import (this app's own format only, mandatory preview, closed-year rows always rejected) | PROTO-0001 feedback reversed the earlier "no export" call. Import is deliberately not a general bank-statement importer — user's stated purpose is machine/account migration and backup restore, so round-tripping this app's own export format is sufficient and keeps validation simple (the column set is known exactly). Reused the existing repository/audit-log path for every imported row so no invariant gets a separate code path (AC-20/21/22/23/24). | 2026-09-13 |
+| 14 | Seed loader is optional, not required: with no `TAX-2025` figures supplied, Onboarding/AT-1.5 leave `deduction_categories`/`shared_caps`/`tax_brackets` empty instead of blocking; Dashboard/Deductions/Summary render an empty state (zero tax, "add a category" prompt) and the user builds their own categories/brackets via Settings (AC-11/16). Real 2025 figures can be supplied later and seeded the same way. | User has no `TAX-2025` data on hand right now; blocking the whole app on it (as originally scoped) stalls AT-1.5/AT-1.6 indefinitely. Every table this affects already has a full manual-CRUD path planned (AT-3.1/AT-3.6), so "empty" is just the starting point of that same path, not a new code path. | 2026-09-17 |
 
 ## Task list (size S only)
 N/A — REQ-0001 is size L; tasks are broken out in `dev-plan`.

@@ -4,7 +4,7 @@ type: plan
 title: Annual tax income/expense tracker
 status: active
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-17
 links: [ANA-0001, TC-0001, PROTO-0001]
 ---
 
@@ -103,8 +103,8 @@ lists AT ids that must be Done first (— if none).
 | AT-1.2 | P1 | Configure Vitest for main-process code. Done: `npm test` runs and passes one trivial test. | AT-1.1 | `vitest.config.ts`, `src/main/__tests__/sample.test.ts` | — | ~2h | ☑ |
 | AT-1.3 | P1 | [core] Drizzle schema + migration runner for all 8 tables per ANA-0001 §Data model changes (columns, checks, FKs, indexes). Done: migration creates every table with the specified constraints in a temp DB, verified by a test that inserts one valid row per table and rejects one constraint violation per table. | AT-1.2 | `src/main/db/schema.ts`, `src/main/db/migrate.ts`, `src/main/db/client.ts` | — | ~4h | ☑ |
 | AT-1.4 | P1 | [core] Money helper: baht↔satang conversion, half-up rounding at the input boundary, no float beyond this point. Done: unit tests incl. TC #31's exact case. | AT-1.2 | `src/main/calc/money.ts` + test | #31 | ~2h | ☑ |
-| AT-1.5 | P1 | [core] Seed loader from `TAX-2025`: 17 built-in deduction categories (correct `cap_type` per category, incl. the insurance shared-group), `shared_caps`, 8 tax brackets. Done: unit test asserts seeded rows match the reference figures (e.g. children cap 30,000/per_count, insurance shared cap 100,000). | AT-1.3 | `src/main/db/seed.ts`, `src/main/db/seedData/taxYear2025.ts` + test | — | ~4h | ☐ |
-| AT-1.6 | P1 | `dataLocation` API (`get`/`chooseFolder`/`createInFolder`) + remembered-path config outside the synced folder + Onboarding screen. Done: first run shows Onboarding; choosing a folder creates+seeds the DB; second launch skips straight to Dashboard. | AT-1.3, AT-1.5 | `src/main/dataLocation.ts`, `src/renderer/pages/Onboarding.tsx`, `electron/preload.ts` | #41 | ~4h | ☐ |
+| AT-1.5 | P1 | [core] Seed loader, optional by design (ANA-0001 decision 14 — no `TAX-2025` figures available): `seed.ts` runs at DB creation and inserts whatever rows `seedData/taxYear2025.ts` exports, which is an **empty** built-in set for now (0 categories, 0 shared caps, 0 brackets) — real figures can be dropped into that file later with no loader change. Done: unit test asserts seeding an empty set leaves the tables present but empty (no error), and — separately — that a non-empty fixture set seeds correctly (proves the loader itself still works once real figures arrive). | AT-1.3 | `src/main/db/seed.ts`, `src/main/db/seedData/taxYear2025.ts` + test | — | ~2h | ☐ |
+| AT-1.6 | P1 | `dataLocation` API (`get`/`chooseFolder`/`createInFolder`) + remembered-path config outside the synced folder + Onboarding screen. Done: first run shows Onboarding; choosing a folder creates the DB + runs the (currently empty) seed step; second launch skips straight to Dashboard, which renders its empty state (no categories/brackets yet, prompts the user to Settings) rather than erroring. | AT-1.3, AT-1.5 | `src/main/dataLocation.ts`, `src/renderer/pages/Onboarding.tsx`, `electron/preload.ts` | #41 | ~4h | ☐ |
 | AT-1.7 | P1 | [core] `audit_log` repository + a `recordMutation()` helper every later repository calls. Done: unit test verifies one row per call with entity/action/before/after/timestamp. | AT-1.3 | `src/main/repositories/auditLog.ts` + test | — | ~2h | ☑ |
 | AT-1.8 | P1 | Launch-time lock-file guard (hostname+timestamp file; warn if another instance's lock looks recent). Done: manual check — stale/absent lock is silent, a <5min lock shows the warning banner. | AT-1.6 | `src/main/lockFile.ts`, `src/renderer/components/LockWarningBanner.tsx` | — | ~2h | ☐ |
 | AT-1.9 | P1 | Static no-network guard: lint rule forbidding `fetch`/`http`/`https`/`net` imports outside a documented allowlist. Done: lint fails on a deliberately-added violation, passes on the current tree. | AT-1.1 | `.eslintrc.*`, `package.json` (lint script) | #26 | ~2h | ☑ |
@@ -140,3 +140,4 @@ lists AT ids that must be Done first (— if none).
 | Date | Change | Reason |
 |------|--------|--------|
 | 2026-09-13 | **Gate: approved.** 5 phases, 36 tasks confirmed. | Proceed to `/dev-implement` (or `/dev-execute` for continuous execution). |
+| 2026-09-17 | AT-1.5 redefined as an optional seed loader seeding an empty built-in set (no `TAX-2025` data available); AT-1.6's done-criterion no longer requires seeded reference data, only that Onboarding/Dashboard handle zero categories/brackets gracefully. | User has no seed data on hand; unblocks the P1 stream paused since 2026-09-15 (see ANA-0001 decision 14, REQ-0001 2026-09-17 decision log entry). |
