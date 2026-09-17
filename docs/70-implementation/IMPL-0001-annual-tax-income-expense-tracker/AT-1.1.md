@@ -38,6 +38,18 @@
   applied here since `npm audit fix --force` would jump to breaking majors. Left for a future
   task/decision, not blocking AT-1.1's done-criterion.
 
+## Correction (2026-09-18, user-reported)
+
+`vite.config.ts`'s main/preload `rollupOptions` had no `external` list, so once AT-1.6 wired
+`electron/main.ts` to `src/main/dataLocation.ts` (which pulls in `better-sqlite3`, a native
+addon), rollup bundled it — and failed at runtime, not build time: `Error: Could not
+dynamically require ".../better_sqlite3.node"`, thrown the moment the user actually triggered
+`dataLocation:createInFolder` (chose a folder in Onboarding), not at app startup. AT-1.1's own
+verification didn't catch this because at scaffold time nothing in `electron/main.ts` imported
+`better-sqlite3` yet. Fixed by externalizing every `package.json` `dependencies` entry for the
+main/preload rollup builds (`vite.config.ts`, commit `97aa735`) — runtime deps stay real
+`require()` calls resolved from `node_modules` instead of being bundled.
+
 ## Notes for follow-up tasks
 
 - `vite-plugin-electron`'s main/preload `outDir` must be an **absolute** path
