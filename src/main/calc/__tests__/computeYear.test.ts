@@ -14,6 +14,7 @@ import type {
   TaxYearRow,
   TransactionRow,
 } from '../../db/schema';
+import { parseBahtToSatang } from '../money';
 import { computeYear } from '../computeYear';
 
 const TAX_2025_BRACKETS: TaxBracketRow[] = [
@@ -217,5 +218,29 @@ describe('expense method integration', () => {
     });
 
     expect(result.expenseDeductionMinor).toBe(0);
+  });
+});
+
+describe('TC-0001 #23: exact decimal summation, no float drift', () => {
+  it('sums many 2-decimal baht transactions to the exact expected satang total', () => {
+    // A run of amounts chosen specifically because naive float summation
+    // (0.1 + 0.2 style accumulation) drifts on values like these.
+    const amounts = ['1234.56', '0.10', '0.20', '999.99', '10000.01', '0.07', '333.33', '1.11'];
+    const transactions = amounts.map((a) =>
+      tx({ kind: 'income', incomeSection: '40_1', amountMinor: parseBahtToSatang(a) }),
+    );
+    const expectedTotal = amounts.reduce((sum, a) => sum + parseBahtToSatang(a), 0);
+
+    const result = computeYear({
+      taxYear: YEAR_NO_METHOD,
+      transactions,
+      deductionCategories: [],
+      deductionEntries: [],
+      sharedCaps: [],
+      brackets: TAX_2025_BRACKETS,
+    });
+
+    expect(result.totalIncomeMinor).toBe(expectedTotal);
+    expect(result.totalIncomeMinor).toBe(12_569_37); // hand-verified exact sum, in satang
   });
 });
