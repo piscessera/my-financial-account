@@ -290,6 +290,30 @@ export function close(
  * (so a reopen-without-re-close doesn't leave the row with no snapshot at all). Audit-logs as
  * `reopen` (INV-4).
  */
+/**
+ * The read path every screen (Dashboard, Summary) should call instead of `calc.computeYear()`
+ * directly (AT-4.4, INV-7, TC-0001 #27): a **closed** year always serves its
+ * `frozen_result_json` snapshot, verbatim, no matter what `liveInputs` says — a deduction cap
+ * or bracket rate edited in Settings *after* close must never change what a closed year
+ * displays. An **open** year has no snapshot yet, so this computes it live from `liveInputs`.
+ */
+export function getYearResult(taxYear: TaxYearRow, liveInputs: CloseTaxYearInput): ComputeYearResult {
+  if (taxYear.status === 'closed') {
+    if (taxYear.frozenResultJson === null) {
+      throw new TaxYearError(`tax_years row ${taxYear.id} is closed but has no frozen_result_json.`);
+    }
+    return JSON.parse(taxYear.frozenResultJson) as ComputeYearResult;
+  }
+  return computeYear({
+    taxYear,
+    transactions: liveInputs.transactions,
+    deductionCategories: liveInputs.deductionCategories,
+    deductionEntries: liveInputs.deductionEntries,
+    sharedCaps: liveInputs.sharedCaps,
+    brackets: liveInputs.brackets,
+  });
+}
+
 export function reopen(sqlite: BetterSqlite3.Database, id: number): TaxYearRow {
   const run = sqlite.transaction(() => {
     const before = requireRow(sqlite, id);
