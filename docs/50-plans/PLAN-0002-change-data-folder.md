@@ -2,7 +2,7 @@
 id: PLAN-0002
 type: plan
 title: Change data folder path after setup
-status: draft
+status: active
 created: 2026-09-18
 updated: 2026-09-18
 links: [ANA-0002, TC-0002]
@@ -76,3 +76,4 @@ alone into the implementer's dispatch payload.
 ## Re-plan log
 | Date | Change | Reason |
 |------|--------|--------|
+| 2026-09-18 | Plan approval gate: approved | user |
