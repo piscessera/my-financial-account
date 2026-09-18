@@ -28,6 +28,10 @@ export interface PerCategoryDeduction {
   readonly effectiveMinor: number;
   /** `true` iff `effectiveMinor < enteredMinor` — the UI's "capped" indicator (TC-0001 #7). */
   readonly cappedByOwnCap: boolean;
+  /** `max(ownCap - enteredMinor, 0)` — never negative (TC-0001 #30); `null` when the category
+   *  has no cap of its own to measure against (a `shared_group_member` with no sub-cap — its
+   *  only constraint is the group's, in {@link SharedGroupContribution}). */
+  readonly headroomMinor: number | null;
 }
 
 export interface SharedGroupContribution {
@@ -89,6 +93,7 @@ export function computeDeductions(
       enteredMinor: entry.amountMinor,
       effectiveMinor,
       cappedByOwnCap: effectiveMinor < entry.amountMinor,
+      headroomMinor: cap === null ? null : Math.max(cap - entry.amountMinor, 0),
     });
 
     if (category.capType === 'shared_group_member' && category.sharedGroupId !== null) {

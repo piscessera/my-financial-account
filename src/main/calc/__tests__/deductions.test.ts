@@ -106,6 +106,30 @@ describe('TC-0001 #10: a shared-group member\'s own sub-cap still applies', () =
   });
 });
 
+describe('TC-0001 #30: deduction headroom never shows negative', () => {
+  it('clamps headroom to 0 when the entered amount exceeds the cap', () => {
+    const donation = category({ id: 1, capType: 'fixed', capAmountMinor: 100_000_00 });
+    const result = computeDeductions([donation], [entry(1, 150_000_00)], []);
+
+    expect(result.perCategory[0].headroomMinor).toBe(0);
+  });
+
+  it('shows the remaining room when under the cap', () => {
+    const donation = category({ id: 1, capType: 'fixed', capAmountMinor: 100_000_00 });
+    const result = computeDeductions([donation], [entry(1, 60_000_00)], []);
+
+    expect(result.perCategory[0].headroomMinor).toBe(40_000_00);
+  });
+
+  it('is null for a shared-group member with no sub-cap of its own', () => {
+    const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
+    const life = category({ id: 1, capType: 'shared_group_member', sharedGroupId: 1 });
+    const result = computeDeductions([life], [entry(1, 60_000_00)], [group]);
+
+    expect(result.perCategory[0].headroomMinor).toBeNull();
+  });
+});
+
 describe('mixed categories', () => {
   it('sums non-grouped categories and grouped categories together', () => {
     const donation = category({ id: 1, capType: 'fixed', capAmountMinor: 100_000_00 });
