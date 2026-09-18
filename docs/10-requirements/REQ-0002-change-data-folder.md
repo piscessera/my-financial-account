@@ -6,7 +6,7 @@ status: active
 size: M
 created: 2026-09-18
 updated: 2026-09-18
-links: []
+links: [ANA-0002, TC-0002]
 ---
 
 # REQ-0002: Change data folder path after setup

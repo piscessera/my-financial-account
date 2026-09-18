@@ -14,13 +14,15 @@ sub-agents receive their IDs in the dispatch payload.
 | IMPL-0001 | Annual tax income/expense tracker | implementation | implemented | — | PLAN-0001 | 2026-09-18 |
 | REV-0001 | PLAN-0001 Phase P1 — Foundation | review | implemented | — | PLAN-0001, ANA-0001, TC-0001 | 2026-09-17 |
 | REV-0002 | PLAN-0001 close — Phases P2-P5 and overall acceptance | review | implemented | — | PLAN-0001, ANA-0001, TC-0001, REQ-0001 | 2026-09-18 |
-| REQ-0002 | Change data folder path after setup | requirement | active | M | — | 2026-09-18 |
+| REQ-0002 | Change data folder path after setup | requirement | active | M | ANA-0002, TC-0002 | 2026-09-18 |
+| ANA-0002 | Change data folder path after setup — design | analysis | draft | M | REQ-0002, TC-0002 | 2026-09-18 |
+| TC-0002 | Change data folder path after setup — test cases | test-cases | draft | — | ANA-0002 | 2026-09-18 |
 
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 3 | 2 | 2 | 2 | 2 | 1 | 3 | 2 |
+| 3 | 3 | 3 | 2 | 2 | 1 | 3 | 2 |
 
 ## Status vocabulary
 
@@ -31,4 +33,4 @@ investigations/ideas may be `parked` (visible in dev-status, never silently drop
 
 | ID | Gate | Since |
 |----|------|-------|
-| — | *(none)* | |
+| ANA-0002 | design+TC approval | 2026-09-18 |
