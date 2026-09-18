@@ -1,17 +1,27 @@
 /**
- * `transactions` repository (AT-2.2).
+ * `transactions` repository (AT-2.2, AT-2.3).
  *
- * Scope for this task: `create`/`void`, covering both transaction shapes —
- * tax-relevant (`income_section` required iff `kind='income'`) and general
- * (`general_category` required, no income section/WHT) — per ANA-0001 §Data model and
- * §Repository API. `update`/`createReversal`/`getHistory` land in AT-2.3.
+ * `create`/`void` cover both transaction shapes — tax-relevant (`income_section` required iff
+ * `kind='income'`) and general (`general_category` required, no income section/WHT) — per
+ * ANA-0001 §Data model and §Repository API. `update`/`createReversal`/`getHistory` are AT-2.3.
  *
  * Per ANA-0001's repository API list, `create` is **not** rejected on a closed year (only
- * `update` is — AT-2.3, INV-2b); `void` likewise carries no closed-year restriction in that
- * list. This mirrors the design contract literally rather than inventing an extra rule.
+ * `update` is — INV-2b, TC-0001 #18); `void` likewise carries no closed-year restriction in
+ * that list. This mirrors the design contract literally rather than inventing an extra rule —
+ * it's also what makes a closed year's correction path work: `createReversal` records the
+ * negation, and a fresh corrected entry (if needed) goes through ordinary `create`.
  *
  * `void` is the "no hard delete" path (TC-0001 #17): it sets `status='voided'`, never removes
  * the row, so it stays visible in the ledger/history.
+ *
+ * **Reversal sign convention (PL-0009):** `createReversal` copies the original row's shape
+ * (kind/taxRelevant/incomeSection/generalCategory/sourcePayer/payerTaxId) and negates its
+ * `amountMinor` — summing a kind's amounts then nets the reversed pair to zero, which is what
+ * `calc.computeYear()` (AT-4.2) will do. `amount_minor`'s CHECK only requires non-zero, so a
+ * negative value is already representable; `wht_minor`'s CHECK requires `>= 0`, so a reversal
+ * cannot itself carry a negative WHT correction — the reversal always records `whtMinor: 0`.
+ * A WHT correction, if ever needed, is a fresh `create`, not something `createReversal`
+ * attempts to express; this is a deliberate scope decision, not an oversight.
  *
  * Follows `auditLog.ts`/`taxYears.ts`'s conventions: raw connection, cached prepared
  * statements, caller-owned `sqlite.transaction()` wrapping the row write + `recordMutation`
@@ -26,7 +36,8 @@ import type {
   TransactionRow,
   TransactionSource,
 } from '../db/schema';
-import { recordMutation } from './auditLog';
+import { listEntityHistory, recordMutation, type AuditEntry } from './auditLog';
+import { getTaxYear } from './taxYears';
 
 /** Thrown when a caller hands this repository invalid input. */
 export class TransactionError extends Error {
@@ -104,8 +115,10 @@ function assertCreateInput(input: CreateTransactionInput): void {
 
 interface Statements {
   readonly insert: BetterSqlite3.Statement;
+  readonly insertReversal: BetterSqlite3.Statement;
   readonly selectById: BetterSqlite3.Statement;
   readonly updateStatus: BetterSqlite3.Statement;
+  readonly updateFields: BetterSqlite3.Statement;
 }
 
 const statementCache = new WeakMap<BetterSqlite3.Database, Statements>();
@@ -133,10 +146,21 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
     insert: sqlite.prepare(
       `INSERT INTO transactions (${INSERT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
+    insertReversal: sqlite.prepare(
+      `INSERT INTO transactions (${INSERT_COLUMNS}, reversal_of_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ),
     selectById: sqlite.prepare(`SELECT * FROM transactions WHERE id = ?`),
     updateStatus: sqlite.prepare(
       `UPDATE transactions
        SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`,
+    ),
+    updateFields: sqlite.prepare(
+      `UPDATE transactions
+       SET income_section = ?, general_category = ?, date = ?, amount_minor = ?, wht_minor = ?,
+           source_payer = ?, payer_tax_id = ?, note = ?,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = ?`,
     ),
   };
@@ -255,4 +279,152 @@ export function voidTransaction(sqlite: BetterSqlite3.Database, id: number): Tra
 export function getTransaction(sqlite: BetterSqlite3.Database, id: number): TransactionRow | undefined {
   const raw = statementsFor(sqlite).selectById.get(id);
   return raw === undefined ? undefined : toTransactionRow(raw);
+}
+
+function requireOpenTaxYear(sqlite: BetterSqlite3.Database, taxYearId: number, action: string): void {
+  const taxYear = getTaxYear(sqlite, taxYearId);
+  if (taxYear === undefined) throw new TransactionError(`tax_years row ${taxYearId} not found.`);
+  if (taxYear.status === 'closed') {
+    throw new TransactionError(`Cannot ${action} a transaction in a closed tax year (INV-2b).`);
+  }
+}
+
+export interface UpdateTransactionInput {
+  readonly date?: string;
+  /** Non-zero integer satang. */
+  readonly amountMinor?: number;
+  readonly whtMinor?: number;
+  readonly sourcePayer?: string | null;
+  readonly payerTaxId?: string | null;
+  readonly note?: string | null;
+  readonly incomeSection?: IncomeSection | null;
+  readonly generalCategory?: GeneralCategory | null;
+}
+
+/**
+ * Edit an existing transaction's field values (never `kind`/`taxRelevant`/`taxYearId`, which
+ * define its shape). Rejected when its tax year is `closed` (INV-2b, TC-0001 #18) — the only
+ * correction for a closed year is `createReversal`. Audit-logs as `update` (INV-2/INV-4).
+ */
+export function updateTransaction(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+  input: UpdateTransactionInput,
+): TransactionRow {
+  const run = sqlite.transaction(() => {
+    const before = requireRow(sqlite, id);
+    requireOpenTaxYear(sqlite, before.taxYearId, 'edit');
+
+    const merged = {
+      incomeSection: input.incomeSection !== undefined ? input.incomeSection : before.incomeSection,
+      generalCategory:
+        input.generalCategory !== undefined ? input.generalCategory : before.generalCategory,
+      date: input.date ?? before.date,
+      amountMinor: input.amountMinor ?? before.amountMinor,
+      whtMinor: input.whtMinor ?? before.whtMinor,
+      sourcePayer: input.sourcePayer !== undefined ? input.sourcePayer : before.sourcePayer,
+      payerTaxId: input.payerTaxId !== undefined ? input.payerTaxId : before.payerTaxId,
+      note: input.note !== undefined ? input.note : before.note,
+    };
+
+    assertCreateInput({
+      taxYearId: before.taxYearId,
+      kind: before.kind,
+      taxRelevant: before.taxRelevant,
+      incomeSection: merged.incomeSection,
+      generalCategory: merged.generalCategory,
+      date: merged.date,
+      amountMinor: merged.amountMinor,
+      whtMinor: merged.whtMinor,
+    });
+
+    statementsFor(sqlite).updateFields.run(
+      merged.incomeSection,
+      merged.generalCategory,
+      merged.date,
+      merged.amountMinor,
+      merged.whtMinor,
+      merged.sourcePayer,
+      merged.payerTaxId,
+      merged.note,
+      id,
+    );
+    const after = requireRow(sqlite, id);
+    recordMutation(sqlite, {
+      entityType: 'transaction',
+      entityId: id,
+      action: 'update',
+      before: before as unknown as Record<string, unknown>,
+      after: after as unknown as Record<string, unknown>,
+    });
+    return after;
+  });
+  return run();
+}
+
+export interface CreateReversalInput {
+  /** `YYYY-MM-DD`. */
+  readonly date: string;
+  /** Defaults to `Reversal of transaction #<originalId>`. */
+  readonly note?: string | null;
+}
+
+/**
+ * Create a reversal of `originalId`: a new transaction with `reversalOfId` set, copying the
+ * original's shape (kind/taxRelevant/incomeSection/generalCategory/sourcePayer/payerTaxId) and
+ * negating its `amountMinor` (see the module header's sign-convention note, PL-0009). Only
+ * allowed when the original's tax year is `closed` — that's the whole point of a reversal
+ * (INV-2b, TC-0001 #19); an open year's transaction is corrected with `updateTransaction`
+ * instead. Both the original and the reversal remain visible. Audit-logs as `reverse` (INV-4).
+ */
+export function createReversal(
+  sqlite: BetterSqlite3.Database,
+  originalId: number,
+  input: CreateReversalInput,
+): TransactionRow {
+  const run = sqlite.transaction(() => {
+    const original = requireRow(sqlite, originalId);
+    const taxYear = getTaxYear(sqlite, original.taxYearId);
+    if (taxYear === undefined) {
+      throw new TransactionError(`tax_years row ${original.taxYearId} not found.`);
+    }
+    if (taxYear.status !== 'closed') {
+      throw new TransactionError(
+        `createReversal is only allowed for a transaction in a closed tax year (row ${originalId} is in an open year).`,
+      );
+    }
+    if (typeof input.date !== 'string' || !DATE_RE.test(input.date)) {
+      throw new TransactionError(`date must be "YYYY-MM-DD", got ${String(input.date)}.`);
+    }
+
+    const info = statementsFor(sqlite).insertReversal.run(
+      original.taxYearId,
+      original.kind,
+      original.taxRelevant ? 1 : 0,
+      original.incomeSection,
+      original.generalCategory,
+      input.date,
+      -original.amountMinor,
+      0,
+      original.sourcePayer,
+      original.payerTaxId,
+      input.note ?? `Reversal of transaction #${originalId}`,
+      'manual',
+      originalId,
+    );
+    const row = requireRow(sqlite, Number(info.lastInsertRowid));
+    recordMutation(sqlite, {
+      entityType: 'transaction',
+      entityId: row.id,
+      action: 'reverse',
+      after: row as unknown as Record<string, unknown>,
+    });
+    return row;
+  });
+  return run();
+}
+
+/** Full audit history of one transaction, oldest first (INV-4, TC-0001 #24/#25). */
+export function getTransactionHistory(sqlite: BetterSqlite3.Database, id: number): AuditEntry[] {
+  return listEntityHistory(sqlite, 'transaction', id);
 }
