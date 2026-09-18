@@ -35,10 +35,13 @@ the contract; this folder is the audit trail.
   automatically on `openDatabase()` and tracked in `PRAGMA user_version`. There is no separate
   migrate CLI command; opening the app file migrates it. SQLite cannot alter constraints, so a
   constraint change requires a create-new / copy / drop / rename migration.
-- **`better-sqlite3` is a native module (AT-1.3).** Vitest runs it against plain Node, where the
-  prebuilt binary works as-is. Electron uses a different ABI, so the packaged app will need
-  `electron-rebuild` (or `electron-builder`'s `npmRebuild`) — **not solved yet**; to be settled
-  when Electron packaging is finalized at the first `/dev-release` (PLAN-0001 risk note, AT-1.1).
+- **`better-sqlite3` is a native module (AT-1.3), rebuilt per-ABI automatically (2026-09-18
+  fix).** Vitest runs under plain Node's ABI; Electron's main process needs its own (bundled
+  Node) ABI. `predev`/`pretest` npm lifecycle scripts run `electron-rebuild`/`npm rebuild
+  better-sqlite3` automatically before `npm run dev` / `npm test`, so the right binary is always
+  in place without a manual step — costs a few seconds per command. `npm run build`'s packaged
+  output still needs `electron-builder`'s own `npmRebuild` (or an explicit rebuild step) at
+  packaging time — not yet wired, deferred to the first `/dev-release` same as before.
 
 ## Known limitations / follow-ups
 (→ PARKING-LOT / future GAPs.)
