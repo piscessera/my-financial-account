@@ -5,7 +5,7 @@ title: Change data folder path after setup — test cases
 status: active
 created: 2026-09-18
 updated: 2026-09-18
-links: [ANA-0002]
+links: [ANA-0002, PLAN-0002]
 ---
 
 # TC-0002: Change data folder path after setup — test cases
