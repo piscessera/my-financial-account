@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 
 import type { DataLocationInfo } from '../main/dataLocation';
 import type { LockInfo } from '../main/lockFile';
+import type { TaxYearRow } from '../main/db/schema';
 import LockWarningBanner from './components/LockWarningBanner';
+import TaxYearSwitcher from './components/TaxYearSwitcher';
 import Onboarding from './pages/Onboarding';
 import Entry from './pages/Entry';
 import Deductions from './pages/Deductions';
@@ -13,16 +15,23 @@ type LoadState =
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-type Screen = 'entry' | 'deductions' | 'settings';
+type Screen = 'entry' | 'deductions' | 'settings' | 'taxYears';
 
 /**
  * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
  * switching — no real router exists yet (nothing in the plan calls for one specifically; this
- * is the smallest thing that makes more than one screen reachable). Dashboard (AT-4.6),
- * Settings (AT-3.6), Summary (AT-4.7), Import/Export (AT-5.6) are still placeholders.
+ * is the smallest thing that makes more than one screen reachable). Dashboard (AT-4.6) and
+ * Summary/Import-Export (AT-4.7/AT-5.6) are still placeholders.
+ *
+ * `TaxYearSwitcher` (AT-3.7) gets its own tab rather than replacing Entry's/Deductions'
+ * independent `useWorkingTaxYear` resolution — lifting "the selected year" into shared state
+ * that every screen reads from is a real refactor of already-built screens, out of this atomic
+ * task's scope (`TaxYearSwitcher.tsx` only). This tab is what makes the component reachable
+ * for its own manual verification (TC-0001 #5) without that broader change.
  */
 function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
   const [screen, setScreen] = useState<Screen>('entry');
+  const [selectedYear, setSelectedYear] = useState<TaxYearRow | null>(null);
 
   return (
     <>
@@ -39,6 +48,9 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <a href="#" className={screen === 'settings' ? 'active' : ''} onClick={() => setScreen('settings')}>
             ตั้งค่า
           </a>
+          <a href="#" className={screen === 'taxYears' ? 'active' : ''} onClick={() => setScreen('taxYears')}>
+            ปีภาษี
+          </a>
         </div>
         <div className="year-pill">
           <span className="status-dot open" />
@@ -48,6 +60,14 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
       {screen === 'entry' && <Entry />}
       {screen === 'deductions' && <Deductions />}
       {screen === 'settings' && <Settings />}
+      {screen === 'taxYears' && (
+        <div className="page">
+          <div className="page-head">
+            <h1>ปีภาษี</h1>
+          </div>
+          <TaxYearSwitcher selectedYearId={selectedYear?.id ?? null} onSelectYear={setSelectedYear} />
+        </div>
+      )}
     </>
   );
 }
