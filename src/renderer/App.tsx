@@ -6,6 +6,7 @@ import type { TaxYearRow } from '../main/db/schema';
 import LockWarningBanner from './components/LockWarningBanner';
 import TaxYearSwitcher from './components/TaxYearSwitcher';
 import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
 import Entry from './pages/Entry';
 import Deductions from './pages/Deductions';
 import Settings from './pages/Settings';
@@ -15,13 +16,13 @@ type LoadState =
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-type Screen = 'entry' | 'deductions' | 'settings' | 'taxYears';
+type Screen = 'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears';
 
 /**
  * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
  * switching — no real router exists yet (nothing in the plan calls for one specifically; this
- * is the smallest thing that makes more than one screen reachable). Dashboard (AT-4.6) and
- * Summary/Import-Export (AT-4.7/AT-5.6) are still placeholders.
+ * is the smallest thing that makes more than one screen reachable). Summary/Import-Export
+ * (AT-4.7/AT-5.6) are still placeholders.
  *
  * `TaxYearSwitcher` (AT-3.7) gets its own tab rather than replacing Entry's/Deductions'
  * independent `useWorkingTaxYear` resolution — lifting "the selected year" into shared state
@@ -30,7 +31,7 @@ type Screen = 'entry' | 'deductions' | 'settings' | 'taxYears';
  * for its own manual verification (TC-0001 #5) without that broader change.
  */
 function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
-  const [screen, setScreen] = useState<Screen>('entry');
+  const [screen, setScreen] = useState<Screen>('dashboard');
   const [selectedYear, setSelectedYear] = useState<TaxYearRow | null>(null);
 
   return (
@@ -38,7 +39,9 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
       <nav className="app-nav">
         <div className="brand">🧾 สมุดภาษีรายปี</div>
         <div className="links">
-          <span className="muted">Dashboard (เร็วๆ นี้)</span>
+          <a href="#" className={screen === 'dashboard' ? 'active' : ''} onClick={() => setScreen('dashboard')}>
+            Dashboard
+          </a>
           <a href="#" className={screen === 'entry' ? 'active' : ''} onClick={() => setScreen('entry')}>
             บันทึกรายรับ-รายจ่าย
           </a>
@@ -57,6 +60,7 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           {info.folderPath}
         </div>
       </nav>
+      {screen === 'dashboard' && <Dashboard />}
       {screen === 'entry' && <Entry />}
       {screen === 'deductions' && <Deductions />}
       {screen === 'settings' && <Settings />}
