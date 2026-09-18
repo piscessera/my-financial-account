@@ -7,14 +7,15 @@
  * reversal alike — "every column needed to recreate it" (ANA-0001), so this is also the only
  * column format `parseForPreview`/`commitImport` (AT-5.3/5.4) accept back.
  */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 import type BetterSqlite3 from 'better-sqlite3';
 
 import type { ComputeYearResult } from '../calc/computeYear';
-import { formatSatangAsBaht } from '../calc/money';
-import type { TransactionRow } from '../db/schema';
-import { listByYear } from './transactions';
+import { formatSatangAsBaht, tryParseBahtToSatang } from '../calc/money';
+import type { GeneralCategory, IncomeSection, TransactionKind, TransactionRow } from '../db/schema';
+import { listByYear, type CreateTransactionInput } from './transactions';
+import { listTaxYears } from './taxYears';
 
 export class CsvError extends Error {
   constructor(message: string) {
@@ -114,4 +115,158 @@ export function exportSummary(destPath: string, year: number, result: ComputeYea
   ];
   const lines = ['field,value', ...rows.map(([field, value]) => `${csvField(field)},${csvField(value)}`)];
   writeFileSync(destPath, lines.join('\r\n') + '\r\n', 'utf8');
+}
+
+/** Minimal RFC-4180 line splitter matching {@link csvField}'s quoting (handles `""` escapes). */
+function splitCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        current += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      fields.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  fields.push(current);
+  return fields;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const VALID_KINDS = new Set<TransactionKind>(['income', 'expense']);
+const VALID_INCOME_SECTIONS = new Set<IncomeSection>(['40_1', '40_2', '40_5_8']);
+const VALID_GENERAL_CATEGORIES = new Set<GeneralCategory>(['food', 'shopping', 'housing', 'other']);
+
+export interface ParsedLedgerRow {
+  /** 1-based, counting only data rows (the header is not row 1). */
+  readonly rowNumber: number;
+  readonly raw: Readonly<Record<string, string>>;
+  readonly valid: boolean;
+  readonly errors: readonly string[];
+  /** Present only when `valid` is `true`. */
+  readonly data?: CreateTransactionInput;
+}
+
+export interface ParseForPreviewResult {
+  readonly targetYear: number;
+  /** Whether `targetYear` already exists in this install, and if so, its status. */
+  readonly targetYearStatus: 'will_create' | 'open' | 'closed';
+  readonly rows: readonly ParsedLedgerRow[];
+}
+
+function validateRow(raw: Record<string, string>): { data?: CreateTransactionInput; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!DATE_RE.test(raw.date ?? '')) errors.push('date must be "YYYY-MM-DD".');
+  const kind = raw.kind as TransactionKind;
+  if (!VALID_KINDS.has(kind)) errors.push('kind must be "income" or "expense".');
+  if (raw.tax_relevant !== 'true' && raw.tax_relevant !== 'false') {
+    errors.push('tax_relevant must be "true" or "false".');
+  }
+  const taxRelevant = raw.tax_relevant === 'true';
+
+  const incomeSection = raw.income_section === '' ? null : (raw.income_section as IncomeSection);
+  if (incomeSection !== null && !VALID_INCOME_SECTIONS.has(incomeSection)) {
+    errors.push(`income_section "${raw.income_section}" is not valid.`);
+  }
+  const generalCategory = raw.general_category === '' ? null : (raw.general_category as GeneralCategory);
+  if (generalCategory !== null && !VALID_GENERAL_CATEGORIES.has(generalCategory)) {
+    errors.push(`general_category "${raw.general_category}" is not valid.`);
+  }
+  if (taxRelevant && kind === 'income' && incomeSection === null) {
+    errors.push('income_section is required for a tax-relevant income row.');
+  }
+  if (!taxRelevant && generalCategory === null) {
+    errors.push('general_category is required for a general (non-tax) row.');
+  }
+  if (taxRelevant && generalCategory !== null) {
+    errors.push('general_category must be empty for a tax-relevant row.');
+  }
+  if (!taxRelevant && incomeSection !== null) {
+    errors.push('income_section must be empty for a general (non-tax) row.');
+  }
+
+  const amountResult = tryParseBahtToSatang(raw.amount ?? '');
+  if (!amountResult.ok || amountResult.satang === 0) errors.push('amount must be a non-zero valid baht amount.');
+  const whtResult = tryParseBahtToSatang(raw.wht === '' ? '0' : (raw.wht ?? ''));
+  if (!whtResult.ok || whtResult.satang < 0) errors.push('wht must be a valid non-negative baht amount.');
+
+  if (errors.length > 0 || !amountResult.ok || !whtResult.ok) return { errors };
+
+  return {
+    errors,
+    data: {
+      taxYearId: -1, // filled in by commitImport (AT-5.4) once the target year id is known
+      kind,
+      taxRelevant,
+      incomeSection,
+      generalCategory,
+      date: raw.date,
+      amountMinor: amountResult.satang,
+      whtMinor: whtResult.satang,
+      sourcePayer: raw.source_payer === '' ? null : raw.source_payer,
+      payerTaxId: raw.payer_tax_id === '' ? null : raw.payer_tax_id,
+      note: raw.note === '' ? null : raw.note,
+      source: 'import',
+    },
+  };
+}
+
+/**
+ * Parse a ledger CSV for preview — **no write** (TC-0001 #45). Every row is validated
+ * independently (required fields, valid money, the tax-relevant/general shape rules that
+ * mirror `transactions.createTransaction`'s own validation). `targetYear` is the whole file's
+ * destination year — `exportLedger` scopes one file to one year with no per-row year column,
+ * so this checks it once for the file rather than once per row (equivalent, since every row in
+ * a genuine export already belongs to the same year). If `targetYear` already exists **closed**
+ * in this install, every row is forced invalid regardless of its own well-formedness (TC-0001
+ * #46, INV-2b) — closed-year immutability applies to imported rows exactly like manual ones.
+ */
+export function parseForPreview(
+  sqlite: BetterSqlite3.Database,
+  filePath: string,
+  targetYear: number,
+): ParseForPreviewResult {
+  const content = readFileSync(filePath, 'utf8');
+  const lines = content.split(/\r\n|\n/).filter((line) => line.length > 0);
+  if (lines.length === 0 || lines[0] !== LEDGER_CSV_COLUMNS.join(',')) {
+    throw new CsvError('File does not match the expected ledger export column format.');
+  }
+
+  const existingYear = listTaxYears(sqlite).find((y) => y.year === targetYear);
+  const targetYearStatus: ParseForPreviewResult['targetYearStatus'] = existingYear
+    ? existingYear.status
+    : 'will_create';
+  const yearIsClosed = targetYearStatus === 'closed';
+
+  const rows: ParsedLedgerRow[] = lines.slice(1).map((line, index) => {
+    const values = splitCsvLine(line);
+    const raw: Record<string, string> = {};
+    LEDGER_CSV_COLUMNS.forEach((col, i) => {
+      raw[col] = values[i] ?? '';
+    });
+
+    const { data, errors } = validateRow(raw);
+    if (yearIsClosed) {
+      errors.push(`Tax year ${targetYear} is already closed in this install — cannot import into it (INV-2b).`);
+    }
+    const valid = errors.length === 0;
+    return { rowNumber: index + 1, raw, valid, errors, data: valid ? data : undefined };
+  });
+
+  return { targetYear, targetYearStatus, rows };
 }
