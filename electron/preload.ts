@@ -10,7 +10,7 @@ import type {
   TaxYearRow,
   TransactionRow,
 } from '../src/main/db/schema';
-import type { DataLocationInfo } from '../src/main/dataLocation';
+import type { ChangeFolderMode, ChangeFolderResult, DataLocationInfo } from '../src/main/dataLocation';
 import type { AuditEntry } from '../src/main/repositories/auditLog';
 import type {
   CreateCategoryInput,
@@ -44,6 +44,12 @@ const api = {
     /** First-run only (AC-18): creates+seeds the DB in `folderPath` and remembers it. */
     createInFolder: (folderPath: string): Promise<DataLocationInfo> =>
       ipcRenderer.invoke('dataLocation:createInFolder', folderPath),
+    /** REQ-0002 AC-4: does `targetFolderPath` already have a DB file? */
+    targetHasExistingDb: (targetFolderPath: string): Promise<boolean> =>
+      ipcRenderer.invoke('dataLocation:targetHasExistingDb', targetFolderPath),
+    /** REQ-0002: re-points an already-configured install's data folder (move or switch). */
+    changeFolder: (targetFolderPath: string, mode: ChangeFolderMode): Promise<ChangeFolderResult> =>
+      ipcRenderer.invoke('dataLocation:changeFolder', targetFolderPath, mode),
   },
   lockFile: {
     /** Launch-time check (AT-1.8): claims the lock, reporting if another instance looked recent. */
