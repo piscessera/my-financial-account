@@ -134,7 +134,7 @@ lists AT ids that must be Done first (— if none).
 | AT-5.3 | P5 | [core] `parseForPreview(filePath)` — per-row validation (required fields, valid money, tax-year open-or-creatable, closed-year rows always invalid per INV-2b), no write. Done: unit tests for well-formed, missing-field, and closed-year rows. | AT-2.1, AT-5.1 | `src/main/repositories/csv.ts` + test | #45, #46 | ~4h | ☑ |
 | AT-5.4 | P5 | [core] `commitImport(rows, sourceFilename)` — inserts only the confirmed rows via `transactions.create({ source: 'import' })`, plus one batch `audit_log` entry. Done: unit test — partial confirm inserts the exact subset and one batch audit row with correct counts. | AT-5.3, AT-2.2 | `src/main/repositories/csv.ts` + test | #47 | ~3h | ☑ |
 | AT-5.5 | P5 | IPC wiring for `csv.*`. Done: manual smoke test. | AT-5.4 | `electron/preload.ts`, `src/main/ipc/index.ts` | — | ~2h | ☑ |
-| AT-5.6 | P5 | Import/Export screen: year picker + export buttons, import dropzone → preview table with per-row checkbox/status. Done: manually matches PROTO-0001 `import-export.html`. | AT-5.5 | `src/renderer/pages/ImportExport.tsx` | — | ~4h | ☐ |
+| AT-5.6 | P5 | Import/Export screen: year picker + export buttons, import dropzone → preview table with per-row checkbox/status. Done: manually matches PROTO-0001 `import-export.html`. | AT-5.5 | `src/renderer/pages/ImportExport.tsx` | — | ~4h | ☑ |
 
 ## Re-plan log
 | Date | Change | Reason |
