@@ -58,6 +58,15 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('lockFile:check', (_event, folderPath: string) => checkAndClaimLock(folderPath));
 
+  // A native "pick one file" dialog, the same click-only pattern as `dataLocation:chooseFolder`
+  // (AT-1.6) — the Entry screen's attachment field (AT-2.6) uses this instead of true
+  // drag-and-drop, which would need `webUtils.getPathForFile` to resolve a dropped File's path.
+  ipcMain.handle('attachments:chooseFile', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openFile'] });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
   const domainHandlers = createDomainIpcHandlers({
     getSqlite: requireOpenSqlite,
     getDataFolderPath: currentDataFolderPath,

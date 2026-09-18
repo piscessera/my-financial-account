@@ -4,20 +4,39 @@ import type { DataLocationInfo } from '../main/dataLocation';
 import type { LockInfo } from '../main/lockFile';
 import LockWarningBanner from './components/LockWarningBanner';
 import Onboarding from './pages/Onboarding';
+import Entry from './pages/Entry';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-// Real screens (Dashboard, Entry, Deductions, Settings, Summary, Import/Export) land in later
-// plan tasks (AT-4.6 etc.) — this placeholder is what AT-1.6 routes to once onboarding is done.
-function DashboardPlaceholder({ info }: { info: DataLocationInfo }): JSX.Element {
+/**
+ * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md). Only "บันทึกรายรับ-รายจ่าย"
+ * (Entry, AT-2.6/2.7) is a real screen so far; the rest (Dashboard AT-4.6, Deductions AT-3.5,
+ * Settings AT-3.6, Summary AT-4.7, Import/Export AT-5.6) land in later plan tasks — a real
+ * router/switcher is that later task's job too, not invented ahead of it here.
+ */
+function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
   return (
-    <div>
-      <h1>My Financial Account</h1>
-      <p>Data folder: {info.folderPath}</p>
-    </div>
+    <>
+      <nav className="app-nav">
+        <div className="brand">🧾 สมุดภาษีรายปี</div>
+        <div className="links">
+          <span className="muted">Dashboard (เร็วๆ นี้)</span>
+          <a href="#" className="active">
+            บันทึกรายรับ-รายจ่าย
+          </a>
+          <span className="muted">ค่าลดหย่อน (เร็วๆ นี้)</span>
+          <span className="muted">ตั้งค่า (เร็วๆ นี้)</span>
+        </div>
+        <div className="year-pill">
+          <span className="status-dot open" />
+          {info.folderPath}
+        </div>
+      </nav>
+      <Entry />
+    </>
   );
 }
 
@@ -52,7 +71,7 @@ export default function App(): JSX.Element {
   return (
     <>
       {lockWarning !== null && <LockWarningBanner previous={lockWarning} />}
-      <DashboardPlaceholder info={state.info} />
+      <AppShell info={state.info} />
     </>
   );
 }

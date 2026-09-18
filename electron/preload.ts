@@ -58,6 +58,8 @@ const api = {
       ipcRenderer.invoke('attachments:add', transactionId, filePath),
     list: (transactionId: number): Promise<AttachmentRow[]> =>
       ipcRenderer.invoke('attachments:list', transactionId),
+    /** Opens a native "choose one file" dialog; resolves the chosen path, or `null` if cancelled. */
+    chooseFile: (): Promise<string | null> => ipcRenderer.invoke('attachments:chooseFile'),
   },
 } as const;
 
