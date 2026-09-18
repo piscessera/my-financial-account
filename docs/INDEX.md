@@ -18,12 +18,13 @@ sub-agents receive their IDs in the dispatch payload.
 | ANA-0002 | Change data folder path after setup — design | analysis | active | M | REQ-0002, TC-0002, PLAN-0002 | 2026-09-18 |
 | TC-0002 | Change data folder path after setup — test cases | test-cases | active | — | ANA-0002, PLAN-0002 | 2026-09-18 |
 | PLAN-0002 | Change data folder path after setup | plan | active | M | ANA-0002, TC-0002, REQ-0002 | 2026-09-18 |
+| IMPL-0002 | Change data folder path after setup | implementation | active | — | PLAN-0002 | 2026-09-18 |
 
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 3 | 3 | 3 | 2 | 3 | 1 | 3 | 2 |
+| 3 | 3 | 3 | 2 | 3 | 1 | 3 | 3 |
 
 ## Status vocabulary
 
