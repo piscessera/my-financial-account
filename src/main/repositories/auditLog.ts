@@ -44,7 +44,13 @@ import type { AuditLogRow } from '../db/schema';
  * column itself is free text, the union is what keeps typos out of the history.
  */
 export type AuditEntityType =
-  'transaction' | 'attachment' | 'deduction_entry' | 'deduction_category' | 'tax_year' | 'setting';
+  | 'transaction'
+  | 'attachment'
+  | 'deduction_entry'
+  | 'deduction_category'
+  | 'tax_year'
+  | 'setting'
+  | 'data_location';
 
 /**
  * What happened to the entity.

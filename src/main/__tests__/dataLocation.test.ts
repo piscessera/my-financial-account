@@ -9,6 +9,7 @@ import {
   getDataLocationInfo,
   readDataLocationConfig,
   resolveDbPath,
+  targetHasExistingDb,
 } from '../dataLocation';
 
 let configDir: string;
@@ -47,5 +48,21 @@ describe('createInFolder', () => {
     const freshFolder = join(dataDir, 'nested', 'my-tax-data');
     const info = createInFolder(configDir, freshFolder);
     expect(existsSync(info.dbFilePath)).toBe(true);
+  });
+});
+
+describe('targetHasExistingDb', () => {
+  it('returns false for a folder with no DB file (TC-0002 #4)', () => {
+    expect(targetHasExistingDb(dataDir)).toBe(false);
+  });
+
+  it('returns true for a folder that already has a DB file (TC-0002 #4)', () => {
+    const otherConfigDir = mkdtempSync(join(tmpdir(), 'mfa-config-'));
+    try {
+      createInFolder(otherConfigDir, dataDir);
+      expect(targetHasExistingDb(dataDir)).toBe(true);
+    } finally {
+      rmSync(otherConfigDir, { recursive: true, force: true });
+    }
   });
 });

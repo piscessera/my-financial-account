@@ -21,6 +21,14 @@ export interface DataLocationConfig {
   readonly folderPath: string;
 }
 
+/** Thrown when a caller hands `changeFolder` an invalid target or state (AT-1.1). */
+export class DataLocationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DataLocationError';
+  }
+}
+
 /** Read-only status the Onboarding/Settings screens display (AC-19). */
 export interface DataLocationInfo {
   readonly folderPath: string;
@@ -35,6 +43,11 @@ function configFilePath(configDir: string): string {
 
 export function resolveDbPath(folderPath: string): string {
   return path.join(folderPath, DB_FILENAME);
+}
+
+/** True if `targetFolderPath` already has a DB file at it (REQ-0002 AC-4's warn condition). */
+export function targetHasExistingDb(targetFolderPath: string): boolean {
+  return existsSync(resolveDbPath(targetFolderPath));
 }
 
 /** The remembered folder, or `null` if none is configured (or the file is missing/malformed). */
