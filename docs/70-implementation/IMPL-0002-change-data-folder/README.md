@@ -20,3 +20,5 @@ the contract; this folder is the audit trail.
 |------|--------|------|------------|
 | AT-1.1 | `bb03672` | [AT-1.1.md](./AT-1.1.md) | no |
 | AT-1.2 | `52ac507` | [AT-1.2.md](./AT-1.2.md) | no |
+| AT-2.1 | `7a178fd` | [AT-2.1.md](./AT-2.1.md) | no |
+| AT-2.2 | `0b1ac54` | [AT-2.2.md](./AT-2.2.md) | no |
