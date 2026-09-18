@@ -25,6 +25,11 @@ import type {
 } from '../src/main/repositories/transactions';
 import type { LockCheckResult } from '../src/main/lockFile';
 import type { ComputeYearResult } from '../src/main/calc/computeYear';
+import type {
+  CommitImportInput,
+  CommitImportResult,
+  ParseForPreviewResult,
+} from '../src/main/repositories/csv';
 
 // Narrow typed API surface for the renderer. The renderer never touches
 // SQLite/Node APIs directly — every method here is added by a later plan
@@ -108,6 +113,23 @@ const api = {
   calc: {
     /** Frozen snapshot for a closed year; a live recompute for an open one (INV-7, AT-4.4). */
     computeYear: (yearId: number): Promise<ComputeYearResult> => ipcRenderer.invoke('calc:computeYear', yearId),
+  },
+  csv: {
+    exportLedger: (yearId: number, destPath: string): Promise<void> =>
+      ipcRenderer.invoke('csv:exportLedger', yearId, destPath),
+    exportSummary: (yearId: number, destPath: string): Promise<void> =>
+      ipcRenderer.invoke('csv:exportSummary', yearId, destPath),
+    /** No write — step 1 of the three-step import flow (AC-22/23). */
+    parseForPreview: (filePath: string, targetYear: number): Promise<ParseForPreviewResult> =>
+      ipcRenderer.invoke('csv:parseForPreview', filePath, targetYear),
+    /** Inserts only the confirmed subset — step 3 of the import flow (AC-24). */
+    commitImport: (input: CommitImportInput): Promise<CommitImportResult> =>
+      ipcRenderer.invoke('csv:commitImport', input),
+    /** Native save dialog; resolves the chosen path, or `null` if cancelled. */
+    chooseSavePath: (defaultFilename: string): Promise<string | null> =>
+      ipcRenderer.invoke('csv:chooseSavePath', defaultFilename),
+    /** Native open dialog restricted to `.csv`; resolves the chosen path, or `null` if cancelled. */
+    chooseImportFile: (): Promise<string | null> => ipcRenderer.invoke('csv:chooseImportFile'),
   },
 } as const;
 

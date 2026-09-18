@@ -8,7 +8,7 @@
  * `ipcRenderer.invoke` round-trip through a running Electron window — has no display server in
  * this sandbox (same limitation as AT-1.1/AT-1.6/AT-1.8) and is a manual check, not a unit test.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -294,5 +294,53 @@ describe('attachments:add mime-type inference', () => {
     expect(handlers['attachments:add'](transaction.id, unknown).mimeType).toBe(
       'application/octet-stream',
     );
+  });
+});
+
+describe('csv:* channels (AT-5.5)', () => {
+  it('exportLedger writes a CSV, and parseForPreview/commitImport round-trip it back in', () => {
+    const year = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 1_000_00,
+    });
+
+    const ledgerPath = join(sourceDir, 'ledger.csv');
+    handlers['csv:exportLedger'](year.id, ledgerPath);
+    expect(readFileSync(ledgerPath, 'utf8')).toContain('40_1');
+
+    const preview = handlers['csv:parseForPreview'](ledgerPath, 2570);
+    expect(preview.targetYearStatus).toBe('will_create');
+    expect(preview.rows.every((r) => r.valid)).toBe(true);
+
+    const committed = handlers['csv:commitImport']({
+      targetYear: 2570,
+      confirmedRows: preview.rows.map((r) => r.data as NonNullable<typeof r.data>),
+      skippedCount: 0,
+      sourceFilename: 'ledger.csv',
+    });
+    expect(committed.importedCount).toBe(1);
+    expect(committed.created[0].source).toBe('import');
+  });
+
+  it('exportSummary writes a frozen-safe summary via getYearResult, not a raw computeYear() call', () => {
+    seedTaxBrackets();
+    const year = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 793_831_04,
+      whtMinor: 93_963_71,
+    });
+
+    const summaryPath = join(sourceDir, 'summary.csv');
+    handlers['csv:exportSummary'](year.id, summaryPath);
+    const content = readFileSync(summaryPath, 'utf8');
+    expect(content).toContain('balance_amount,20197.50');
   });
 });

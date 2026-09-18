@@ -67,6 +67,26 @@ function registerIpcHandlers(): void {
     return result.filePaths[0];
   });
 
+  // CSV export/import (AT-5.5): a native save dialog for a destination path, and a native
+  // open dialog restricted to .csv for the import source — same click-only pattern as
+  // `dataLocation:chooseFolder`/`attachments:chooseFile`.
+  ipcMain.handle('csv:chooseSavePath', async (_event, defaultFilename: string) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath: defaultFilename,
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+    });
+    if (result.canceled || !result.filePath) return null;
+    return result.filePath;
+  });
+  ipcMain.handle('csv:chooseImportFile', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
   const domainHandlers = createDomainIpcHandlers({
     getSqlite: requireOpenSqlite,
     getDataFolderPath: currentDataFolderPath,

@@ -57,6 +57,15 @@ import {
   setExpenseMethod,
   type CloseTaxYearInput,
 } from '../repositories/taxYears';
+import {
+  commitImport,
+  exportLedger,
+  exportSummary,
+  parseForPreview,
+  type CommitImportInput,
+  type CommitImportResult,
+  type ParseForPreviewResult,
+} from '../repositories/csv';
 import type { ComputeYearResult } from '../calc/computeYear';
 import type {
   DeductionCategoryRow,
@@ -176,6 +185,22 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       if (!taxYear) throw new Error(`tax_years row ${yearId} not found.`);
       return getYearResult(taxYear, gatherYearInputs(sqlite, yearId));
     },
+
+    // `csv` (ANA-0001 §API/backend changes): export is read-only; import is the three-step
+    // parse-preview-then-commit flow, never a direct write.
+    'csv:exportLedger': (yearId: number, destPath: string): void =>
+      exportLedger(ctx.getSqlite(), yearId, destPath),
+    'csv:exportSummary': (yearId: number, destPath: string): void => {
+      const sqlite = ctx.getSqlite();
+      const taxYear = getTaxYear(sqlite, yearId);
+      if (!taxYear) throw new Error(`tax_years row ${yearId} not found.`);
+      const result = getYearResult(taxYear, gatherYearInputs(sqlite, yearId));
+      exportSummary(destPath, taxYear.year, result);
+    },
+    'csv:parseForPreview': (filePath: string, targetYear: number): ParseForPreviewResult =>
+      parseForPreview(ctx.getSqlite(), filePath, targetYear),
+    'csv:commitImport': (input: CommitImportInput): CommitImportResult =>
+      commitImport(ctx.getSqlite(), input),
   } as const;
 }
 
