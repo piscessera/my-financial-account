@@ -104,6 +104,64 @@ describe('transactions:void and transactions:createReversal channels', () => {
   });
 });
 
+function seedTaxBrackets(): void {
+  const rows: [number, number | null, number][] = [
+    [0, 150_000_00, 0],
+    [150_000_00, 300_000_00, 500],
+    [300_000_00, 500_000_00, 1000],
+    [500_000_00, 750_000_00, 1500],
+    [750_000_00, 1_000_000_00, 2000],
+    [1_000_000_00, 2_000_000_00, 2500],
+    [2_000_000_00, 5_000_000_00, 3000],
+    [5_000_000_00, null, 3500],
+  ];
+  rows.forEach(([lower, upper, rateBp], i) => {
+    temp.sqlite
+      .prepare(`INSERT INTO tax_brackets (lower_bound_minor, upper_bound_minor, rate_bp, sort_order) VALUES (?, ?, ?, ?)`)
+      .run(lower, upper, rateBp, i + 1);
+  });
+}
+
+describe('taxYears:close/reopen + calc:computeYear (AT-4.5)', () => {
+  it('closes a year, freezes its result, and calc:computeYear serves the frozen snapshot', () => {
+    seedTaxBrackets();
+    const year = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 793_831_04,
+      whtMinor: 93_963_71,
+    });
+
+    const closed = handlers['taxYears:close'](year.id);
+    expect(closed.status).toBe('closed');
+    expect(closed.frozenResultJson).not.toBeNull();
+
+    const result = handlers['calc:computeYear'](year.id);
+    expect(result.balance).toEqual({ direction: 'refund', amountMinor: 20_197_50 });
+
+    const reopened = handlers['taxYears:reopen'](year.id);
+    expect(reopened.status).toBe('open');
+    expect(reopened.closedAt).toBeNull();
+  });
+
+  it('calc:computeYear computes live for an open year', () => {
+    const year = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 100_000_00,
+    });
+
+    const result = handlers['calc:computeYear'](year.id);
+    expect(result.totalIncomeMinor).toBe(100_000_00);
+  });
+});
+
 describe('deductions/settings channels (AT-3.4)', () => {
   it('settings:createCategory + deductions:listCategories/setEntry round-trip', () => {
     const category = handlers['settings:createCategory']({

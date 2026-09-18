@@ -24,6 +24,7 @@ import type {
   UpdateTransactionInput,
 } from '../src/main/repositories/transactions';
 import type { LockCheckResult } from '../src/main/lockFile';
+import type { ComputeYearResult } from '../src/main/calc/computeYear';
 
 // Narrow typed API surface for the renderer. The renderer never touches
 // SQLite/Node APIs directly — every method here is added by a later plan
@@ -54,6 +55,10 @@ const api = {
       lumpSumRateBp?: number | null,
     ): Promise<TaxYearRow> =>
       ipcRenderer.invoke('taxYears:setExpenseMethod', id, expenseMethod, lumpSumRateBp),
+    /** Computes + freezes the year's result (AC-7b); rejects further edits (INV-2b). */
+    close: (id: number): Promise<TaxYearRow> => ipcRenderer.invoke('taxYears:close', id),
+    /** Clears `closedAt`; keeps the frozen snapshot until the year is closed again. */
+    reopen: (id: number): Promise<TaxYearRow> => ipcRenderer.invoke('taxYears:reopen', id),
   },
   transactions: {
     create: (input: CreateTransactionInput): Promise<TransactionRow> =>
@@ -99,6 +104,10 @@ const api = {
     getBrackets: (): Promise<TaxBracketRow[]> => ipcRenderer.invoke('settings:getBrackets'),
     updateBracket: (id: number, rateBp: number, bounds?: UpdateBracketBounds): Promise<TaxBracketRow> =>
       ipcRenderer.invoke('settings:updateBracket', id, rateBp, bounds),
+  },
+  calc: {
+    /** Frozen snapshot for a closed year; a live recompute for an open one (INV-7, AT-4.4). */
+    computeYear: (yearId: number): Promise<ComputeYearResult> => ipcRenderer.invoke('calc:computeYear', yearId),
   },
 } as const;
 

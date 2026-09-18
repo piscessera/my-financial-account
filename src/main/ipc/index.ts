@@ -47,7 +47,17 @@ import {
   type CreateTransactionInput,
   type UpdateTransactionInput,
 } from '../repositories/transactions';
-import { createTaxYear, getTaxYear, listTaxYears, setExpenseMethod } from '../repositories/taxYears';
+import {
+  close,
+  createTaxYear,
+  getTaxYear,
+  getYearResult,
+  listTaxYears,
+  reopen,
+  setExpenseMethod,
+  type CloseTaxYearInput,
+} from '../repositories/taxYears';
+import type { ComputeYearResult } from '../calc/computeYear';
 import type {
   DeductionCategoryRow,
   DeductionEntryRow,
@@ -79,6 +89,22 @@ function guessMimeType(filePath: string): string {
 }
 
 /**
+ * Assembles a `CloseTaxYearInput` (everything `taxYears.close()`/`getYearResult()` need beyond
+ * the DB connection) by calling the other repositories — the cross-cutting orchestration that
+ * `taxYears.ts` deliberately doesn't do itself (AT-4.3's note on avoiding a circular import
+ * with `transactions.ts`). Shared by `taxYears:close` and `calc:computeYear`.
+ */
+function gatherYearInputs(sqlite: BetterSqlite3.Database, yearId: number): CloseTaxYearInput {
+  return {
+    transactions: listByYear(sqlite, yearId),
+    deductionCategories: listCategories(sqlite),
+    deductionEntries: listEntries(sqlite, yearId),
+    sharedCaps: getSharedCaps(sqlite),
+    brackets: getBrackets(sqlite),
+  };
+}
+
+/**
  * Channel → handler map. Each function's signature is `(...args) => result`, matching how
  * `ipcMain.handle(channel, (event, ...args) => ...)` is called minus the `event` parameter —
  * `main.ts` drops `event` before forwarding into these.
@@ -93,6 +119,9 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       expenseMethod: ExpenseMethod,
       lumpSumRateBp?: number | null,
     ): TaxYearRow => setExpenseMethod(ctx.getSqlite(), { id, expenseMethod, lumpSumRateBp }),
+    'taxYears:close': (id: number): TaxYearRow =>
+      close(ctx.getSqlite(), id, gatherYearInputs(ctx.getSqlite(), id)).taxYear,
+    'taxYears:reopen': (id: number): TaxYearRow => reopen(ctx.getSqlite(), id),
 
     'transactions:create': (input: CreateTransactionInput): TransactionRow =>
       createTransaction(ctx.getSqlite(), input),
@@ -137,6 +166,16 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     'settings:getBrackets': (): TaxBracketRow[] => getBrackets(ctx.getSqlite()),
     'settings:updateBracket': (id: number, rateBp: number, bounds?: UpdateBracketBounds): TaxBracketRow =>
       updateBracket(ctx.getSqlite(), id, rateBp, bounds),
+
+    // `calc` (ANA-0001 §API/backend changes): the single figure-producing call every screen
+    // (Dashboard live, Summary, unit tests) uses. Always goes through `getYearResult` (AT-4.4)
+    // so a closed year serves its frozen snapshot rather than ever being live-recomputed here.
+    'calc:computeYear': (yearId: number): ComputeYearResult => {
+      const sqlite = ctx.getSqlite();
+      const taxYear = getTaxYear(sqlite, yearId);
+      if (!taxYear) throw new Error(`tax_years row ${yearId} not found.`);
+      return getYearResult(taxYear, gatherYearInputs(sqlite, yearId));
+    },
   } as const;
 }
 
