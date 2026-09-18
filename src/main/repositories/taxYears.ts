@@ -1,12 +1,13 @@
 /**
- * `tax_years` repository (AT-2.1).
+ * `tax_years` repository (AT-2.1: `create`/`list`/`get`/`setExpenseMethod`; AT-4.3:
+ * `close`/`reopen`, once `calc.computeYear()` existed to freeze a result — see PLAN-0001's
+ * re-plan log / ANA-0001 §Close/reopen ordering).
  *
- * Scope for this task: `create`/`list`/`get`/`setExpenseMethod`, plus a test-only
- * `setStatusForTest` helper. Real `close()`/`reopen()` need `calc.computeYear()` to freeze
- * a result and land in P4 (AT-4.3) — see PLAN-0001's re-plan log / ANA-0001 §Close/reopen
- * ordering. `setStatusForTest` exists only so P2 tests can exercise closed-year immutability
- * (INV-2b) before the real close path exists; it deliberately skips `frozen_result_json` and
- * is not audit-logged as a `close`/`reopen` action.
+ * `setStatusForTest` (AT-2.1) still exists alongside the real `close`/`reopen`: it's what P2's
+ * tests use to exercise closed-year immutability (INV-2b) without needing a full
+ * `CloseTaxYearInput` (transactions/deductions/settings data) just to flip a status bit for a
+ * test fixture. It deliberately skips `frozen_result_json` and is not audit-logged as
+ * `close`/`reopen` — production code should never call it.
  *
  * A `tax_years` row is "the record-keeping bucket for a year" (ANA-0001 §Tax-year
  * lifecycle) — multiple rows can be `open` simultaneously (AC-7c / TC-0001 #22); there is no
@@ -19,7 +20,17 @@
  */
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { ExpenseMethod, TaxYearRow, TaxYearStatus } from '../db/schema';
+import { computeYear, type ComputeYearResult } from '../calc/computeYear';
+import type {
+  DeductionCategoryRow,
+  DeductionEntryRow,
+  ExpenseMethod,
+  SharedCapRow,
+  TaxBracketRow,
+  TaxYearRow,
+  TaxYearStatus,
+  TransactionRow,
+} from '../db/schema';
 import { recordMutation } from './auditLog';
 
 /** Thrown when a caller hands this repository invalid input. */
@@ -48,6 +59,8 @@ interface Statements {
   readonly selectAll: BetterSqlite3.Statement;
   readonly updateExpenseMethod: BetterSqlite3.Statement;
   readonly updateStatusForTest: BetterSqlite3.Statement;
+  readonly updateClose: BetterSqlite3.Statement;
+  readonly updateReopen: BetterSqlite3.Statement;
 }
 
 const statementCache = new WeakMap<BetterSqlite3.Database, Statements>();
@@ -73,6 +86,17 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
        SET status = ?,
            closed_at = CASE WHEN ? = 'closed' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') ELSE NULL END,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`,
+    ),
+    updateClose: sqlite.prepare(
+      `UPDATE tax_years
+       SET status = 'closed', closed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+           frozen_result_json = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`,
+    ),
+    updateReopen: sqlite.prepare(
+      `UPDATE tax_years
+       SET status = 'open', closed_at = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = ?`,
     ),
   };
@@ -198,4 +222,90 @@ export function setExpenseMethod(sqlite: BetterSqlite3.Database, input: SetExpen
 export function setStatusForTest(sqlite: BetterSqlite3.Database, id: number, status: TaxYearStatus): TaxYearRow {
   statementsFor(sqlite).updateStatusForTest.run(status, status, id);
   return requireRow(sqlite, id);
+}
+
+/** Everything `close()` needs beyond the `sqlite` connection and `id` — gathered by the caller
+ *  (the IPC handler, AT-4.5) from the other repositories, not by this module. Keeping
+ *  `taxYears.ts` free of imports from `transactions.ts`/`deductions.ts`/`settings.ts` avoids a
+ *  circular dependency (`transactions.ts` already imports `getTaxYear` from here for its own
+ *  closed-year checks). */
+export interface CloseTaxYearInput {
+  readonly transactions: readonly TransactionRow[];
+  readonly deductionCategories: readonly DeductionCategoryRow[];
+  readonly deductionEntries: readonly DeductionEntryRow[];
+  readonly sharedCaps: readonly SharedCapRow[];
+  readonly brackets: readonly TaxBracketRow[];
+}
+
+export interface CloseTaxYearResult {
+  readonly taxYear: TaxYearRow;
+  readonly frozenResult: ComputeYearResult;
+}
+
+/**
+ * Close a tax year (AC-7b, TC-0001 #20): computes the full result via `calc.computeYear()`
+ * (AT-4.2, pure — no hidden state, so a later recompute against the same stored rows always
+ * reproduces this exact result, INV-3) and freezes it as `frozen_result_json`. From here on,
+ * `transactions.updateTransaction`/`taxYears.setExpenseMethod`, etc. against this year are
+ * rejected (INV-2b) and its read path serves this snapshot, not a live recompute (INV-7,
+ * AT-4.4). Audit-logs as `close` (INV-4).
+ */
+export function close(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+  input: CloseTaxYearInput,
+): CloseTaxYearResult {
+  const run = sqlite.transaction(() => {
+    const before = requireRow(sqlite, id);
+    if (before.status === 'closed') {
+      throw new TaxYearError(`tax_years row ${id} is already closed.`);
+    }
+
+    const frozenResult = computeYear({
+      taxYear: before,
+      transactions: input.transactions,
+      deductionCategories: input.deductionCategories,
+      deductionEntries: input.deductionEntries,
+      sharedCaps: input.sharedCaps,
+      brackets: input.brackets,
+    });
+
+    statementsFor(sqlite).updateClose.run(JSON.stringify(frozenResult), id);
+    const after = requireRow(sqlite, id);
+    recordMutation(sqlite, {
+      entityType: 'tax_year',
+      entityId: id,
+      action: 'close',
+      before: before as unknown as Record<string, unknown>,
+      after: after as unknown as Record<string, unknown>,
+    });
+    return { taxYear: after, frozenResult };
+  });
+  return run();
+}
+
+/**
+ * Reopen a closed tax year (ANA-0001 §Tax-year lifecycle): clears `closed_at` and flips
+ * `status` back to `open`; **keeps** `frozen_result_json` as-is until the year is closed again
+ * (so a reopen-without-re-close doesn't leave the row with no snapshot at all). Audit-logs as
+ * `reopen` (INV-4).
+ */
+export function reopen(sqlite: BetterSqlite3.Database, id: number): TaxYearRow {
+  const run = sqlite.transaction(() => {
+    const before = requireRow(sqlite, id);
+    if (before.status === 'open') {
+      throw new TaxYearError(`tax_years row ${id} is already open.`);
+    }
+    statementsFor(sqlite).updateReopen.run(id);
+    const after = requireRow(sqlite, id);
+    recordMutation(sqlite, {
+      entityType: 'tax_year',
+      entityId: id,
+      action: 'reopen',
+      before: before as unknown as Record<string, unknown>,
+      after: after as unknown as Record<string, unknown>,
+    });
+    return after;
+  });
+  return run();
 }
