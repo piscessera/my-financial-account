@@ -2,10 +2,10 @@
 id: PLAN-0002
 type: plan
 title: Change data folder path after setup
-status: active
+status: implemented
 created: 2026-09-18
-updated: 2026-09-18
-links: [ANA-0002, TC-0002]
+updated: 2026-09-19
+links: [ANA-0002, TC-0002, REV-0003]
 ---
 
 # PLAN-0002: Change data folder path after setup

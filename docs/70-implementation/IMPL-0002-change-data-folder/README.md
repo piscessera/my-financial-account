@@ -2,9 +2,9 @@
 id: IMPL-0002
 type: implementation
 title: Change data folder path after setup
-status: active
+status: implemented
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-19
 links: [PLAN-0002]
 ---
 
