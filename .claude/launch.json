@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Users\\puypr\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
       "runtimeArgs": ["-m", "http.server", "4173", "--directory", "docs/40-prototypes/PROTO-0001-annual-tax-tracker"],
       "port": 4173
+    },
+    {
+      "name": "renderer-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4174", "--strictPort"],
+      "port": 4174
     }
   ]
 }

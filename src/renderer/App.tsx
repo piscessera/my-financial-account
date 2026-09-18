@@ -2,22 +2,87 @@ import { useEffect, useState } from 'react';
 
 import type { DataLocationInfo } from '../main/dataLocation';
 import type { LockInfo } from '../main/lockFile';
+import type { TaxYearRow } from '../main/db/schema';
 import LockWarningBanner from './components/LockWarningBanner';
+import TaxYearSwitcher from './components/TaxYearSwitcher';
 import Onboarding from './pages/Onboarding';
+import Dashboard from './pages/Dashboard';
+import Entry from './pages/Entry';
+import Deductions from './pages/Deductions';
+import Settings from './pages/Settings';
+import Summary from './pages/Summary';
+import ImportExport from './pages/ImportExport';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-// Real screens (Dashboard, Entry, Deductions, Settings, Summary, Import/Export) land in later
-// plan tasks (AT-4.6 etc.) — this placeholder is what AT-1.6 routes to once onboarding is done.
-function DashboardPlaceholder({ info }: { info: DataLocationInfo }): JSX.Element {
+type Screen = 'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears' | 'summary' | 'importExport';
+
+/**
+ * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
+ * switching — no real router exists yet (nothing in the plan calls for one specifically; this
+ * is the smallest thing that makes more than one screen reachable). All PLAN-0001 screens are
+ * now wired in as of AT-5.6.
+ *
+ * `TaxYearSwitcher` (AT-3.7) gets its own tab rather than replacing Entry's/Deductions'
+ * independent `useWorkingTaxYear` resolution — lifting "the selected year" into shared state
+ * that every screen reads from is a real refactor of already-built screens, out of this atomic
+ * task's scope (`TaxYearSwitcher.tsx` only). This tab is what makes the component reachable
+ * for its own manual verification (TC-0001 #5) without that broader change.
+ */
+function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
+  const [screen, setScreen] = useState<Screen>('dashboard');
+  const [selectedYear, setSelectedYear] = useState<TaxYearRow | null>(null);
+
   return (
-    <div>
-      <h1>My Financial Account</h1>
-      <p>Data folder: {info.folderPath}</p>
-    </div>
+    <>
+      <nav className="app-nav">
+        <div className="brand">🧾 สมุดภาษีรายปี</div>
+        <div className="links">
+          <a href="#" className={screen === 'dashboard' ? 'active' : ''} onClick={() => setScreen('dashboard')}>
+            Dashboard
+          </a>
+          <a href="#" className={screen === 'entry' ? 'active' : ''} onClick={() => setScreen('entry')}>
+            บันทึกรายรับ-รายจ่าย
+          </a>
+          <a href="#" className={screen === 'deductions' ? 'active' : ''} onClick={() => setScreen('deductions')}>
+            ค่าลดหย่อน
+          </a>
+          <a href="#" className={screen === 'settings' ? 'active' : ''} onClick={() => setScreen('settings')}>
+            ตั้งค่า
+          </a>
+          <a href="#" className={screen === 'taxYears' ? 'active' : ''} onClick={() => setScreen('taxYears')}>
+            ปีภาษี
+          </a>
+          <a href="#" className={screen === 'summary' ? 'active' : ''} onClick={() => setScreen('summary')}>
+            สรุปปี
+          </a>
+          <a href="#" className={screen === 'importExport' ? 'active' : ''} onClick={() => setScreen('importExport')}>
+            นำเข้า/ส่งออก
+          </a>
+        </div>
+        <div className="year-pill">
+          <span className="status-dot open" />
+          {info.folderPath}
+        </div>
+      </nav>
+      {screen === 'dashboard' && <Dashboard />}
+      {screen === 'entry' && <Entry />}
+      {screen === 'deductions' && <Deductions />}
+      {screen === 'settings' && <Settings />}
+      {screen === 'taxYears' && (
+        <div className="page">
+          <div className="page-head">
+            <h1>ปีภาษี</h1>
+          </div>
+          <TaxYearSwitcher selectedYearId={selectedYear?.id ?? null} onSelectYear={setSelectedYear} />
+        </div>
+      )}
+      {screen === 'summary' && <Summary />}
+      {screen === 'importExport' && <ImportExport />}
+    </>
   );
 }
 
@@ -52,7 +117,7 @@ export default function App(): JSX.Element {
   return (
     <>
       {lockWarning !== null && <LockWarningBanner previous={lockWarning} />}
-      <DashboardPlaceholder info={state.info} />
+      <AppShell info={state.info} />
     </>
   );
 }
