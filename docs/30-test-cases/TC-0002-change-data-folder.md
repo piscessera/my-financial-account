@@ -2,7 +2,7 @@
 id: TC-0002
 type: test-cases
 title: Change data folder path after setup — test cases
-status: draft
+status: active
 created: 2026-09-18
 updated: 2026-09-18
 links: [ANA-0002]

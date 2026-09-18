@@ -2,7 +2,7 @@
 id: ANA-0002
 type: analysis
 title: Change data folder path after setup — design
-status: draft
+status: active
 size: M
 created: 2026-09-18
 updated: 2026-09-18
@@ -242,3 +242,4 @@ column; `AuditEntityType` (TS union in `auditLog.ts`) gains that member.
 | 3 | Audit row for the change is written into the resulting (new) DB, entityType `'data_location'`, sentinel `entityId: 1` | The location config is a singleton with no DB row of its own; writing into the DB that becomes authoritative going forward keeps the audit trail with the data it describes | 2026-09-18 |
 | 4 | `switch` mode always runs the copied/target DB through `openDatabase`'s existing migration path | Reuses the exact same schema-compatibility guarantee every other reopen already relies on — no new migration-detection logic needed | 2026-09-18 |
 | 5 | No progress/cancel UI for a large move; synchronous `cpSync` blocking accepted | Matches existing synchronous-fs precedent in `attachments.ts`; out of REQ-0002's scope, parked | 2026-09-18 |
+| 6 | Design+TC gate: approved | user | 2026-09-18 |
