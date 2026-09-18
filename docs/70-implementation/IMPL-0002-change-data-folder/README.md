@@ -19,3 +19,4 @@ the contract; this folder is the audit trail.
 | Task | Commit | Note | Deviation? |
 |------|--------|------|------------|
 | AT-1.1 | `bb03672` | [AT-1.1.md](./AT-1.1.md) | no |
+| AT-1.2 | `52ac507` | [AT-1.2.md](./AT-1.2.md) | no |
