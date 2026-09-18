@@ -1,8 +1,23 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AttachmentRow, ExpenseMethod, TaxYearRow, TransactionRow } from '../src/main/db/schema';
+import type {
+  AttachmentRow,
+  DeductionCategoryRow,
+  DeductionEntryRow,
+  ExpenseMethod,
+  SharedCapRow,
+  TaxBracketRow,
+  TaxYearRow,
+  TransactionRow,
+} from '../src/main/db/schema';
 import type { DataLocationInfo } from '../src/main/dataLocation';
 import type { AuditEntry } from '../src/main/repositories/auditLog';
+import type {
+  CreateCategoryInput,
+  SetEntryInput,
+  UpdateCategoryInput,
+} from '../src/main/repositories/deductions';
+import type { UpdateBracketBounds } from '../src/main/repositories/settings';
 import type {
   CreateReversalInput,
   CreateTransactionInput,
@@ -60,6 +75,28 @@ const api = {
       ipcRenderer.invoke('attachments:list', transactionId),
     /** Opens a native "choose one file" dialog; resolves the chosen path, or `null` if cancelled. */
     chooseFile: (): Promise<string | null> => ipcRenderer.invoke('attachments:chooseFile'),
+  },
+  deductions: {
+    /** Active categories only — the Deductions screen's "add an entry" picker (AC-17). */
+    listCategories: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('deductions:listCategories'),
+    setEntry: (input: SetEntryInput): Promise<DeductionEntryRow> =>
+      ipcRenderer.invoke('deductions:setEntry', input),
+  },
+  settings: {
+    /** Every category, including archived ones (Settings can reactivate them, AC-17). */
+    getCaps: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('settings:getCaps'),
+    createCategory: (input: CreateCategoryInput): Promise<DeductionCategoryRow> =>
+      ipcRenderer.invoke('settings:createCategory', input),
+    updateCategory: (categoryId: number, input: UpdateCategoryInput): Promise<DeductionCategoryRow> =>
+      ipcRenderer.invoke('settings:updateCategory', categoryId, input),
+    setCategoryActive: (id: number, isActive: boolean): Promise<DeductionCategoryRow> =>
+      ipcRenderer.invoke('settings:setCategoryActive', id, isActive),
+    getSharedCaps: (): Promise<SharedCapRow[]> => ipcRenderer.invoke('settings:getSharedCaps'),
+    updateSharedCap: (id: number, newCapAmountMinor: number): Promise<SharedCapRow> =>
+      ipcRenderer.invoke('settings:updateSharedCap', id, newCapAmountMinor),
+    getBrackets: (): Promise<TaxBracketRow[]> => ipcRenderer.invoke('settings:getBrackets'),
+    updateBracket: (id: number, rateBp: number, bounds?: UpdateBracketBounds): Promise<TaxBracketRow> =>
+      ipcRenderer.invoke('settings:updateBracket', id, rateBp, bounds),
   },
 } as const;
 

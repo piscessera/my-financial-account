@@ -104,6 +104,72 @@ describe('transactions:void and transactions:createReversal channels', () => {
   });
 });
 
+describe('deductions/settings channels (AT-3.4)', () => {
+  it('settings:createCategory + deductions:listCategories/setEntry round-trip', () => {
+    const category = handlers['settings:createCategory']({
+      code: 'donation',
+      name: 'เงินบริจาค',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+    expect(handlers['deductions:listCategories']()).toHaveLength(1);
+
+    const year = handlers['taxYears:create'](2569);
+    const entry = handlers['deductions:setEntry']({
+      taxYearId: year.id,
+      categoryId: category.id,
+      amountMinor: 5_000_00,
+    });
+    expect(entry.amountMinor).toBe(5_000_00);
+  });
+
+  it('settings:setCategoryActive removes it from deductions:listCategories but not settings:getCaps', () => {
+    const category = handlers['settings:createCategory']({
+      code: 'donation',
+      name: 'เงินบริจาค',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+    handlers['settings:setCategoryActive'](category.id, false);
+
+    expect(handlers['deductions:listCategories']()).toHaveLength(0);
+    expect(handlers['settings:getCaps']()).toHaveLength(1);
+  });
+
+  it('settings:updateCategory renames', () => {
+    const category = handlers['settings:createCategory']({
+      code: 'donation',
+      name: 'เงินบริจาค',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+    const renamed = handlers['settings:updateCategory'](category.id, { name: 'บริจาคใหม่' });
+    expect(renamed.name).toBe('บริจาคใหม่');
+  });
+
+  it('settings:getSharedCaps/updateSharedCap round-trip', () => {
+    const id = temp.sqlite
+      .prepare(`INSERT INTO shared_caps (name, cap_amount_minor) VALUES (?, ?)`)
+      .run('Life+Health', 100_000_00).lastInsertRowid as number;
+
+    expect(handlers['settings:getSharedCaps']()).toHaveLength(1);
+    const updated = handlers['settings:updateSharedCap'](id, 120_000_00);
+    expect(updated.capAmountMinor).toBe(120_000_00);
+  });
+
+  it('settings:getBrackets/updateBracket round-trip', () => {
+    const id = temp.sqlite
+      .prepare(
+        `INSERT INTO tax_brackets (lower_bound_minor, upper_bound_minor, rate_bp, sort_order) VALUES (?, ?, ?, ?)`,
+      )
+      .run(0, 15_000_00, 500, 1).lastInsertRowid as number;
+
+    expect(handlers['settings:getBrackets']()).toHaveLength(1);
+    const updated = handlers['settings:updateBracket'](id, 700);
+    expect(updated.rateBp).toBe(700);
+  });
+});
+
 describe('attachments:add mime-type inference', () => {
   it('guesses common extensions and falls back to application/octet-stream', () => {
     const year = handlers['taxYears:create'](2569);

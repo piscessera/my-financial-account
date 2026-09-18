@@ -19,6 +19,23 @@ import type { AttachmentRow } from '../db/schema';
 import { addAttachment, listAttachments } from '../repositories/attachments';
 import type { AuditEntry } from '../repositories/auditLog';
 import {
+  createCategory,
+  listCategories,
+  setCategoryActive,
+  setEntry,
+  updateCategory,
+  type CreateCategoryInput,
+  type SetEntryInput,
+  type UpdateCategoryInput,
+} from '../repositories/deductions';
+import {
+  getBrackets,
+  getSharedCaps,
+  updateBracket,
+  updateSharedCap,
+  type UpdateBracketBounds,
+} from '../repositories/settings';
+import {
   createReversal,
   createTransaction,
   getTransactionHistory,
@@ -30,7 +47,15 @@ import {
   type UpdateTransactionInput,
 } from '../repositories/transactions';
 import { createTaxYear, getTaxYear, listTaxYears, setExpenseMethod } from '../repositories/taxYears';
-import type { ExpenseMethod, TaxYearRow, TransactionRow } from '../db/schema';
+import type {
+  DeductionCategoryRow,
+  DeductionEntryRow,
+  ExpenseMethod,
+  SharedCapRow,
+  TaxBracketRow,
+  TaxYearRow,
+  TransactionRow,
+} from '../db/schema';
 
 /** What every handler needs from the app: the live DB connection and the data folder path. */
 export interface DomainIpcContext {
@@ -86,6 +111,29 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       }),
     'attachments:list': (transactionId: number): AttachmentRow[] =>
       listAttachments(ctx.getSqlite(), transactionId),
+
+    // `deductions` (ANA-0001 §API/backend changes): the entry-time surface — only active
+    // categories (AC-17: archived ones don't appear as an option to add), plus setEntry.
+    'deductions:listCategories': (): DeductionCategoryRow[] =>
+      listCategories(ctx.getSqlite()).filter((c) => c.isActive),
+    'deductions:setEntry': (input: SetEntryInput): DeductionEntryRow => setEntry(ctx.getSqlite(), input),
+
+    // `settings` (ANA-0001 §API/backend changes): the management surface — every category
+    // (including archived, so Settings can reactivate one), plus create/archive/rename and
+    // the shared-cap/bracket editors.
+    'settings:getCaps': (): DeductionCategoryRow[] => listCategories(ctx.getSqlite()),
+    'settings:createCategory': (input: CreateCategoryInput): DeductionCategoryRow =>
+      createCategory(ctx.getSqlite(), input),
+    'settings:updateCategory': (categoryId: number, input: UpdateCategoryInput): DeductionCategoryRow =>
+      updateCategory(ctx.getSqlite(), categoryId, input),
+    'settings:setCategoryActive': (id: number, isActive: boolean): DeductionCategoryRow =>
+      setCategoryActive(ctx.getSqlite(), id, isActive),
+    'settings:getSharedCaps': (): SharedCapRow[] => getSharedCaps(ctx.getSqlite()),
+    'settings:updateSharedCap': (id: number, newCapAmountMinor: number): SharedCapRow =>
+      updateSharedCap(ctx.getSqlite(), id, newCapAmountMinor),
+    'settings:getBrackets': (): TaxBracketRow[] => getBrackets(ctx.getSqlite()),
+    'settings:updateBracket': (id: number, rateBp: number, bounds?: UpdateBracketBounds): TaxBracketRow =>
+      updateBracket(ctx.getSqlite(), id, rateBp, bounds),
   } as const;
 }
 
