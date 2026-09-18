@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openTempDatabase } from '../../db/__tests__/helpers';
 import { createTaxYear, setStatusForTest } from '../taxYears';
 import { createReversal, createTransaction, voidTransaction } from '../transactions';
-import { LEDGER_CSV_COLUMNS, exportLedger } from '../csv';
+import { LEDGER_CSV_COLUMNS, exportLedger, exportSummary } from '../csv';
+import type { ComputeYearResult } from '../../calc/computeYear';
 
 type TempDb = ReturnType<typeof openTempDatabase>;
 
@@ -132,5 +133,35 @@ describe('exportLedger — TC-0001 #43', () => {
 
     const content = readFileSync(destPath, 'utf8').trim();
     expect(content).toBe(LEDGER_CSV_COLUMNS.join(','));
+  });
+});
+
+describe('exportSummary — TC-0001 #44', () => {
+  const SAMPLE_RESULT: ComputeYearResult = {
+    totalIncomeMinor: 793_831_04,
+    incomeBySection: { section40_1Minor: 793_831_04, section40_2Minor: 0, section40_5_8Minor: 0 },
+    totalExpenseMinor: 0,
+    expenseDeductionMinor: 0,
+    deductions: { perCategory: [], sharedGroups: [], totalMinor: 0 },
+    totalDeductionsMinor: 0,
+    netTaxableMinor: 793_831_04,
+    bracket: { totalTaxMinor: 73_766_21, breakdown: [] },
+    taxTotalMinor: 73_766_21,
+    whtTotalMinor: 93_963_71,
+    balance: { direction: 'refund', amountMinor: 20_197_50 },
+  };
+
+  it('matches the on-screen summary figures exactly, and is never a valid import source', () => {
+    const destPath = join(outDir, 'summary.csv');
+    exportSummary(destPath, 2569, SAMPLE_RESULT);
+
+    const content = readFileSync(destPath, 'utf8');
+    expect(content).toContain('tax_total,73766.21');
+    expect(content).toContain('wht_total,93963.71');
+    expect(content).toContain('balance_direction,refund');
+    expect(content).toContain('balance_amount,20197.50');
+    // One-way: the header is field/value, not LEDGER_CSV_COLUMNS -- structurally distinct from
+    // a ledger export, so it can never be mistaken for one by parseForPreview (AT-5.3).
+    expect(content.startsWith('field,value')).toBe(true);
   });
 });

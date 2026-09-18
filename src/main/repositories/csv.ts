@@ -11,6 +11,7 @@ import { writeFileSync } from 'node:fs';
 
 import type BetterSqlite3 from 'better-sqlite3';
 
+import type { ComputeYearResult } from '../calc/computeYear';
 import { formatSatangAsBaht } from '../calc/money';
 import type { TransactionRow } from '../db/schema';
 import { listByYear } from './transactions';
@@ -84,5 +85,33 @@ function toCsvRow(row: TransactionRow): string {
 export function exportLedger(sqlite: BetterSqlite3.Database, yearId: number, destPath: string): void {
   const rows = listByYear(sqlite, yearId);
   const lines = [LEDGER_CSV_COLUMNS.join(','), ...rows.map(toCsvRow)];
+  writeFileSync(destPath, lines.join('\r\n') + '\r\n', 'utf8');
+}
+
+/**
+ * Export a tax year's *summary* — the same figures `calc.computeYear()` shows on-screen
+ * (TC-0001 #44), not the raw transaction list. A pure formatter over an already-computed
+ * {@link ComputeYearResult} (not `sqlite`/`yearId`): the caller (IPC layer) is responsible for
+ * getting that result the right way — `taxYears.getYearResult()`, so a closed year's export
+ * matches its frozen snapshot, never a live recompute (INV-7) — same principle AT-4.4 already
+ * established for the read path.
+ *
+ * **One-way**: this format is never a valid `parseForPreview`/`commitImport` input (ANA-0001)
+ * — only `exportLedger`'s column format round-trips.
+ */
+export function exportSummary(destPath: string, year: number, result: ComputeYearResult): void {
+  const rows: [string, string][] = [
+    ['tax_year', String(year)],
+    ['total_income', formatSatangAsBaht(result.totalIncomeMinor, { grouping: false })],
+    ['total_expense', formatSatangAsBaht(result.totalExpenseMinor, { grouping: false })],
+    ['expense_deduction', formatSatangAsBaht(result.expenseDeductionMinor, { grouping: false })],
+    ['total_deductions', formatSatangAsBaht(result.totalDeductionsMinor, { grouping: false })],
+    ['net_taxable', formatSatangAsBaht(result.netTaxableMinor, { grouping: false })],
+    ['tax_total', formatSatangAsBaht(result.taxTotalMinor, { grouping: false })],
+    ['wht_total', formatSatangAsBaht(result.whtTotalMinor, { grouping: false })],
+    ['balance_direction', result.balance.direction],
+    ['balance_amount', formatSatangAsBaht(result.balance.amountMinor, { grouping: false })],
+  ];
+  const lines = ['field,value', ...rows.map(([field, value]) => `${csvField(field)},${csvField(value)}`)];
   writeFileSync(destPath, lines.join('\r\n') + '\r\n', 'utf8');
 }
