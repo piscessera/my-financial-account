@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../../main/calc/money';
 import type { CapType, DeductionCategoryRow, SharedCapRow, TaxBracketRow } from '../../main/db/schema';
-import type { DataLocationInfo } from '../../main/dataLocation';
+import type { ChangeFolderMode, DataLocationInfo } from '../../main/dataLocation';
 
 const CAP_TYPE_LABELS: Record<CapType, string> = {
   fixed: 'คงที่',
@@ -47,6 +47,11 @@ const BLANK_NEW_CATEGORY: NewCategoryState = {
   description: '',
 };
 
+/** Picked-folder confirmation state for REQ-0002's "เปลี่ยนโฟลเดอร์" flow (ANA-0002). */
+type FolderChangeState =
+  | { readonly step: 'confirmMove'; readonly targetFolderPath: string }
+  | { readonly step: 'warnExisting'; readonly targetFolderPath: string };
+
 /**
  * Settings screen (AT-3.6) — PROTO-0001 `settings.html`. The mockup's "+ add category" example
  * (a brand-new shared group, "Easy e-Receipt 2569") assumes creating a shared-cap *group* too,
@@ -62,6 +67,7 @@ export default function Settings(): JSX.Element {
   const [editingCategory, setEditingCategory] = useState<CategoryEditState | null>(null);
   const [editingBracket, setEditingBracket] = useState<BracketEditState | null>(null);
   const [addingCategory, setAddingCategory] = useState<NewCategoryState | null>(null);
+  const [folderChange, setFolderChange] = useState<FolderChangeState | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
 
@@ -81,6 +87,38 @@ export default function Settings(): JSX.Element {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  async function handleChooseFolder(): Promise<void> {
+    setFeedback(null);
+    const picked = await window.api.dataLocation.chooseFolder();
+    if (!picked) return; // cancelled at the OS picker (TC-0002 #2)
+    const hasExistingDb = await window.api.dataLocation.targetHasExistingDb(picked);
+    setFolderChange({ step: hasExistingDb ? 'warnExisting' : 'confirmMove', targetFolderPath: picked });
+  }
+
+  /** Confirm step — `mode` is fixed per step (`confirmMove` -> 'move', `warnExisting`'s "ใช้ไฟล์ที่นั่น" -> 'switch'). */
+  async function handleConfirmFolderChange(mode: ChangeFolderMode): Promise<void> {
+    if (!folderChange) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await window.api.dataLocation.changeFolder(folderChange.targetFolderPath, mode);
+      setDataLocation(result.info);
+      setFolderChange(null);
+      setFeedback({
+        kind: 'ok',
+        message: result.oldFolderCleanupWarning
+          ? `เปลี่ยนโฟลเดอร์เรียบร้อยแล้ว (${result.oldFolderCleanupWarning})`
+          : 'เปลี่ยนโฟลเดอร์เรียบร้อยแล้ว',
+      });
+    } catch (err) {
+      // Leave `folderChange` and `dataLocation` as-is on failure (TC-0002 #15) — the user can
+      // retry or cancel; the displayed folder still shows the original, working location.
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function sharedGroupName(id: number | null): string {
     if (id === null) return '';
@@ -190,7 +228,21 @@ export default function Settings(): JSX.Element {
       )}
 
       <div className="panel">
-        <div className="section-label">ที่จัดเก็บข้อมูล (AC-19)</div>
+        <div
+          className="section-label"
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}
+        >
+          <span>ที่จัดเก็บข้อมูล (AC-19)</span>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '8px 14px', fontSize: 13 }}
+            disabled={busy || !dataLocation}
+            onClick={() => void handleChooseFolder()}
+          >
+            เปลี่ยนโฟลเดอร์
+          </button>
+        </div>
         {dataLocation ? (
           <>
             <div className="field span2">
@@ -212,6 +264,54 @@ export default function Settings(): JSX.Element {
           <p className="muted">กำลังโหลด...</p>
         )}
       </div>
+
+      {folderChange?.step === 'confirmMove' && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div className="section-label">ย้ายข้อมูลไปโฟลเดอร์นี้? (AC-3)</div>
+          <p className="control num" style={{ fontSize: 13 }}>
+            {folderChange.targetFolderPath}
+          </p>
+          <p className="muted">
+            ข้อมูลปัจจุบันทั้งหมดจะถูกย้ายไปยังโฟลเดอร์นี้ และแอปจะใช้โฟลเดอร์นี้ต่อจากนี้
+          </p>
+          <div className="form-actions">
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setFolderChange(null)}>
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleConfirmFolderChange('move')}
+            >
+              ย้ายข้อมูล
+            </button>
+          </div>
+        </div>
+      )}
+
+      {folderChange?.step === 'warnExisting' && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div className="section-label">พบไฟล์ข้อมูลอยู่แล้วในโฟลเดอร์นี้ (AC-4)</div>
+          <p className="control num" style={{ fontSize: 13 }}>
+            {folderChange.targetFolderPath}
+          </p>
+          <p className="muted">เลือกใช้ไฟล์ข้อมูลที่มีอยู่แล้วในโฟลเดอร์นี้ หรือยกเลิกการเปลี่ยนโฟลเดอร์</p>
+          <div className="form-actions">
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setFolderChange(null)}>
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleConfirmFolderChange('switch')}
+            >
+              ใช้ไฟล์ที่นั่น
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="panel" style={{ marginTop: 20 }}>
         <div

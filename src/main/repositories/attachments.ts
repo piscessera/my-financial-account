@@ -27,7 +27,8 @@ export class AttachmentError extends Error {
   }
 }
 
-const ATTACHMENTS_DIRNAME = 'attachments';
+/** Exported so `dataLocation.ts`'s `changeFolder` (move mode) can relocate this folder too. */
+export const ATTACHMENTS_DIRNAME = 'attachments';
 
 export interface AddAttachmentInput {
   readonly transactionId: number;

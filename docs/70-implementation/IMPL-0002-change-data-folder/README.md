@@ -1,0 +1,25 @@
+---
+id: IMPL-0002
+type: implementation
+title: Change data folder path after setup
+status: implemented
+created: 2026-09-18
+updated: 2026-09-19
+links: [PLAN-0002]
+---
+
+# IMPL-0002: Change data folder path after setup
+
+This is the **folder index** (`docs/70-implementation/IMPL-0002-change-data-folder/README.md`).
+Per-task notes live next to it as `AT-x.y.md` (template `IMPL-task.md`, ≤ 40 lines each).
+Nobody needs to read previous notes to implement the next task — the PLAN row and TC cases are
+the contract; this folder is the audit trail.
+
+## Task log
+| Task | Commit | Note | Deviation? |
+|------|--------|------|------------|
+| AT-1.1 | `bb03672` | [AT-1.1.md](./AT-1.1.md) | no |
+| AT-1.2 | `52ac507` | [AT-1.2.md](./AT-1.2.md) | no |
+| AT-2.1 | `7a178fd` | [AT-2.1.md](./AT-2.1.md) | no |
+| AT-2.2 | `0b1ac54` | [AT-2.2.md](./AT-2.2.md) | no |
+| AT-3.1 | `ecb44b3` | [AT-3.1.md](./AT-3.1.md) | no |
