@@ -21,6 +21,7 @@ import type { AuditEntry } from '../repositories/auditLog';
 import {
   createCategory,
   listCategories,
+  listEntries,
   setCategoryActive,
   setEntry,
   updateCategory,
@@ -117,6 +118,8 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     'deductions:listCategories': (): DeductionCategoryRow[] =>
       listCategories(ctx.getSqlite()).filter((c) => c.isActive),
     'deductions:setEntry': (input: SetEntryInput): DeductionEntryRow => setEntry(ctx.getSqlite(), input),
+    'deductions:listEntries': (taxYearId: number): DeductionEntryRow[] =>
+      listEntries(ctx.getSqlite(), taxYearId),
 
     // `settings` (ANA-0001 §API/backend changes): the management surface — every category
     // (including archived, so Settings can reactivate one), plus create/archive/rename and

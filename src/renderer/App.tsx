@@ -5,29 +5,36 @@ import type { LockInfo } from '../main/lockFile';
 import LockWarningBanner from './components/LockWarningBanner';
 import Onboarding from './pages/Onboarding';
 import Entry from './pages/Entry';
+import Deductions from './pages/Deductions';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
+type Screen = 'entry' | 'deductions';
+
 /**
- * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md). Only "บันทึกรายรับ-รายจ่าย"
- * (Entry, AT-2.6/2.7) is a real screen so far; the rest (Dashboard AT-4.6, Deductions AT-3.5,
- * Settings AT-3.6, Summary AT-4.7, Import/Export AT-5.6) land in later plan tasks — a real
- * router/switcher is that later task's job too, not invented ahead of it here.
+ * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
+ * switching — no real router exists yet (nothing in the plan calls for one specifically; this
+ * is the smallest thing that makes more than one screen reachable). Dashboard (AT-4.6),
+ * Settings (AT-3.6), Summary (AT-4.7), Import/Export (AT-5.6) are still placeholders.
  */
 function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
+  const [screen, setScreen] = useState<Screen>('entry');
+
   return (
     <>
       <nav className="app-nav">
         <div className="brand">🧾 สมุดภาษีรายปี</div>
         <div className="links">
           <span className="muted">Dashboard (เร็วๆ นี้)</span>
-          <a href="#" className="active">
+          <a href="#" className={screen === 'entry' ? 'active' : ''} onClick={() => setScreen('entry')}>
             บันทึกรายรับ-รายจ่าย
           </a>
-          <span className="muted">ค่าลดหย่อน (เร็วๆ นี้)</span>
+          <a href="#" className={screen === 'deductions' ? 'active' : ''} onClick={() => setScreen('deductions')}>
+            ค่าลดหย่อน
+          </a>
           <span className="muted">ตั้งค่า (เร็วๆ นี้)</span>
         </div>
         <div className="year-pill">
@@ -35,7 +42,7 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           {info.folderPath}
         </div>
       </nav>
-      <Entry />
+      {screen === 'entry' ? <Entry /> : <Deductions />}
     </>
   );
 }

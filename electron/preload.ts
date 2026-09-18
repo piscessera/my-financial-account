@@ -81,6 +81,8 @@ const api = {
     listCategories: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('deductions:listCategories'),
     setEntry: (input: SetEntryInput): Promise<DeductionEntryRow> =>
       ipcRenderer.invoke('deductions:setEntry', input),
+    listEntries: (taxYearId: number): Promise<DeductionEntryRow[]> =>
+      ipcRenderer.invoke('deductions:listEntries', taxYearId),
   },
   settings: {
     /** Every category, including archived ones (Settings can reactivate them, AC-17). */

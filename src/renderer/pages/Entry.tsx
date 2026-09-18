@@ -1,49 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
-import type { GeneralCategory, TaxYearRow, TransactionRow } from '../../main/db/schema';
+import type { GeneralCategory, TransactionRow } from '../../main/db/schema';
 import type { AuditEntry } from '../../main/repositories/auditLog';
 import HistoryPanel from '../components/HistoryPanel';
 import LedgerTable from '../components/LedgerTable';
 import TransactionForm, { type TransactionFormValues } from '../components/TransactionForm';
+import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 /**
  * Entry screen (AT-2.6 form + AT-2.7 ledger/history/general section) — PROTO-0001
- * `entry.html`. No tax-year switcher exists yet (that's AT-3.7), so this resolves a working
- * tax year on its own: the current Buddhist-era year if it already exists, or creates it.
+ * `entry.html`.
  */
-function currentBuddhistYear(): number {
-  return new Date().getFullYear() + 543;
-}
-
-type YearState =
-  | { status: 'loading' }
-  | { status: 'ready'; year: TaxYearRow }
-  | { status: 'error'; message: string };
-
-function useWorkingTaxYear(): YearState {
-  const [state, setState] = useState<YearState>({ status: 'loading' });
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const years = await window.api.taxYears.list();
-        const wanted = currentBuddhistYear();
-        const existing = years.find((y) => y.year === wanted) ?? years.find((y) => y.status === 'open');
-        const year = existing ?? (await window.api.taxYears.create(wanted));
-        if (!cancelled) setState({ status: 'ready', year });
-      } catch (err) {
-        if (!cancelled) setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return state;
-}
 
 const GENERAL_CATEGORY_LABELS: Record<GeneralCategory, string> = {
   food: 'อาหาร',
