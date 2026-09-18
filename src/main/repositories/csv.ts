@@ -13,9 +13,10 @@ import type BetterSqlite3 from 'better-sqlite3';
 
 import type { ComputeYearResult } from '../calc/computeYear';
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../calc/money';
+import { recordMutation } from './auditLog';
 import type { GeneralCategory, IncomeSection, TransactionKind, TransactionRow } from '../db/schema';
-import { listByYear, type CreateTransactionInput } from './transactions';
-import { listTaxYears } from './taxYears';
+import { createTransaction, listByYear, type CreateTransactionInput } from './transactions';
+import { createTaxYear, listTaxYears } from './taxYears';
 
 export class CsvError extends Error {
   constructor(message: string) {
@@ -269,4 +270,58 @@ export function parseForPreview(
   });
 
   return { targetYear, targetYearStatus, rows };
+}
+
+export interface CommitImportInput {
+  readonly targetYear: number;
+  /** The user-confirmed subset of a `parseForPreview` result's valid rows, in whatever order. */
+  readonly confirmedRows: readonly CreateTransactionInput[];
+  /** How many previewed rows were *not* confirmed (unchecked or invalid) — for the audit summary. */
+  readonly skippedCount: number;
+  readonly sourceFilename: string;
+}
+
+export interface CommitImportResult {
+  readonly taxYearId: number;
+  readonly created: readonly TransactionRow[];
+  readonly importedCount: number;
+  readonly skippedCount: number;
+}
+
+/**
+ * Commit an import: creates **only** the confirmed subset (TC-0001 #47), each through the
+ * normal `transactions.createTransaction` path with `source: 'import'` (so INV-1/2/4/5/6 all
+ * apply exactly as they do for a manual entry — no separate write path). Resolves `targetYear`
+ * to an existing tax year or creates it. Adds **one** extra `audit_log` row summarizing the
+ * whole batch (filename + imported/skipped counts, AC-24), on top of each row's own individual
+ * `create` audit entry from `createTransaction`.
+ */
+export function commitImport(sqlite: BetterSqlite3.Database, input: CommitImportInput): CommitImportResult {
+  const run = sqlite.transaction(() => {
+    const existing = listTaxYears(sqlite).find((y) => y.year === input.targetYear);
+    const year = existing ?? createTaxYear(sqlite, { year: input.targetYear });
+
+    const created = input.confirmedRows.map((row) =>
+      createTransaction(sqlite, { ...row, taxYearId: year.id, source: 'import' }),
+    );
+
+    recordMutation(sqlite, {
+      entityType: 'tax_year',
+      entityId: year.id,
+      action: 'import',
+      after: {
+        sourceFilename: input.sourceFilename,
+        importedCount: created.length,
+        skippedCount: input.skippedCount,
+      },
+    });
+
+    return {
+      taxYearId: year.id,
+      created,
+      importedCount: created.length,
+      skippedCount: input.skippedCount,
+    };
+  });
+  return run();
 }
