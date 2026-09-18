@@ -2,7 +2,7 @@
 id: REQ-0002
 type: requirement
 title: Change data folder path after setup
-status: draft
+status: active
 size: M
 created: 2026-09-18
 updated: 2026-09-18
@@ -111,3 +111,4 @@ plan, mechanical gate per phase, model review at feature close. User confirmed M
 | Date | Decision | By |
 |------|----------|----|
 | 2026-09-18 | Support both move and switch/link modes; existing-DB-at-destination always warns with use/cancel choice; sized M | user (in intake interview) |
+| 2026-09-18 | Scope+size gate: approved | user |
