@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+import type { AttachmentRow, ExpenseMethod, TaxYearRow, TransactionRow } from '../src/main/db/schema';
 import type { DataLocationInfo } from '../src/main/dataLocation';
+import type { AuditEntry } from '../src/main/repositories/auditLog';
+import type {
+  CreateReversalInput,
+  CreateTransactionInput,
+  UpdateTransactionInput,
+} from '../src/main/repositories/transactions';
 import type { LockCheckResult } from '../src/main/lockFile';
 
 // Narrow typed API surface for the renderer. The renderer never touches
@@ -21,6 +28,36 @@ const api = {
     /** Launch-time check (AT-1.8): claims the lock, reporting if another instance looked recent. */
     check: (folderPath: string): Promise<LockCheckResult> =>
       ipcRenderer.invoke('lockFile:check', folderPath),
+  },
+  taxYears: {
+    list: (): Promise<TaxYearRow[]> => ipcRenderer.invoke('taxYears:list'),
+    create: (year: number): Promise<TaxYearRow> => ipcRenderer.invoke('taxYears:create', year),
+    get: (id: number): Promise<TaxYearRow | undefined> => ipcRenderer.invoke('taxYears:get', id),
+    setExpenseMethod: (
+      id: number,
+      expenseMethod: ExpenseMethod,
+      lumpSumRateBp?: number | null,
+    ): Promise<TaxYearRow> =>
+      ipcRenderer.invoke('taxYears:setExpenseMethod', id, expenseMethod, lumpSumRateBp),
+  },
+  transactions: {
+    create: (input: CreateTransactionInput): Promise<TransactionRow> =>
+      ipcRenderer.invoke('transactions:create', input),
+    update: (id: number, input: UpdateTransactionInput): Promise<TransactionRow> =>
+      ipcRenderer.invoke('transactions:update', id, input),
+    void: (id: number): Promise<TransactionRow> => ipcRenderer.invoke('transactions:void', id),
+    createReversal: (originalId: number, input: CreateReversalInput): Promise<TransactionRow> =>
+      ipcRenderer.invoke('transactions:createReversal', originalId, input),
+    listByYear: (yearId: number): Promise<TransactionRow[]> =>
+      ipcRenderer.invoke('transactions:listByYear', yearId),
+    getHistory: (id: number): Promise<AuditEntry[]> => ipcRenderer.invoke('transactions:getHistory', id),
+  },
+  attachments: {
+    /** No remove method — evidence is not deletable (matches the no-hard-delete stance, AC-7). */
+    add: (transactionId: number, filePath: string): Promise<AttachmentRow> =>
+      ipcRenderer.invoke('attachments:add', transactionId, filePath),
+    list: (transactionId: number): Promise<AttachmentRow[]> =>
+      ipcRenderer.invoke('attachments:list', transactionId),
   },
 } as const;
 

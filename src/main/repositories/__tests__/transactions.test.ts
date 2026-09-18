@@ -11,6 +11,7 @@ import {
   TransactionError,
   createTransaction,
   getTransaction,
+  listByYear,
   voidTransaction,
 } from '../transactions';
 
@@ -159,6 +160,36 @@ describe('createTransaction — TC-0001 #34: general (non-tax) transaction', () 
         amountMinor: 1_000_000,
       }),
     ).toThrow(TransactionError);
+  });
+});
+
+describe('listByYear', () => {
+  it('returns every transaction for a tax year, date-ordered, and none from another year', () => {
+    const otherYearId = createTaxYear(temp.sqlite, { year: 2570 }).id;
+    createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-05-01',
+      amountMinor: 500_000,
+    });
+    createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-01-01',
+      amountMinor: 200_000,
+    });
+    createTransaction(temp.sqlite, {
+      taxYearId: otherYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-01-01',
+      amountMinor: 999_999,
+    });
+
+    const list = listByYear(temp.sqlite, taxYearId);
+    expect(list.map((t) => t.amountMinor)).toEqual([200_000, 500_000]);
   });
 });
 

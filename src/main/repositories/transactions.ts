@@ -117,6 +117,7 @@ interface Statements {
   readonly insert: BetterSqlite3.Statement;
   readonly insertReversal: BetterSqlite3.Statement;
   readonly selectById: BetterSqlite3.Statement;
+  readonly selectByTaxYear: BetterSqlite3.Statement;
   readonly updateStatus: BetterSqlite3.Statement;
   readonly updateFields: BetterSqlite3.Statement;
 }
@@ -151,6 +152,9 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     selectById: sqlite.prepare(`SELECT * FROM transactions WHERE id = ?`),
+    selectByTaxYear: sqlite.prepare(
+      `SELECT * FROM transactions WHERE tax_year_id = ? ORDER BY date ASC, id ASC`,
+    ),
     updateStatus: sqlite.prepare(
       `UPDATE transactions
        SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -279,6 +283,13 @@ export function voidTransaction(sqlite: BetterSqlite3.Database, id: number): Tra
 export function getTransaction(sqlite: BetterSqlite3.Database, id: number): TransactionRow | undefined {
   const raw = statementsFor(sqlite).selectById.get(id);
   return raw === undefined ? undefined : toTransactionRow(raw);
+}
+
+/** Every transaction (active, voided, and reversal rows alike) for one tax year, date-ordered. */
+export function listByYear(sqlite: BetterSqlite3.Database, taxYearId: number): TransactionRow[] {
+  return statementsFor(sqlite)
+    .selectByTaxYear.all(taxYearId)
+    .map(toTransactionRow);
 }
 
 function requireOpenTaxYear(sqlite: BetterSqlite3.Database, taxYearId: number, action: string): void {
