@@ -2,9 +2,9 @@
 id: PLAN-0001
 type: plan
 title: Annual tax income/expense tracker
-status: active
+status: implemented
 created: 2026-09-13
-updated: 2026-09-17
+updated: 2026-09-18
 links: [ANA-0001, TC-0001, PROTO-0001]
 ---
 
@@ -141,3 +141,4 @@ lists AT ids that must be Done first (— if none).
 |------|--------|--------|
 | 2026-09-13 | **Gate: approved.** 5 phases, 36 tasks confirmed. | Proceed to `/dev-implement` (or `/dev-execute` for continuous execution). |
 | 2026-09-17 | AT-1.5 redefined as an optional seed loader seeding an empty built-in set (no `TAX-2025` data available); AT-1.6's done-criterion no longer requires seeded reference data, only that Onboarding/Dashboard handle zero categories/brackets gracefully. | User has no seed data on hand; unblocks the P1 stream paused since 2026-09-15 (see ANA-0001 decision 14, REQ-0001 2026-09-17 decision log entry). |
+| 2026-09-18 | **All 36 tasks (P1-P5) implemented and merged to `main`. Plan status → `implemented`.** REV-0002 (self-review, `qa-reviewer` dispatch blocked by PL-0008) verdict: PASS with notes — 0 defects, 2 hardening notes filed as PL-0011. | `/dev-execute PLAN-0001` ran to completion across this and the prior session (P1 by an earlier stream, P2-P5 by this one, both adapted to execute inline due to PL-0008). |
