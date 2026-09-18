@@ -10,19 +10,20 @@ import Dashboard from './pages/Dashboard';
 import Entry from './pages/Entry';
 import Deductions from './pages/Deductions';
 import Settings from './pages/Settings';
+import Summary from './pages/Summary';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-type Screen = 'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears';
+type Screen = 'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears' | 'summary';
 
 /**
  * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
  * switching — no real router exists yet (nothing in the plan calls for one specifically; this
- * is the smallest thing that makes more than one screen reachable). Summary/Import-Export
- * (AT-4.7/AT-5.6) are still placeholders.
+ * is the smallest thing that makes more than one screen reachable). Import/Export (AT-5.6) is
+ * still a placeholder.
  *
  * `TaxYearSwitcher` (AT-3.7) gets its own tab rather than replacing Entry's/Deductions'
  * independent `useWorkingTaxYear` resolution — lifting "the selected year" into shared state
@@ -54,6 +55,9 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <a href="#" className={screen === 'taxYears' ? 'active' : ''} onClick={() => setScreen('taxYears')}>
             ปีภาษี
           </a>
+          <a href="#" className={screen === 'summary' ? 'active' : ''} onClick={() => setScreen('summary')}>
+            สรุปปี
+          </a>
         </div>
         <div className="year-pill">
           <span className="status-dot open" />
@@ -72,6 +76,7 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <TaxYearSwitcher selectedYearId={selectedYear?.id ?? null} onSelectYear={setSelectedYear} />
         </div>
       )}
+      {screen === 'summary' && <Summary />}
     </>
   );
 }

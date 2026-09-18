@@ -160,6 +160,52 @@ describe('taxYears:close/reopen + calc:computeYear (AT-4.5)', () => {
     const result = handlers['calc:computeYear'](year.id);
     expect(result.totalIncomeMinor).toBe(100_000_00);
   });
+
+  it('TC-0001 #15: two years summaries stay independent', () => {
+    seedTaxBrackets();
+    const yearA = handlers['taxYears:create'](2568);
+    const yearB = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: yearA.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2025-03-15',
+      amountMinor: 300_000_00,
+    });
+    handlers['transactions:create']({
+      taxYearId: yearB.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 900_000_00,
+    });
+
+    const resultA = handlers['calc:computeYear'](yearA.id);
+    const resultB = handlers['calc:computeYear'](yearB.id);
+
+    expect(resultA.totalIncomeMinor).toBe(300_000_00);
+    expect(resultB.totalIncomeMinor).toBe(900_000_00);
+    expect(resultA.taxTotalMinor).not.toBe(resultB.taxTotalMinor);
+  });
+
+  it('TC-0001 #28: an open year reflects a bracket rate edit on the next computeYear call', () => {
+    seedTaxBrackets();
+    const year = handlers['taxYears:create'](2569);
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 200_000_00,
+    });
+
+    const before = handlers['calc:computeYear'](year.id);
+    const secondBracket = handlers['settings:getBrackets']().find((b) => b.sortOrder === 2);
+    handlers['settings:updateBracket'](secondBracket?.id as number, 2000); // 5% -> 20%
+    const after = handlers['calc:computeYear'](year.id);
+
+    expect(after.taxTotalMinor).toBeGreaterThan(before.taxTotalMinor);
+  });
 });
 
 describe('deductions/settings channels (AT-3.4)', () => {
