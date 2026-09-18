@@ -6,13 +6,14 @@ import LockWarningBanner from './components/LockWarningBanner';
 import Onboarding from './pages/Onboarding';
 import Entry from './pages/Entry';
 import Deductions from './pages/Deductions';
+import Settings from './pages/Settings';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-type Screen = 'entry' | 'deductions';
+type Screen = 'entry' | 'deductions' | 'settings';
 
 /**
  * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
@@ -35,14 +36,18 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <a href="#" className={screen === 'deductions' ? 'active' : ''} onClick={() => setScreen('deductions')}>
             ค่าลดหย่อน
           </a>
-          <span className="muted">ตั้งค่า (เร็วๆ นี้)</span>
+          <a href="#" className={screen === 'settings' ? 'active' : ''} onClick={() => setScreen('settings')}>
+            ตั้งค่า
+          </a>
         </div>
         <div className="year-pill">
           <span className="status-dot open" />
           {info.folderPath}
         </div>
       </nav>
-      {screen === 'entry' ? <Entry /> : <Deductions />}
+      {screen === 'entry' && <Entry />}
+      {screen === 'deductions' && <Deductions />}
+      {screen === 'settings' && <Settings />}
     </>
   );
 }
