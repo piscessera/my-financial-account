@@ -41,7 +41,9 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
   const statements: Statements = {
     selectAllSharedCaps: sqlite.prepare(`SELECT * FROM shared_caps ORDER BY name ASC`),
     selectSharedCapById: sqlite.prepare(`SELECT * FROM shared_caps WHERE id = ?`),
-    updateSharedCapAmount: sqlite.prepare(`UPDATE shared_caps SET cap_amount_minor = ? WHERE id = ?`),
+    updateSharedCapAmount: sqlite.prepare(
+      `UPDATE shared_caps SET cap_amount_minor = ? WHERE id = ?`,
+    ),
     selectAllBrackets: sqlite.prepare(`SELECT * FROM tax_brackets ORDER BY sort_order ASC`),
     selectBracketById: sqlite.prepare(`SELECT * FROM tax_brackets WHERE id = ?`),
     updateBracketFields: sqlite.prepare(
@@ -70,9 +72,7 @@ function requireSharedCap(sqlite: BetterSqlite3.Database, id: number): SharedCap
 }
 
 export function getSharedCaps(sqlite: BetterSqlite3.Database): SharedCapRow[] {
-  return statementsFor(sqlite)
-    .selectAllSharedCaps.all()
-    .map(toSharedCapRow);
+  return statementsFor(sqlite).selectAllSharedCaps.all().map(toSharedCapRow);
 }
 
 /** Edit a shared group's total ceiling (e.g. life + health insurance's combined 100,000 cap). */
@@ -82,7 +82,9 @@ export function updateSharedCap(
   newCapAmountMinor: number,
 ): SharedCapRow {
   if (!Number.isSafeInteger(newCapAmountMinor) || newCapAmountMinor < 0) {
-    throw new SettingsError(`newCapAmountMinor must be a non-negative integer, got ${String(newCapAmountMinor)}.`);
+    throw new SettingsError(
+      `newCapAmountMinor must be a non-negative integer, got ${String(newCapAmountMinor)}.`,
+    );
   }
 
   const run = sqlite.transaction(() => {
@@ -128,9 +130,7 @@ function requireBracket(sqlite: BetterSqlite3.Database, id: number): TaxBracketR
 
 /** All tax brackets, ascending. Empty until real `TAX-2025` figures are seeded (ANA-0001 decision 14). */
 export function getBrackets(sqlite: BetterSqlite3.Database): TaxBracketRow[] {
-  return statementsFor(sqlite)
-    .selectAllBrackets.all()
-    .map(toBracketRow);
+  return statementsFor(sqlite).selectAllBrackets.all().map(toBracketRow);
 }
 
 export interface UpdateBracketBounds {
@@ -151,19 +151,26 @@ export function updateBracket(
   bounds: UpdateBracketBounds = {},
 ): TaxBracketRow {
   if (!Number.isSafeInteger(rateBp) || rateBp < 0 || rateBp > 10000) {
-    throw new SettingsError(`rateBp must be an integer in [0, 10000] basis points, got ${String(rateBp)}.`);
+    throw new SettingsError(
+      `rateBp must be an integer in [0, 10000] basis points, got ${String(rateBp)}.`,
+    );
   }
 
   const run = sqlite.transaction(() => {
     const before = requireBracket(sqlite, id);
     const lowerBoundMinor = bounds.lowerBoundMinor ?? before.lowerBoundMinor;
-    const upperBoundMinor = bounds.upperBoundMinor !== undefined ? bounds.upperBoundMinor : before.upperBoundMinor;
+    const upperBoundMinor =
+      bounds.upperBoundMinor !== undefined ? bounds.upperBoundMinor : before.upperBoundMinor;
 
     if (!Number.isSafeInteger(lowerBoundMinor) || lowerBoundMinor < 0) {
-      throw new SettingsError(`lowerBoundMinor must be a non-negative integer, got ${String(lowerBoundMinor)}.`);
+      throw new SettingsError(
+        `lowerBoundMinor must be a non-negative integer, got ${String(lowerBoundMinor)}.`,
+      );
     }
     if (upperBoundMinor != null && upperBoundMinor <= lowerBoundMinor) {
-      throw new SettingsError('upperBoundMinor must be greater than lowerBoundMinor (or null for the top bracket).');
+      throw new SettingsError(
+        'upperBoundMinor must be greater than lowerBoundMinor (or null for the top bracket).',
+      );
     }
 
     statementsFor(sqlite).updateBracketFields.run(rateBp, lowerBoundMinor, upperBoundMinor, id);

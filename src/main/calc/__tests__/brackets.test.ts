@@ -15,8 +15,20 @@ const TAX_2025_BRACKETS: TaxBracketRow[] = [
   { id: 3, lowerBoundMinor: 300_000_00, upperBoundMinor: 500_000_00, rateBp: 1000, sortOrder: 3 },
   { id: 4, lowerBoundMinor: 500_000_00, upperBoundMinor: 750_000_00, rateBp: 1500, sortOrder: 4 },
   { id: 5, lowerBoundMinor: 750_000_00, upperBoundMinor: 1_000_000_00, rateBp: 2000, sortOrder: 5 },
-  { id: 6, lowerBoundMinor: 1_000_000_00, upperBoundMinor: 2_000_000_00, rateBp: 2500, sortOrder: 6 },
-  { id: 7, lowerBoundMinor: 2_000_000_00, upperBoundMinor: 5_000_000_00, rateBp: 3000, sortOrder: 7 },
+  {
+    id: 6,
+    lowerBoundMinor: 1_000_000_00,
+    upperBoundMinor: 2_000_000_00,
+    rateBp: 2500,
+    sortOrder: 6,
+  },
+  {
+    id: 7,
+    lowerBoundMinor: 2_000_000_00,
+    upperBoundMinor: 5_000_000_00,
+    rateBp: 3000,
+    sortOrder: 7,
+  },
   { id: 8, lowerBoundMinor: 5_000_000_00, upperBoundMinor: null, rateBp: 3500, sortOrder: 8 },
 ];
 
@@ -26,7 +38,9 @@ describe('TC-0001 #11: progressive bracket calculation, multi-bracket', () => {
 
     expect(result.totalTaxMinor).toBe(73_766_21);
     // Bracket-by-bracket: 0 + 7,500.00 + 20,000.00 + 37,500.00 + 8,766.21 (partial 5th bracket).
-    expect(result.breakdown.map((b) => b.taxMinor)).toEqual([0, 750_000, 2_000_000, 3_750_000, 876_621, 0, 0, 0]);
+    expect(result.breakdown.map((b) => b.taxMinor)).toEqual([
+      0, 750_000, 2_000_000, 3_750_000, 876_621, 0, 0, 0,
+    ]);
     expect(result.breakdown[4].amountInBracketMinor).toBe(4_383_104); // 793,831.04 - 750,000.00
   });
 });

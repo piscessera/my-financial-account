@@ -36,7 +36,14 @@ const donation: DeductionCategoryRow = {
 };
 
 function entryFor(taxYearId: number): DeductionEntryRow {
-  return { id: 1, taxYearId, categoryId: 1, amountMinor: 80_000_00, count: null, updatedAt: '2026-01-01T00:00:00.000Z' };
+  return {
+    id: 1,
+    taxYearId,
+    categoryId: 1,
+    amountMinor: 80_000_00,
+    count: null,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
 }
 
 describe('TC-0001 #27: setting change applies to open years only going forward', () => {
@@ -67,7 +74,8 @@ describe('TC-0001 #27: setting change applies to open years only going forward',
     };
     const { taxYear: closedAfter } = close(temp.sqlite, closedYear.id, closeInput);
     const frozenTotalDeductions = closedAfter.frozenResultJson
-      ? (JSON.parse(closedAfter.frozenResultJson) as { totalDeductionsMinor: number }).totalDeductionsMinor
+      ? (JSON.parse(closedAfter.frozenResultJson) as { totalDeductionsMinor: number })
+          .totalDeductionsMinor
       : NaN;
     expect(frozenTotalDeductions).toBe(80_000_00);
 

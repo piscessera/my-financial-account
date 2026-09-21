@@ -63,7 +63,10 @@ describe('exportLedger — TC-0001 #43', () => {
     });
 
     setStatusForTest(temp.sqlite, year.id, 'closed');
-    const reversal = createReversal(temp.sqlite, income.id, { date: '2026-05-01', note: 'correction' });
+    const reversal = createReversal(temp.sqlite, income.id, {
+      date: '2026-05-01',
+      note: 'correction',
+    });
 
     const destPath = join(outDir, 'ledger.csv');
     exportLedger(temp.sqlite, year.id, destPath);

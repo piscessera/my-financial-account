@@ -51,9 +51,13 @@ describe('parseForPreview — TC-0001 #45: flags invalid rows without writing an
     expect(result.rows[1].valid).toBe(false);
     expect(result.rows[1].errors.some((e) => e.includes('income_section'))).toBe(true);
 
-    const count = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM transactions`).get() as { n: number };
+    const count = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM transactions`).get() as {
+      n: number;
+    };
     expect(count.n).toBe(0);
-    const yearCount = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM tax_years`).get() as { n: number };
+    const yearCount = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM tax_years`).get() as {
+      n: number;
+    };
     expect(yearCount.n).toBe(0); // parseForPreview never creates the year either
   });
 
@@ -96,14 +100,18 @@ describe('parseForPreview — general-transaction and money validation', () => {
   });
 
   it('accepts a well-formed general row', () => {
-    const path = writeCsv(['3,2026-03-15,expense,false,,food,450.00,THB,0.00,,,lunch,active,,manual']);
+    const path = writeCsv([
+      '3,2026-03-15,expense,false,,food,450.00,THB,0.00,,,lunch,active,,manual',
+    ]);
     const result = parseForPreview(temp.sqlite, path, 2569);
     expect(result.rows[0].valid).toBe(true);
     expect(result.rows[0].data?.generalCategory).toBe('food');
   });
 
   it('rejects an invalid amount', () => {
-    const path = writeCsv(['4,2026-03-15,income,true,40_1,,not-a-number,THB,0.00,,,,active,,manual']);
+    const path = writeCsv([
+      '4,2026-03-15,income,true,40_1,,not-a-number,THB,0.00,,,,active,,manual',
+    ]);
     const result = parseForPreview(temp.sqlite, path, 2569);
     expect(result.rows[0].valid).toBe(false);
   });

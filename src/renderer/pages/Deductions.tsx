@@ -18,7 +18,10 @@ function capDescription(category: DeductionCategoryRow, group: SharedCapRow | un
   if (category.capType === 'per_count') {
     return `${CAP_TYPE_LABELS.per_count} — คนละ ${formatSatangAsBaht(category.capAmountMinor ?? 0)} บาท`;
   }
-  const subCap = category.capAmountMinor !== null ? ` · sub-cap ตัวเอง ${formatSatangAsBaht(category.capAmountMinor)}` : '';
+  const subCap =
+    category.capAmountMinor !== null
+      ? ` · sub-cap ตัวเอง ${formatSatangAsBaht(category.capAmountMinor)}`
+      : '';
   return `${CAP_TYPE_LABELS.shared_group_member}${group ? ` (${group.name})` : ''} เพดานรวม ${
     group ? formatSatangAsBaht(group.capAmountMinor) : '—'
   }${subCap}`;
@@ -74,7 +77,10 @@ export default function Deductions(): JSX.Element {
     if (yearState.status === 'ready') void reload(yearState.year.id);
   }, [yearState, reload]);
 
-  const computed = useMemo(() => computeDeductions(categories, entries, sharedCaps), [categories, entries, sharedCaps]);
+  const computed = useMemo(
+    () => computeDeductions(categories, entries, sharedCaps),
+    [categories, entries, sharedCaps],
+  );
   const sharedGroupById = useMemo(() => new Map(sharedCaps.map((g) => [g.id, g])), [sharedCaps]);
 
   function updateDraft(categoryId: number, patch: Partial<RowDraft>): void {
@@ -92,7 +98,10 @@ export default function Deductions(): JSX.Element {
         if (!amountResult.ok) {
           throw new Error(`"${category.name}": ${amountResult.error.message}`);
         }
-        const count = category.capType === 'per_count' && draft.countText.trim() !== '' ? Number(draft.countText) : null;
+        const count =
+          category.capType === 'per_count' && draft.countText.trim() !== ''
+            ? Number(draft.countText)
+            : null;
         await window.api.deductions.setEntry({
           taxYearId: yearId,
           categoryId: category.id,
@@ -110,7 +119,12 @@ export default function Deductions(): JSX.Element {
   }
 
   if (yearState.status === 'loading') return <div className="page">กำลังโหลด...</div>;
-  if (yearState.status === 'error') return <div className="page" role="alert">{yearState.message}</div>;
+  if (yearState.status === 'error')
+    return (
+      <div className="page" role="alert">
+        {yearState.message}
+      </div>
+    );
 
   const yearId = yearState.year.id;
 
@@ -137,7 +151,10 @@ export default function Deductions(): JSX.Element {
           {categories.map((category) => {
             const draft = drafts[category.id] ?? { amountText: '', countText: '' };
             const perCategory = computed.perCategory.find((p) => p.categoryId === category.id);
-            const group = category.sharedGroupId !== null ? sharedGroupById.get(category.sharedGroupId) : undefined;
+            const group =
+              category.sharedGroupId !== null
+                ? sharedGroupById.get(category.sharedGroupId)
+                : undefined;
             const groupContribution =
               category.sharedGroupId !== null
                 ? computed.sharedGroups.find((g) => g.sharedGroupId === category.sharedGroupId)
@@ -170,7 +187,15 @@ export default function Deductions(): JSX.Element {
                 </div>
                 <input
                   className="ded-input num"
-                  style={overCap ? { borderColor: 'var(--bad)', background: 'var(--bad-soft)', color: 'var(--bad)' } : undefined}
+                  style={
+                    overCap
+                      ? {
+                          borderColor: 'var(--bad)',
+                          background: 'var(--bad-soft)',
+                          color: 'var(--bad)',
+                        }
+                      : undefined
+                  }
                   value={draft.amountText}
                   placeholder="0.00"
                   onChange={(e) => updateDraft(category.id, { amountText: e.target.value })}
@@ -180,7 +205,12 @@ export default function Deductions(): JSX.Element {
           })}
 
           <div className="form-actions">
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void handleSave(yearId)}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleSave(yearId)}
+            >
               บันทึกค่าลดหย่อน
             </button>
           </div>

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.myfinancialaccount.app",
+  "productName": "My Financial Account",
+  "directories": {
+    "output": "release"
+  },
+  "files": ["dist", "dist-electron"],
+  "asar": true,
+  "asarUnpack": ["**/better-sqlite3/**"],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

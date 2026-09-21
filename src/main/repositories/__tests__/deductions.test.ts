@@ -76,7 +76,12 @@ describe('createCategory — TC-0001 #37: each cap shape', () => {
   it('all three are immediately available via listCategories', () => {
     const groupId = insertSharedCap('Group', 100_00);
     createCategory(temp.sqlite, { code: 'a', name: 'A', capType: 'fixed', capAmountMinor: 100_00 });
-    createCategory(temp.sqlite, { code: 'b', name: 'B', capType: 'per_count', capAmountMinor: 50_00 });
+    createCategory(temp.sqlite, {
+      code: 'b',
+      name: 'B',
+      capType: 'per_count',
+      capAmountMinor: 50_00,
+    });
     createCategory(temp.sqlite, {
       code: 'c',
       name: 'C',
@@ -109,7 +114,11 @@ describe('setCategoryActive — TC-0001 #38/#39: archive and reactivate', () => 
       capAmountMinor: 100_000_00,
     });
     const year2568 = createTaxYear(temp.sqlite, { year: 2568 }).id;
-    const entry = setEntry(temp.sqlite, { taxYearId: year2568, categoryId: category.id, amountMinor: 5_000_00 });
+    const entry = setEntry(temp.sqlite, {
+      taxYearId: year2568,
+      categoryId: category.id,
+      amountMinor: 5_000_00,
+    });
 
     const archived = setCategoryActive(temp.sqlite, category.id, false);
 
@@ -119,7 +128,9 @@ describe('setCategoryActive — TC-0001 #38/#39: archive and reactivate', () => 
     expect(listCategories(temp.sqlite).find((c) => c.id === category.id)?.isActive).toBe(false);
     // The entry itself, and its category's cap/name, are exactly as before.
     expect(entry.amountMinor).toBe(5_000_00);
-    const stillThere = temp.sqlite.prepare(`SELECT * FROM deduction_entries WHERE id = ?`).get(entry.id);
+    const stillThere = temp.sqlite
+      .prepare(`SELECT * FROM deduction_entries WHERE id = ?`)
+      .get(entry.id);
     expect(stillThere).toBeDefined();
   });
 
@@ -156,12 +167,14 @@ describe('updateCategory — TC-0001 #40: rename', () => {
     expect(renamed.name).toBe('เงินบริจาคการศึกษา');
     expect(renamed.capAmountMinor).toBe(100_000_00);
     const entryAfter = temp.sqlite
-      .prepare(`SELECT amount_minor FROM deduction_entries WHERE tax_year_id = ? AND category_id = ?`)
+      .prepare(
+        `SELECT amount_minor FROM deduction_entries WHERE tax_year_id = ? AND category_id = ?`,
+      )
       .get(year, category.id) as { amount_minor: number };
     expect(entryAfter.amount_minor).toBe(20_000_00);
   });
 
-  it('can also change a fixed/per_count category\'s cap amount', () => {
+  it("can also change a fixed/per_count category's cap amount", () => {
     const category = createCategory(temp.sqlite, {
       code: 'donation',
       name: 'เงินบริจาค',
@@ -183,12 +196,22 @@ describe('setEntry', () => {
     });
     const year = createTaxYear(temp.sqlite, { year: 2569 }).id;
 
-    const first = setEntry(temp.sqlite, { taxYearId: year, categoryId: category.id, amountMinor: 1_000_00 });
-    const second = setEntry(temp.sqlite, { taxYearId: year, categoryId: category.id, amountMinor: 2_000_00 });
+    const first = setEntry(temp.sqlite, {
+      taxYearId: year,
+      categoryId: category.id,
+      amountMinor: 1_000_00,
+    });
+    const second = setEntry(temp.sqlite, {
+      taxYearId: year,
+      categoryId: category.id,
+      amountMinor: 2_000_00,
+    });
 
     expect(first.id).toBe(second.id);
     expect(second.amountMinor).toBe(2_000_00);
-    const count = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM deduction_entries`).get() as { n: number };
+    const count = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM deduction_entries`).get() as {
+      n: number;
+    };
     expect(count.n).toBe(1);
   });
 });

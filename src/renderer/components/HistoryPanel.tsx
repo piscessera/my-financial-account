@@ -30,7 +30,11 @@ function describe(entry: AuditEntry): string {
   if (entry.action === 'create' && after?.amountMinor !== undefined) {
     return `สร้างรายการ — จำนวนเงิน ${formatSatangAsBaht(after.amountMinor)}`;
   }
-  if (entry.action === 'update' && before?.amountMinor !== undefined && after?.amountMinor !== undefined) {
+  if (
+    entry.action === 'update' &&
+    before?.amountMinor !== undefined &&
+    after?.amountMinor !== undefined
+  ) {
     if (before.amountMinor !== after.amountMinor) {
       return `แก้ไขจำนวนเงิน: ${formatSatangAsBaht(before.amountMinor)} → ${formatSatangAsBaht(after.amountMinor)}`;
     }

@@ -26,7 +26,9 @@ export class ExpenseMethodError extends Error {
 export function computeLumpSumDeduction(incomeMinor: Satang, lumpSumRateBp: number): Satang {
   assertSatang(incomeMinor);
   if (!Number.isSafeInteger(lumpSumRateBp) || lumpSumRateBp < 0 || lumpSumRateBp > 10000) {
-    throw new ExpenseMethodError(`lumpSumRateBp must be an integer in [0, 10000], got ${String(lumpSumRateBp)}.`);
+    throw new ExpenseMethodError(
+      `lumpSumRateBp must be an integer in [0, 10000], got ${String(lumpSumRateBp)}.`,
+    );
   }
   if (incomeMinor < 0) {
     throw new ExpenseMethodError(`incomeMinor must be non-negative, got ${incomeMinor}.`);
@@ -65,7 +67,9 @@ export function computeExpenseDeduction(input: ComputeExpenseDeductionInput): Sa
 
   const actual = input.actualExpensesMinor ?? 0;
   if (!Number.isSafeInteger(actual) || actual < 0) {
-    throw new ExpenseMethodError(`actualExpensesMinor must be a non-negative integer, got ${String(actual)}.`);
+    throw new ExpenseMethodError(
+      `actualExpensesMinor must be a non-negative integer, got ${String(actual)}.`,
+    );
   }
   return actual;
 }

@@ -37,7 +37,10 @@ describe('checkAndClaimLock', () => {
     const fiveMinutesLater = firstClaim + 5 * 60 * 1000;
     const result = checkAndClaimLock(folder, fiveMinutesLater);
     expect(result.warn).toBe(false);
-    expect(result.previous).toEqual({ hostname: hostname(), timestamp: '2026-09-17T10:00:00.000Z' });
+    expect(result.previous).toEqual({
+      hostname: hostname(),
+      timestamp: '2026-09-17T10:00:00.000Z',
+    });
   });
 
   it('warns when the existing lock is recent (< 5 minutes old)', () => {

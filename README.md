@@ -52,14 +52,15 @@ npm run dev
 
 ## Available scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the Vite dev server and launch the Electron app against it. |
-| `npm run build` | Type-check, build the renderer (Vite) and compile the Electron main/preload sources. |
-| `npm run preview` | Preview the built renderer with Vite (renderer only, no Electron shell). |
-| `npm test` | Run the Vitest unit test suite (`src/main/**/*.test.ts`). |
-| `npm run lint` | Lint the project with ESLint. |
-| `npm run format` | Format the project with Prettier. |
+| Command           | Description                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `npm run dev`     | Start the Vite dev server and launch the Electron app against it.                    |
+| `npm run build`   | Type-check, build the renderer (Vite) and compile the Electron main/preload sources. |
+| `npm run preview` | Preview the built renderer with Vite (renderer only, no Electron shell).             |
+| `npm test`        | Run the Vitest unit test suite (`src/main/**/*.test.ts`).                            |
+| `npm run lint`    | Lint the project with ESLint.                                                        |
+| `npm run format`  | Format the project with Prettier.                                                    |
+| `npm run build:app | Release                                                                             |
 
 ## Project layout
 

@@ -10,3 +10,4 @@ dist-electron/
 release/
 *.local
 .DS_Store
+claude/npm-install-error-20b7ef

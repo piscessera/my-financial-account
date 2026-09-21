@@ -53,7 +53,9 @@ describe('close — TC-0001 #20: closing a year freezes its result', () => {
     expect(JSON.parse(taxYear.frozenResultJson as string)).toEqual(frozenResult);
 
     const row = temp.sqlite
-      .prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'tax_year' AND action = 'close'`)
+      .prepare(
+        `SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'tax_year' AND action = 'close'`,
+      )
       .get() as { n: number };
     expect(row.n).toBe(1);
   });
@@ -77,7 +79,10 @@ describe('TC-0001 #32: closed-year recompute matches frozen snapshot (INV-3)', (
       whtMinor: 5_000_00,
     });
 
-    const { frozenResult } = close(temp.sqlite, year.id, { ...EMPTY_CLOSE_INPUT, transactions: [income] });
+    const { frozenResult } = close(temp.sqlite, year.id, {
+      ...EMPTY_CLOSE_INPUT,
+      transactions: [income],
+    });
     const closedYear = getTaxYear(temp.sqlite, year.id);
     const storedSnapshot = JSON.parse(closedYear?.frozenResultJson as string);
 
@@ -97,7 +102,9 @@ describe('reopen', () => {
     expect(reopened.frozenResultJson).toBe(closed.frozenResultJson);
 
     const row = temp.sqlite
-      .prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'tax_year' AND action = 'reopen'`)
+      .prepare(
+        `SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'tax_year' AND action = 'reopen'`,
+      )
       .get() as { n: number };
     expect(row.n).toBe(1);
   });

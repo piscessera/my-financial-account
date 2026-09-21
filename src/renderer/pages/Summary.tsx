@@ -6,7 +6,11 @@ import type { TaxBracketRow, TransactionRow } from '../../main/db/schema';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 function formatBracketRange(lowerBoundMinor: number, upperBoundMinor: number | null): string {
@@ -73,7 +77,12 @@ export default function Summary(): JSX.Element {
   }
 
   if (yearState.status === 'loading') return <div className="page">กำลังโหลด...</div>;
-  if (yearState.status === 'error') return <div className="page" role="alert">{yearState.message}</div>;
+  if (yearState.status === 'error')
+    return (
+      <div className="page" role="alert">
+        {yearState.message}
+      </div>
+    );
   if (!result) return <div className="page">กำลังโหลด...</div>;
 
   const year = yearState.year;
@@ -104,7 +113,8 @@ export default function Summary(): JSX.Element {
 
       {isClosed && (
         <div className="locked-banner">
-          🔒 ปีภาษีนี้ปิดแล้วเมื่อ {year.closedAt ? formatDate(year.closedAt) : '—'} — ตัวเลขด้านล่างคือค่าที่บันทึกไว้ ณ ตอนปิด แก้ไขตรงไม่ได้
+          🔒 ปีภาษีนี้ปิดแล้วเมื่อ {year.closedAt ? formatDate(year.closedAt) : '—'} —
+          ตัวเลขด้านล่างคือค่าที่บันทึกไว้ ณ ตอนปิด แก้ไขตรงไม่ได้
         </div>
       )}
 
@@ -115,15 +125,25 @@ export default function Summary(): JSX.Element {
         </div>
         <div className="tile">
           <div className="k">ค่าใช้จ่าย + ค่าลดหย่อนรวม</div>
-          <div className="v num">{formatSatangAsBaht(result.expenseDeductionMinor + result.totalDeductionsMinor)}</div>
+          <div className="v num">
+            {formatSatangAsBaht(result.expenseDeductionMinor + result.totalDeductionsMinor)}
+          </div>
         </div>
         <div className="tile">
           <div className="k">เงินได้สุทธิ</div>
           <div className="v num">{formatSatangAsBaht(result.netTaxableMinor)}</div>
         </div>
         <div className={`tile ${isClosed && result.balance.direction === 'due' ? 'bad' : ''}`}>
-          <div className="k">{isClosed ? `ผลลัพธ์ — ${result.balance.direction === 'due' ? 'ต้องจ่ายเพิ่ม' : 'ขอคืนภาษีได้'}` : 'ภาษีคำนวณได้ (แช่แข็ง)'}</div>
-          <div className="v num">{isClosed ? `฿${formatSatangAsBaht(result.balance.amountMinor)}` : formatSatangAsBaht(result.taxTotalMinor)}</div>
+          <div className="k">
+            {isClosed
+              ? `ผลลัพธ์ — ${result.balance.direction === 'due' ? 'ต้องจ่ายเพิ่ม' : 'ขอคืนภาษีได้'}`
+              : 'ภาษีคำนวณได้ (แช่แข็ง)'}
+          </div>
+          <div className="v num">
+            {isClosed
+              ? `฿${formatSatangAsBaht(result.balance.amountMinor)}`
+              : formatSatangAsBaht(result.taxTotalMinor)}
+          </div>
         </div>
       </div>
 
@@ -142,7 +162,11 @@ export default function Summary(): JSX.Element {
               const bracket = brackets.find((row) => row.id === b.bracketId);
               return (
                 <tr key={b.bracketId} className={b.amountInBracketMinor > 0 ? 'hit' : undefined}>
-                  <td>{bracket ? formatBracketRange(bracket.lowerBoundMinor, bracket.upperBoundMinor) : '—'}</td>
+                  <td>
+                    {bracket
+                      ? formatBracketRange(bracket.lowerBoundMinor, bracket.upperBoundMinor)
+                      : '—'}
+                  </td>
                   <td>{b.rateBp === 0 ? 'ยกเว้น' : `${(b.rateBp / 100).toFixed(0)}%`}</td>
                   <td>{formatSatangAsBaht(b.taxMinor)}</td>
                 </tr>
@@ -153,11 +177,16 @@ export default function Summary(): JSX.Element {
         <div className={`result-strip ${result.balance.direction}`}>
           <div>
             <div className="label">
-              ภาษีคำนวณได้ {formatSatangAsBaht(result.taxTotalMinor)} − ภาษีหัก ณ ที่จ่ายสะสม {formatSatangAsBaht(result.whtTotalMinor)}
+              ภาษีคำนวณได้ {formatSatangAsBaht(result.taxTotalMinor)} − ภาษีหัก ณ ที่จ่ายสะสม{' '}
+              {formatSatangAsBaht(result.whtTotalMinor)}
             </div>
             <div className="label" style={{ marginTop: 2 }}>
               ผลลัพธ์:{' '}
-              <b style={{ color: result.balance.direction === 'refund' ? 'var(--good)' : 'var(--bad)' }}>
+              <b
+                style={{
+                  color: result.balance.direction === 'refund' ? 'var(--good)' : 'var(--bad)',
+                }}
+              >
                 {result.balance.direction === 'refund' ? 'ขอคืนภาษีได้' : 'ต้องจ่ายเพิ่ม'}
               </b>
             </div>
@@ -168,7 +197,11 @@ export default function Summary(): JSX.Element {
 
       {!isClosed && !confirmingClose && (
         <div className="form-actions" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-primary" onClick={() => setConfirmingClose(true)}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setConfirmingClose(true)}
+          >
             ปิดปีภาษี
           </button>
         </div>
@@ -187,13 +220,18 @@ export default function Summary(): JSX.Element {
               </li>
               <li>ค่าลดหย่อนของปีนี้จะล็อกเช่นกัน</li>
               <li>
-                ตัวเลขสรุปด้านบนจะถูก &quot;แช่แข็ง&quot; ไว้ — ต่อให้แก้ไขเพดาน/อัตราภาษีที่หน้าตั้งค่าทีหลัง
-                ปีนี้จะไม่เปลี่ยน (INV-7)
+                ตัวเลขสรุปด้านบนจะถูก &quot;แช่แข็ง&quot; ไว้ —
+                ต่อให้แก้ไขเพดาน/อัตราภาษีที่หน้าตั้งค่าทีหลัง ปีนี้จะไม่เปลี่ยน (INV-7)
               </li>
               <li>แก้ไขอะไรหลังจากนี้ต้องทำผ่าน &quot;รายการกลับรายการ&quot; เท่านั้น</li>
             </ul>
             <div className="form-actions" style={{ marginTop: 0 }}>
-              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setConfirmingClose(false)}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busy}
+                onClick={() => setConfirmingClose(false)}
+              >
                 ยกเลิก
               </button>
               <button
@@ -226,7 +264,9 @@ export default function Summary(): JSX.Element {
               {originalOfReversal && (
                 <tr>
                   <td>{formatDate(originalOfReversal.date)}</td>
-                  <td>{originalOfReversal.note ?? originalOfReversal.sourcePayer ?? '(ต้นฉบับ)'}</td>
+                  <td>
+                    {originalOfReversal.note ?? originalOfReversal.sourcePayer ?? '(ต้นฉบับ)'}
+                  </td>
                   <td className="num">{formatSatangAsBaht(originalOfReversal.amountMinor)}</td>
                   <td>
                     <span className="pill active">active</span>
@@ -247,7 +287,12 @@ export default function Summary(): JSX.Element {
       )}
       {isClosed && (
         <div className="form-actions" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void handleReopen(year.id)}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={busy}
+            onClick={() => void handleReopen(year.id)}
+          >
             🔓 เปิดปีภาษีนี้อีกครั้ง
           </button>
         </div>

@@ -2,7 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 
 import { closeAppDatabase, getAppDatabase, openAppDatabase } from '../src/main/db/appDatabase';
-import { createInFolder, getDataLocationInfo } from '../src/main/dataLocation';
+import {
+  changeFolder,
+  createInFolder,
+  getDataLocationInfo,
+  targetHasExistingDb,
+  type ChangeFolderMode,
+} from '../src/main/dataLocation';
 import { createDomainIpcHandlers } from '../src/main/ipc';
 import { checkAndClaimLock } from '../src/main/lockFile';
 
@@ -26,7 +32,9 @@ function configDir(): string {
 function requireOpenSqlite() {
   const handle = getAppDatabase();
   if (!handle) {
-    throw new Error('App database is not open yet — complete onboarding (choose a data folder) first.');
+    throw new Error(
+      'App database is not open yet — complete onboarding (choose a data folder) first.',
+    );
   }
   return handle.sqlite;
 }
@@ -55,6 +63,22 @@ function registerIpcHandlers(): void {
     openAppDatabase(info.folderPath);
     return info;
   });
+
+  ipcMain.handle('dataLocation:targetHasExistingDb', (_event, targetFolderPath: string) =>
+    targetHasExistingDb(targetFolderPath),
+  );
+
+  // REQ-0002 (ANA-0002): re-point an already-configured install's data folder. `changeFolder`
+  // itself never touches the live DB connection — re-opening it here keeps that concern in
+  // the same place `dataLocation:createInFolder` already does it (AT-2.5's singleton).
+  ipcMain.handle(
+    'dataLocation:changeFolder',
+    (_event, targetFolderPath: string, mode: ChangeFolderMode) => {
+      const result = changeFolder(configDir(), currentDataFolderPath(), targetFolderPath, mode);
+      openAppDatabase(result.info.folderPath);
+      return result;
+    },
+  );
 
   ipcMain.handle('lockFile:check', (_event, folderPath: string) => checkAndClaimLock(folderPath));
 

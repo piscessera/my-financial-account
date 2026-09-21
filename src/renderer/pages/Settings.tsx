@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../../main/calc/money';
-import type { CapType, DeductionCategoryRow, SharedCapRow, TaxBracketRow } from '../../main/db/schema';
-import type { DataLocationInfo } from '../../main/dataLocation';
+import type {
+  CapType,
+  DeductionCategoryRow,
+  SharedCapRow,
+  TaxBracketRow,
+} from '../../main/db/schema';
+import type { ChangeFolderMode, DataLocationInfo } from '../../main/dataLocation';
 
 const CAP_TYPE_LABELS: Record<CapType, string> = {
   fixed: 'คงที่',
@@ -47,6 +52,11 @@ const BLANK_NEW_CATEGORY: NewCategoryState = {
   description: '',
 };
 
+/** Picked-folder confirmation state for REQ-0002's "เปลี่ยนโฟลเดอร์" flow (ANA-0002). */
+type FolderChangeState =
+  | { readonly step: 'confirmMove'; readonly targetFolderPath: string }
+  | { readonly step: 'warnExisting'; readonly targetFolderPath: string };
+
 /**
  * Settings screen (AT-3.6) — PROTO-0001 `settings.html`. The mockup's "+ add category" example
  * (a brand-new shared group, "Easy e-Receipt 2569") assumes creating a shared-cap *group* too,
@@ -62,6 +72,7 @@ export default function Settings(): JSX.Element {
   const [editingCategory, setEditingCategory] = useState<CategoryEditState | null>(null);
   const [editingBracket, setEditingBracket] = useState<BracketEditState | null>(null);
   const [addingCategory, setAddingCategory] = useState<NewCategoryState | null>(null);
+  const [folderChange, setFolderChange] = useState<FolderChangeState | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
 
@@ -81,6 +92,44 @@ export default function Settings(): JSX.Element {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  async function handleChooseFolder(): Promise<void> {
+    setFeedback(null);
+    const picked = await window.api.dataLocation.chooseFolder();
+    if (!picked) return; // cancelled at the OS picker (TC-0002 #2)
+    const hasExistingDb = await window.api.dataLocation.targetHasExistingDb(picked);
+    setFolderChange({
+      step: hasExistingDb ? 'warnExisting' : 'confirmMove',
+      targetFolderPath: picked,
+    });
+  }
+
+  /** Confirm step — `mode` is fixed per step (`confirmMove` -> 'move', `warnExisting`'s "ใช้ไฟล์ที่นั่น" -> 'switch'). */
+  async function handleConfirmFolderChange(mode: ChangeFolderMode): Promise<void> {
+    if (!folderChange) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await window.api.dataLocation.changeFolder(
+        folderChange.targetFolderPath,
+        mode,
+      );
+      setDataLocation(result.info);
+      setFolderChange(null);
+      setFeedback({
+        kind: 'ok',
+        message: result.oldFolderCleanupWarning
+          ? `เปลี่ยนโฟลเดอร์เรียบร้อยแล้ว (${result.oldFolderCleanupWarning})`
+          : 'เปลี่ยนโฟลเดอร์เรียบร้อยแล้ว',
+      });
+    } catch (err) {
+      // Leave `folderChange` and `dataLocation` as-is on failure (TC-0002 #15) — the user can
+      // retry or cancel; the displayed folder still shows the original, working location.
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function sharedGroupName(id: number | null): string {
     if (id === null) return '';
@@ -133,7 +182,10 @@ export default function Settings(): JSX.Element {
       } else if (needsAmount) {
         throw new Error('กรุณาระบุค่าเพดาน');
       }
-      if (addingCategory.capType === 'shared_group_member' && addingCategory.sharedGroupId === null) {
+      if (
+        addingCategory.capType === 'shared_group_member' &&
+        addingCategory.sharedGroupId === null
+      ) {
         throw new Error('กรุณาเลือกกลุ่มที่จะรวมเพดานด้วย');
       }
 
@@ -142,7 +194,8 @@ export default function Settings(): JSX.Element {
         name: addingCategory.name.trim(),
         capType: addingCategory.capType,
         capAmountMinor,
-        sharedGroupId: addingCategory.capType === 'shared_group_member' ? addingCategory.sharedGroupId : null,
+        sharedGroupId:
+          addingCategory.capType === 'shared_group_member' ? addingCategory.sharedGroupId : null,
         description: addingCategory.description.trim(),
       });
       setAddingCategory(null);
@@ -161,7 +214,8 @@ export default function Settings(): JSX.Element {
     setFeedback(null);
     try {
       const rate = Number(editingBracket.rateText);
-      if (!Number.isFinite(rate) || rate < 0 || rate > 100) throw new Error('กรุณาระบุอัตราภาษีเป็นเปอร์เซ็นต์ 0-100');
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100)
+        throw new Error('กรุณาระบุอัตราภาษีเป็นเปอร์เซ็นต์ 0-100');
       await window.api.settings.updateBracket(editingBracket.id, Math.round(rate * 100));
       setEditingBracket(null);
       setFeedback({ kind: 'ok', message: 'บันทึกอัตราภาษีเรียบร้อยแล้ว' });
@@ -190,7 +244,27 @@ export default function Settings(): JSX.Element {
       )}
 
       <div className="panel">
-        <div className="section-label">ที่จัดเก็บข้อมูล (AC-19)</div>
+        <div
+          className="section-label"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <span>ที่จัดเก็บข้อมูล (AC-19)</span>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ padding: '8px 14px', fontSize: 13 }}
+            disabled={busy || !dataLocation}
+            onClick={() => void handleChooseFolder()}
+          >
+            เปลี่ยนโฟลเดอร์
+          </button>
+        </div>
         {dataLocation ? (
           <>
             <div className="field span2">
@@ -204,8 +278,8 @@ export default function Settings(): JSX.Element {
               {(dataLocation.sizeBytes / (1024 * 1024)).toFixed(1)} MB
             </div>
             <div className="muted" style={{ marginTop: 4 }}>
-              ไม่มีปุ่ม &quot;ซิงค์&quot; ในแอปนี้ — Google Drive Desktop จะซิงค์โฟลเดอร์นี้ให้อัตโนมัติอยู่เบื้องหลัง
-              แอปไม่ได้เชื่อมต่อ Google Drive โดยตรง
+              ไม่มีปุ่ม &quot;ซิงค์&quot; ในแอปนี้ — Google Drive Desktop
+              จะซิงค์โฟลเดอร์นี้ให้อัตโนมัติอยู่เบื้องหลัง แอปไม่ได้เชื่อมต่อ Google Drive โดยตรง
             </div>
           </>
         ) : (
@@ -213,10 +287,76 @@ export default function Settings(): JSX.Element {
         )}
       </div>
 
+      {folderChange?.step === 'confirmMove' && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div className="section-label">ย้ายข้อมูลไปโฟลเดอร์นี้? (AC-3)</div>
+          <p className="control num" style={{ fontSize: 13 }}>
+            {folderChange.targetFolderPath}
+          </p>
+          <p className="muted">
+            ข้อมูลปัจจุบันทั้งหมดจะถูกย้ายไปยังโฟลเดอร์นี้ และแอปจะใช้โฟลเดอร์นี้ต่อจากนี้
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setFolderChange(null)}
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleConfirmFolderChange('move')}
+            >
+              ย้ายข้อมูล
+            </button>
+          </div>
+        </div>
+      )}
+
+      {folderChange?.step === 'warnExisting' && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div className="section-label">พบไฟล์ข้อมูลอยู่แล้วในโฟลเดอร์นี้ (AC-4)</div>
+          <p className="control num" style={{ fontSize: 13 }}>
+            {folderChange.targetFolderPath}
+          </p>
+          <p className="muted">
+            เลือกใช้ไฟล์ข้อมูลที่มีอยู่แล้วในโฟลเดอร์นี้ หรือยกเลิกการเปลี่ยนโฟลเดอร์
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setFolderChange(null)}
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleConfirmFolderChange('switch')}
+            >
+              ใช้ไฟล์ที่นั่น
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="panel" style={{ marginTop: 20 }}>
         <div
           className="section-label"
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
         >
           <span>เพดานค่าลดหย่อน</span>
           <button
@@ -245,10 +385,16 @@ export default function Settings(): JSX.Element {
                 <td>
                   <span className="muted">
                     {CAP_TYPE_LABELS[category.capType]}
-                    {category.capType === 'shared_group_member' ? ` (${sharedGroupName(category.sharedGroupId)})` : ''}
+                    {category.capType === 'shared_group_member'
+                      ? ` (${sharedGroupName(category.sharedGroupId)})`
+                      : ''}
                   </span>
                 </td>
-                <td className="num">{category.capAmountMinor !== null ? formatSatangAsBaht(category.capAmountMinor) : '—'}</td>
+                <td className="num">
+                  {category.capAmountMinor !== null
+                    ? formatSatangAsBaht(category.capAmountMinor)
+                    : '—'}
+                </td>
                 <td>
                   <span className={`pill ${category.isActive ? 'active' : 'voided'}`}>
                     {category.isActive ? 'ใช้งานอยู่' : 'เก็บถาวรแล้ว'}
@@ -263,19 +409,30 @@ export default function Settings(): JSX.Element {
                         setEditingCategory({
                           id: category.id,
                           name: category.name,
-                          capAmountText: category.capAmountMinor !== null ? (category.capAmountMinor / 100).toFixed(2) : '',
+                          capAmountText:
+                            category.capAmountMinor !== null
+                              ? (category.capAmountMinor / 100).toFixed(2)
+                              : '',
                         })
                       }
                     >
                       แก้ไข
                     </button>
                   ) : (
-                    <button type="button" className="row-action" onClick={() => void handleToggleActive(category)}>
+                    <button
+                      type="button"
+                      className="row-action"
+                      onClick={() => void handleToggleActive(category)}
+                    >
                       เปิดใช้อีกครั้ง
                     </button>
                   )}
                   {category.isActive && (
-                    <button type="button" className="row-action muted" onClick={() => void handleToggleActive(category)}>
+                    <button
+                      type="button"
+                      className="row-action muted"
+                      onClick={() => void handleToggleActive(category)}
+                    >
                       เก็บถาวร
                     </button>
                   )}
@@ -285,14 +442,17 @@ export default function Settings(): JSX.Element {
           </tbody>
         </table>
         <div className="muted" style={{ marginTop: 10 }}>
-          หมวดหมู่ที่ &quot;เก็บถาวรแล้ว&quot; จะไม่ปรากฏเป็นตัวเลือกใหม่ในหน้าค่าลดหย่อนของปีที่เปิดอยู่
+          หมวดหมู่ที่ &quot;เก็บถาวรแล้ว&quot;
+          จะไม่ปรากฏเป็นตัวเลือกใหม่ในหน้าค่าลดหย่อนของปีที่เปิดอยู่
           แต่ปีภาษีที่เคยใช้อยู่แล้วจะยังเห็นข้อมูลและคำนวณเหมือนเดิมทุกประการ (AC-17)
         </div>
       </div>
 
       {editingCategory && (
         <div className="panel" style={{ marginTop: 20 }}>
-          <div className="section-label">กำลังแก้ไข: {editingCategory.name} (AC-11 — แก้ได้ทั้งชื่อและเพดาน)</div>
+          <div className="section-label">
+            กำลังแก้ไข: {editingCategory.name} (AC-11 — แก้ได้ทั้งชื่อและเพดาน)
+          </div>
           <div className="form-grid">
             <div className="field span2">
               <label>ชื่อหมวดหมู่</label>
@@ -308,15 +468,27 @@ export default function Settings(): JSX.Element {
                 type="text"
                 inputMode="decimal"
                 value={editingCategory.capAmountText}
-                onChange={(e) => setEditingCategory({ ...editingCategory, capAmountText: e.target.value })}
+                onChange={(e) =>
+                  setEditingCategory({ ...editingCategory, capAmountText: e.target.value })
+                }
               />
             </div>
           </div>
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setEditingCategory(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setEditingCategory(null)}
+            >
               ยกเลิก
             </button>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void handleSaveCategoryEdit()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleSaveCategoryEdit()}
+            >
               บันทึกการเปลี่ยนแปลง
             </button>
           </div>
@@ -356,7 +528,10 @@ export default function Settings(): JSX.Element {
                 <select
                   value={addingCategory.sharedGroupId ?? ''}
                   onChange={(e) =>
-                    setAddingCategory({ ...addingCategory, sharedGroupId: e.target.value === '' ? null : Number(e.target.value) })
+                    setAddingCategory({
+                      ...addingCategory,
+                      sharedGroupId: e.target.value === '' ? null : Number(e.target.value),
+                    })
                   }
                 >
                   <option value="">— เลือกกลุ่ม —</option>
@@ -369,12 +544,18 @@ export default function Settings(): JSX.Element {
               </div>
             )}
             <div className="field">
-              <label>{addingCategory.capType === 'shared_group_member' ? 'sub-cap ของตัวเอง (ถ้ามี)' : 'ค่าเพดาน (บาท)'}</label>
+              <label>
+                {addingCategory.capType === 'shared_group_member'
+                  ? 'sub-cap ของตัวเอง (ถ้ามี)'
+                  : 'ค่าเพดาน (บาท)'}
+              </label>
               <input
                 type="text"
                 inputMode="decimal"
                 value={addingCategory.capAmountText}
-                onChange={(e) => setAddingCategory({ ...addingCategory, capAmountText: e.target.value })}
+                onChange={(e) =>
+                  setAddingCategory({ ...addingCategory, capAmountText: e.target.value })
+                }
               />
             </div>
             <div className="field">
@@ -382,15 +563,27 @@ export default function Settings(): JSX.Element {
               <input
                 type="text"
                 value={addingCategory.description}
-                onChange={(e) => setAddingCategory({ ...addingCategory, description: e.target.value })}
+                onChange={(e) =>
+                  setAddingCategory({ ...addingCategory, description: e.target.value })
+                }
               />
             </div>
           </div>
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setAddingCategory(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setAddingCategory(null)}
+            >
               ยกเลิก
             </button>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void handleAddCategory()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleAddCategory()}
+            >
               เพิ่มหมวดหมู่
             </button>
           </div>
@@ -414,12 +607,19 @@ export default function Settings(): JSX.Element {
               {brackets.map((bracket) => (
                 <tr key={bracket.id}>
                   <td>{formatBracketRange(bracket)}</td>
-                  <td>{bracket.rateBp === 0 ? 'ยกเว้น' : `${(bracket.rateBp / 100).toFixed(0)}%`}</td>
+                  <td>
+                    {bracket.rateBp === 0 ? 'ยกเว้น' : `${(bracket.rateBp / 100).toFixed(0)}%`}
+                  </td>
                   <td>
                     <button
                       type="button"
                       className="row-action"
-                      onClick={() => setEditingBracket({ id: bracket.id, rateText: (bracket.rateBp / 100).toFixed(0) })}
+                      onClick={() =>
+                        setEditingBracket({
+                          id: bracket.id,
+                          rateText: (bracket.rateBp / 100).toFixed(0),
+                        })
+                      }
                     >
                       แก้ไข
                     </button>
@@ -446,10 +646,20 @@ export default function Settings(): JSX.Element {
             </div>
           </div>
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setEditingBracket(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setEditingBracket(null)}
+            >
               ยกเลิก
             </button>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void handleSaveBracketEdit()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void handleSaveBracketEdit()}
+            >
               บันทึกการเปลี่ยนแปลง
             </button>
           </div>

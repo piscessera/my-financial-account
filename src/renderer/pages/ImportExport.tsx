@@ -122,7 +122,12 @@ export default function ImportExport(): JSX.Element {
   }
 
   if (yearState.status === 'loading') return <div className="page">กำลังโหลด...</div>;
-  if (yearState.status === 'error') return <div className="page" role="alert">{yearState.message}</div>;
+  if (yearState.status === 'error')
+    return (
+      <div className="page" role="alert">
+        {yearState.message}
+      </div>
+    );
 
   const year = yearState.year;
 
@@ -131,8 +136,8 @@ export default function ImportExport(): JSX.Element {
       <div className="page-head">
         <h1>นำเข้า/ส่งออกข้อมูล (CSV)</h1>
         <p>
-          สำหรับสำรองข้อมูล ย้ายเครื่อง หรือย้ายไปใช้ account ใหม่ — ไม่ใช่เครื่องมือนำเข้า statement ธนาคารหรือไฟล์จากแหล่งอื่น
-          รองรับเฉพาะไฟล์ที่ส่งออกจากแอปนี้เอง (AC-20–24)
+          สำหรับสำรองข้อมูล ย้ายเครื่อง หรือย้ายไปใช้ account ใหม่ — ไม่ใช่เครื่องมือนำเข้า
+          statement ธนาคารหรือไฟล์จากแหล่งอื่น รองรับเฉพาะไฟล์ที่ส่งออกจากแอปนี้เอง (AC-20–24)
         </p>
       </div>
 
@@ -149,18 +154,31 @@ export default function ImportExport(): JSX.Element {
             <label>เลือกปีภาษี</label>
             <div className="control">ปีภาษี {year.year}</div>
           </div>
-          <div className="field" style={{ flexDirection: 'row', gap: 10, display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void handleExportLedger(year.id, year.year)}>
+          <div
+            className="field"
+            style={{ flexDirection: 'row', gap: 10, display: 'flex', justifyContent: 'flex-end' }}
+          >
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => void handleExportLedger(year.id, year.year)}
+            >
               ⬇ ส่งออกรายการ (CSV)
             </button>
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void handleExportSummary(year.id, year.year)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => void handleExportSummary(year.id, year.year)}
+            >
               ⬇ ส่งออกสรุปภาษี (CSV)
             </button>
           </div>
         </div>
         <div className="muted" style={{ marginTop: 10 }}>
-          &quot;ส่งออกรายการ&quot; ได้ไฟล์ที่ใช้นำเข้ากลับได้ในอนาคต ส่วน &quot;ส่งออกสรุปภาษี&quot; เป็นรายงานอ่านอย่างเดียว
-          ใช้นำเข้ากลับไม่ได้
+          &quot;ส่งออกรายการ&quot; ได้ไฟล์ที่ใช้นำเข้ากลับได้ในอนาคต ส่วน &quot;ส่งออกสรุปภาษี&quot;
+          เป็นรายงานอ่านอย่างเดียว ใช้นำเข้ากลับไม่ได้
         </div>
       </div>
 
@@ -177,11 +195,21 @@ export default function ImportExport(): JSX.Element {
         <div className="form-grid" style={{ marginTop: 10 }}>
           <div className="field">
             <label>ปีภาษีปลายทาง (พ.ศ.)</label>
-            <input type="text" inputMode="numeric" value={targetYearText} onChange={(e) => setTargetYearText(e.target.value)} />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetYearText}
+              onChange={(e) => setTargetYearText(e.target.value)}
+            />
           </div>
         </div>
         <div className="form-actions">
-          <button type="button" className="btn btn-primary" disabled={busy || !importFilePath} onClick={() => void handleCheckFile()}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy || !importFilePath}
+            onClick={() => void handleCheckFile()}
+          >
             ตรวจสอบไฟล์ →
           </button>
         </div>
@@ -191,9 +219,18 @@ export default function ImportExport(): JSX.Element {
         <div className="panel" style={{ marginTop: 20 }}>
           <div
             className="section-label"
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
           >
-            <span>ตัวอย่างก่อนนำเข้า (AC-23) — ยังไม่มีการบันทึกข้อมูลใดๆ จนกว่าจะกด &quot;ยืนยันนำเข้า&quot;</span>
+            <span>
+              ตัวอย่างก่อนนำเข้า (AC-23) — ยังไม่มีการบันทึกข้อมูลใดๆ จนกว่าจะกด
+              &quot;ยืนยันนำเข้า&quot;
+            </span>
             <span className="muted">
               เลือกไว้ {checkedRows.size} จาก {preview.rows.length} แถว
             </span>
@@ -225,7 +262,9 @@ export default function ImportExport(): JSX.Element {
                     <span className="tag">{rowTag(row.data)}</span>
                   </td>
                   <td>{rowLabel(row.data)}</td>
-                  <td className="num">{row.data ? formatSatangAsBaht(row.data.amountMinor) : '—'}</td>
+                  <td className="num">
+                    {row.data ? formatSatangAsBaht(row.data.amountMinor) : '—'}
+                  </td>
                   <td>
                     {row.valid ? (
                       <span className="pill active">พร้อมนำเข้า</span>
@@ -238,10 +277,20 @@ export default function ImportExport(): JSX.Element {
             </tbody>
           </table>
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setPreview(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setPreview(null)}
+            >
               ยกเลิก
             </button>
-            <button type="button" className="btn btn-primary" disabled={busy || checkedRows.size === 0} onClick={() => void handleConfirmImport()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy || checkedRows.size === 0}
+              onClick={() => void handleConfirmImport()}
+            >
               ยืนยันนำเข้า {checkedRows.size} รายการที่เลือก
             </button>
           </div>

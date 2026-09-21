@@ -51,7 +51,9 @@ function todayIso(): string {
 }
 
 /** A field-level error map keyed by the field name shown in the UI. */
-type Errors = Partial<Record<'incomeSection' | 'generalCategory' | 'date' | 'amount' | 'wht', string>>;
+type Errors = Partial<
+  Record<'incomeSection' | 'generalCategory' | 'date' | 'amount' | 'wht', string>
+>;
 
 /**
  * Transaction create/edit form — PROTO-0001 `entry.html`'s top panel. One interactive form
@@ -268,11 +270,19 @@ export default function TransactionForm({
             </div>
             <div className="field">
               <label>แหล่งที่มา / ผู้จ่าย</label>
-              <input type="text" value={sourcePayer} onChange={(e) => setSourcePayer(e.target.value)} />
+              <input
+                type="text"
+                value={sourcePayer}
+                onChange={(e) => setSourcePayer(e.target.value)}
+              />
             </div>
             <div className="field">
               <label>เลขประจำตัวผู้เสียภาษีของผู้จ่าย (ถ้ามี)</label>
-              <input type="text" value={payerTaxId} onChange={(e) => setPayerTaxId(e.target.value)} />
+              <input
+                type="text"
+                value={payerTaxId}
+                onChange={(e) => setPayerTaxId(e.target.value)}
+              />
             </div>
           </>
         )}
@@ -287,7 +297,11 @@ export default function TransactionForm({
         {!editing && taxRelevant && (
           <div className="field span2">
             <label>หลักฐานประกอบ (ใบเสร็จ / สลิปเงินเดือน / ใบหัก ณ ที่จ่าย)</label>
-            <button type="button" className="dropzone" onClick={() => void handleChooseAttachment()}>
+            <button
+              type="button"
+              className="dropzone"
+              onClick={() => void handleChooseAttachment()}
+            >
               {attachmentPath ?? 'คลิกเพื่อเลือกไฟล์ — รองรับ JPG, PNG, PDF'}
             </button>
           </div>

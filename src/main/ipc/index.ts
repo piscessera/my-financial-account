@@ -137,10 +137,14 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     'transactions:update': (id: number, input: UpdateTransactionInput): TransactionRow =>
       updateTransaction(ctx.getSqlite(), id, input),
     'transactions:void': (id: number): TransactionRow => voidTransaction(ctx.getSqlite(), id),
-    'transactions:createReversal': (originalId: number, input: CreateReversalInput): TransactionRow =>
-      createReversal(ctx.getSqlite(), originalId, input),
-    'transactions:listByYear': (yearId: number): TransactionRow[] => listByYear(ctx.getSqlite(), yearId),
-    'transactions:getHistory': (id: number): AuditEntry[] => getTransactionHistory(ctx.getSqlite(), id),
+    'transactions:createReversal': (
+      originalId: number,
+      input: CreateReversalInput,
+    ): TransactionRow => createReversal(ctx.getSqlite(), originalId, input),
+    'transactions:listByYear': (yearId: number): TransactionRow[] =>
+      listByYear(ctx.getSqlite(), yearId),
+    'transactions:getHistory': (id: number): AuditEntry[] =>
+      getTransactionHistory(ctx.getSqlite(), id),
 
     'attachments:add': (transactionId: number, filePath: string): AttachmentRow =>
       addAttachment(ctx.getSqlite(), ctx.getDataFolderPath(), {
@@ -155,7 +159,8 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     // categories (AC-17: archived ones don't appear as an option to add), plus setEntry.
     'deductions:listCategories': (): DeductionCategoryRow[] =>
       listCategories(ctx.getSqlite()).filter((c) => c.isActive),
-    'deductions:setEntry': (input: SetEntryInput): DeductionEntryRow => setEntry(ctx.getSqlite(), input),
+    'deductions:setEntry': (input: SetEntryInput): DeductionEntryRow =>
+      setEntry(ctx.getSqlite(), input),
     'deductions:listEntries': (taxYearId: number): DeductionEntryRow[] =>
       listEntries(ctx.getSqlite(), taxYearId),
 
@@ -165,16 +170,21 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     'settings:getCaps': (): DeductionCategoryRow[] => listCategories(ctx.getSqlite()),
     'settings:createCategory': (input: CreateCategoryInput): DeductionCategoryRow =>
       createCategory(ctx.getSqlite(), input),
-    'settings:updateCategory': (categoryId: number, input: UpdateCategoryInput): DeductionCategoryRow =>
-      updateCategory(ctx.getSqlite(), categoryId, input),
+    'settings:updateCategory': (
+      categoryId: number,
+      input: UpdateCategoryInput,
+    ): DeductionCategoryRow => updateCategory(ctx.getSqlite(), categoryId, input),
     'settings:setCategoryActive': (id: number, isActive: boolean): DeductionCategoryRow =>
       setCategoryActive(ctx.getSqlite(), id, isActive),
     'settings:getSharedCaps': (): SharedCapRow[] => getSharedCaps(ctx.getSqlite()),
     'settings:updateSharedCap': (id: number, newCapAmountMinor: number): SharedCapRow =>
       updateSharedCap(ctx.getSqlite(), id, newCapAmountMinor),
     'settings:getBrackets': (): TaxBracketRow[] => getBrackets(ctx.getSqlite()),
-    'settings:updateBracket': (id: number, rateBp: number, bounds?: UpdateBracketBounds): TaxBracketRow =>
-      updateBracket(ctx.getSqlite(), id, rateBp, bounds),
+    'settings:updateBracket': (
+      id: number,
+      rateBp: number,
+      bounds?: UpdateBracketBounds,
+    ): TaxBracketRow => updateBracket(ctx.getSqlite(), id, rateBp, bounds),
 
     // `calc` (ANA-0001 §API/backend changes): the single figure-producing call every screen
     // (Dashboard live, Summary, unit tests) uses. Always goes through `getYearResult` (AT-4.4)

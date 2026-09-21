@@ -23,8 +23,20 @@ const TAX_2025_BRACKETS: TaxBracketRow[] = [
   { id: 3, lowerBoundMinor: 300_000_00, upperBoundMinor: 500_000_00, rateBp: 1000, sortOrder: 3 },
   { id: 4, lowerBoundMinor: 500_000_00, upperBoundMinor: 750_000_00, rateBp: 1500, sortOrder: 4 },
   { id: 5, lowerBoundMinor: 750_000_00, upperBoundMinor: 1_000_000_00, rateBp: 2000, sortOrder: 5 },
-  { id: 6, lowerBoundMinor: 1_000_000_00, upperBoundMinor: 2_000_000_00, rateBp: 2500, sortOrder: 6 },
-  { id: 7, lowerBoundMinor: 2_000_000_00, upperBoundMinor: 5_000_000_00, rateBp: 3000, sortOrder: 7 },
+  {
+    id: 6,
+    lowerBoundMinor: 1_000_000_00,
+    upperBoundMinor: 2_000_000_00,
+    rateBp: 2500,
+    sortOrder: 6,
+  },
+  {
+    id: 7,
+    lowerBoundMinor: 2_000_000_00,
+    upperBoundMinor: 5_000_000_00,
+    rateBp: 3000,
+    sortOrder: 7,
+  },
   { id: 8, lowerBoundMinor: 5_000_000_00, upperBoundMinor: null, rateBp: 3500, sortOrder: 8 },
 ];
 
@@ -65,7 +77,11 @@ function tx(overrides: Partial<TransactionRow> & Pick<TransactionRow, 'kind'>): 
   };
 }
 
-const NO_DEDUCTIONS: { categories: DeductionCategoryRow[]; entries: DeductionEntryRow[]; sharedCaps: SharedCapRow[] } = {
+const NO_DEDUCTIONS: {
+  categories: DeductionCategoryRow[];
+  entries: DeductionEntryRow[];
+  sharedCaps: SharedCapRow[];
+} = {
   categories: [],
   entries: [],
   sharedCaps: [],
@@ -73,7 +89,12 @@ const NO_DEDUCTIONS: { categories: DeductionCategoryRow[]; entries: DeductionEnt
 
 describe('TC-0001 #13: WHT exceeds computed tax -> refund', () => {
   it('reproduces the TAX-2025 reference: tax 73,766.21, WHT 93,963.71 -> refund 20,197.50', () => {
-    const income = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 793_831_04, whtMinor: 93_963_71 });
+    const income = tx({
+      kind: 'income',
+      incomeSection: '40_1',
+      amountMinor: 793_831_04,
+      whtMinor: 93_963_71,
+    });
 
     const result = computeYear({
       taxYear: YEAR_NO_METHOD,
@@ -92,7 +113,12 @@ describe('TC-0001 #13: WHT exceeds computed tax -> refund', () => {
 
 describe('TC-0001 #14: computed tax exceeds WHT -> additional due', () => {
   it('shows the exact difference as due', () => {
-    const income = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 793_831_04, whtMinor: 10_000_00 });
+    const income = tx({
+      kind: 'income',
+      incomeSection: '40_1',
+      amountMinor: 793_831_04,
+      whtMinor: 10_000_00,
+    });
 
     const result = computeYear({
       taxYear: YEAR_NO_METHOD,
@@ -110,7 +136,12 @@ describe('TC-0001 #14: computed tax exceeds WHT -> additional due', () => {
 describe('TC-0001 #35 / INV-8: general transactions excluded from tax calculation', () => {
   it('never lets a general transaction affect income, WHT, or tax total', () => {
     const taxIncome = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 100_000_00 });
-    const general = tx({ kind: 'expense', taxRelevant: false, generalCategory: 'food', amountMinor: 999_999_99 });
+    const general = tx({
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'food',
+      amountMinor: 999_999_99,
+    });
 
     const withGeneral = computeYear({
       taxYear: YEAR_NO_METHOD,
@@ -138,7 +169,12 @@ describe('TC-0001 #35 / INV-8: general transactions excluded from tax calculatio
 describe('voided transactions contribute nothing', () => {
   it('excludes a voided income row from every total', () => {
     const active = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 100_000_00 });
-    const voided = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 500_000_00, status: 'voided' });
+    const voided = tx({
+      kind: 'income',
+      incomeSection: '40_1',
+      amountMinor: 500_000_00,
+      status: 'voided',
+    });
 
     const result = computeYear({
       taxYear: YEAR_NO_METHOD,
@@ -168,7 +204,14 @@ describe('negative net taxable income floors to 0 (shares TC-0001 #12s rule)', (
       isActive: true,
       isBuiltin: false,
     };
-    const entry: DeductionEntryRow = { id: 1, taxYearId: 1, categoryId: 1, amountMinor: 100_000_00, count: null, updatedAt: '2026-01-01T00:00:00.000Z' };
+    const entry: DeductionEntryRow = {
+      id: 1,
+      taxYearId: 1,
+      categoryId: 1,
+      amountMinor: 100_000_00,
+      count: null,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
 
     const result = computeYear({
       taxYear: YEAR_NO_METHOD,

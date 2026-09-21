@@ -117,7 +117,9 @@ function seedTaxBrackets(): void {
   ];
   rows.forEach(([lower, upper, rateBp], i) => {
     temp.sqlite
-      .prepare(`INSERT INTO tax_brackets (lower_bound_minor, upper_bound_minor, rate_bp, sort_order) VALUES (?, ?, ?, ?)`)
+      .prepare(
+        `INSERT INTO tax_brackets (lower_bound_minor, upper_bound_minor, rate_bp, sort_order) VALUES (?, ?, ?, ?)`,
+      )
       .run(lower, upper, rateBp, i + 1);
   });
 }

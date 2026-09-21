@@ -10,7 +10,11 @@ import type {
   TaxYearRow,
   TransactionRow,
 } from '../src/main/db/schema';
-import type { DataLocationInfo } from '../src/main/dataLocation';
+import type {
+  ChangeFolderMode,
+  ChangeFolderResult,
+  DataLocationInfo,
+} from '../src/main/dataLocation';
 import type { AuditEntry } from '../src/main/repositories/auditLog';
 import type {
   CreateCategoryInput,
@@ -44,6 +48,12 @@ const api = {
     /** First-run only (AC-18): creates+seeds the DB in `folderPath` and remembers it. */
     createInFolder: (folderPath: string): Promise<DataLocationInfo> =>
       ipcRenderer.invoke('dataLocation:createInFolder', folderPath),
+    /** REQ-0002 AC-4: does `targetFolderPath` already have a DB file? */
+    targetHasExistingDb: (targetFolderPath: string): Promise<boolean> =>
+      ipcRenderer.invoke('dataLocation:targetHasExistingDb', targetFolderPath),
+    /** REQ-0002: re-points an already-configured install's data folder (move or switch). */
+    changeFolder: (targetFolderPath: string, mode: ChangeFolderMode): Promise<ChangeFolderResult> =>
+      ipcRenderer.invoke('dataLocation:changeFolder', targetFolderPath, mode),
   },
   lockFile: {
     /** Launch-time check (AT-1.8): claims the lock, reporting if another instance looked recent. */
@@ -75,7 +85,8 @@ const api = {
       ipcRenderer.invoke('transactions:createReversal', originalId, input),
     listByYear: (yearId: number): Promise<TransactionRow[]> =>
       ipcRenderer.invoke('transactions:listByYear', yearId),
-    getHistory: (id: number): Promise<AuditEntry[]> => ipcRenderer.invoke('transactions:getHistory', id),
+    getHistory: (id: number): Promise<AuditEntry[]> =>
+      ipcRenderer.invoke('transactions:getHistory', id),
   },
   attachments: {
     /** No remove method — evidence is not deletable (matches the no-hard-delete stance, AC-7). */
@@ -88,7 +99,8 @@ const api = {
   },
   deductions: {
     /** Active categories only — the Deductions screen's "add an entry" picker (AC-17). */
-    listCategories: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('deductions:listCategories'),
+    listCategories: (): Promise<DeductionCategoryRow[]> =>
+      ipcRenderer.invoke('deductions:listCategories'),
     setEntry: (input: SetEntryInput): Promise<DeductionEntryRow> =>
       ipcRenderer.invoke('deductions:setEntry', input),
     listEntries: (taxYearId: number): Promise<DeductionEntryRow[]> =>
@@ -99,7 +111,10 @@ const api = {
     getCaps: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('settings:getCaps'),
     createCategory: (input: CreateCategoryInput): Promise<DeductionCategoryRow> =>
       ipcRenderer.invoke('settings:createCategory', input),
-    updateCategory: (categoryId: number, input: UpdateCategoryInput): Promise<DeductionCategoryRow> =>
+    updateCategory: (
+      categoryId: number,
+      input: UpdateCategoryInput,
+    ): Promise<DeductionCategoryRow> =>
       ipcRenderer.invoke('settings:updateCategory', categoryId, input),
     setCategoryActive: (id: number, isActive: boolean): Promise<DeductionCategoryRow> =>
       ipcRenderer.invoke('settings:setCategoryActive', id, isActive),
@@ -107,12 +122,16 @@ const api = {
     updateSharedCap: (id: number, newCapAmountMinor: number): Promise<SharedCapRow> =>
       ipcRenderer.invoke('settings:updateSharedCap', id, newCapAmountMinor),
     getBrackets: (): Promise<TaxBracketRow[]> => ipcRenderer.invoke('settings:getBrackets'),
-    updateBracket: (id: number, rateBp: number, bounds?: UpdateBracketBounds): Promise<TaxBracketRow> =>
-      ipcRenderer.invoke('settings:updateBracket', id, rateBp, bounds),
+    updateBracket: (
+      id: number,
+      rateBp: number,
+      bounds?: UpdateBracketBounds,
+    ): Promise<TaxBracketRow> => ipcRenderer.invoke('settings:updateBracket', id, rateBp, bounds),
   },
   calc: {
     /** Frozen snapshot for a closed year; a live recompute for an open one (INV-7, AT-4.4). */
-    computeYear: (yearId: number): Promise<ComputeYearResult> => ipcRenderer.invoke('calc:computeYear', yearId),
+    computeYear: (yearId: number): Promise<ComputeYearResult> =>
+      ipcRenderer.invoke('calc:computeYear', yearId),
   },
   csv: {
     exportLedger: (yearId: number, destPath: string): Promise<void> =>
