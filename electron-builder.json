@@ -9,6 +9,7 @@
   "asar": true,
   "asarUnpack": ["**/better-sqlite3/**"],
   "win": {
+    "icon": "assets/icon.png",
     "target": [
       {
         "target": "nsis",
