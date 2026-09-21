@@ -287,12 +287,10 @@ export default function TransactionForm({
           </>
         )}
 
-        {!taxRelevant && (
-          <div className="field span2">
-            <label>หมายเหตุ (ถ้ามี)</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-        )}
+        <div className="field span2">
+          <label>หมายเหตุ (ถ้ามี)</label>
+          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
 
         {!editing && taxRelevant && (
           <div className="field span2">

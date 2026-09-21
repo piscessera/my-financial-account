@@ -62,6 +62,7 @@ export default function LedgerTable({
     .filter((t) => t.kind === 'income')
     .reduce((sum, t) => sum + t.amountMinor, 0);
   const totalWht = activeOnly.reduce((sum, t) => sum + t.whtMinor, 0);
+  const totalNetIncome = totalIncome - totalWht;
 
   const byMonth = new Map<string, TransactionRow[]>();
   for (const row of transactions) {
@@ -83,7 +84,7 @@ export default function LedgerTable({
 
   return (
     <>
-      <div className="tiles" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 18 }}>
+      <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 18 }}>
         <div className="tile">
           <div className="k">รวมทั้งปี — รายรับ</div>
           <div className="v num">{formatSatangAsBaht(totalIncome)}</div>
@@ -91,6 +92,10 @@ export default function LedgerTable({
         <div className="tile">
           <div className="k">รวมทั้งปี — WHT</div>
           <div className="v num">{formatSatangAsBaht(totalWht)}</div>
+        </div>
+        <div className="tile">
+          <div className="k">รวมทั้งปี — ยอดรับสุทธิ</div>
+          <div className="v num">{formatSatangAsBaht(totalNetIncome)}</div>
         </div>
         <div className="tile">
           <div className="k">จำนวนรายการ</div>
@@ -104,8 +109,10 @@ export default function LedgerTable({
             <th>วันที่</th>
             <th>ประเภท</th>
             <th>แหล่งที่มา</th>
+            <th>หมายเหตุ</th>
             <th>จำนวนเงิน</th>
             <th>WHT</th>
+            <th>ยอดสุทธิ</th>
             <th>สถานะ</th>
             <th>การจัดการ</th>
           </tr>
@@ -119,7 +126,7 @@ export default function LedgerTable({
             return (
               <Fragment key={monthKey}>
                 <tr className="month-row">
-                  <td colSpan={7}>
+                  <td colSpan={9}>
                     <div className="month-row-inner">
                       <span>{formatThaiMonthYear(monthKey)}</span>
                       <span className="num">
@@ -141,8 +148,14 @@ export default function LedgerTable({
                       )}
                     </td>
                     <td>{row.sourcePayer ?? '—'}</td>
+                    <td>{row.note ?? '—'}</td>
                     <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
                     <td className="num">{formatSatangAsBaht(row.whtMinor)}</td>
+                    <td className="num">
+                      {formatSatangAsBaht(
+                        row.kind === 'income' ? row.amountMinor - row.whtMinor : row.amountMinor,
+                      )}
+                    </td>
                     <td>
                       <span className={`pill ${row.status}`}>{row.status}</span>
                     </td>

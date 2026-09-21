@@ -21,11 +21,15 @@ sub-agents receive their IDs in the dispatch payload.
 | IMPL-0002 | Change data folder path after setup | implementation | implemented | — | PLAN-0002 | 2026-09-19 |
 | REV-0003 | PLAN-0002 close — change data folder acceptance review | review | implemented | — | PLAN-0002, ANA-0002, TC-0002, REQ-0002 | 2026-09-19 |
 
+| REQ-0003 | Add remark field and net amount column to income and expense | requirement | implemented | S | ANA-0003, TC-0003 | 2026-09-21 |
+| ANA-0003 | Add remark field and net amount column to income and expense — design | analysis | implemented | S | REQ-0003, TC-0003 | 2026-09-21 |
+| TC-0003 | Add remark field and net amount column to income and expense — test cases | test-cases | implemented | — | ANA-0003, REQ-0003 | 2026-09-21 |
+
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 3 | 3 | 3 | 2 | 3 | 1 | 4 | 3 |
+| 4 | 4 | 4 | 2 | 3 | 1 | 4 | 3 |
 
 ## Status vocabulary
 
