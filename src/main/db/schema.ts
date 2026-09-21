@@ -88,17 +88,25 @@ export const attachments = sqliteTable(
   }),
 );
 
-export const sharedCaps = sqliteTable('shared_caps', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull().unique(),
-  capAmountMinor: integer('cap_amount_minor').notNull(),
-});
+export const sharedCaps = sqliteTable(
+  'shared_caps',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taxYearId: integer('tax_year_id').references(() => taxYears.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    capAmountMinor: integer('cap_amount_minor').notNull(),
+  },
+  (table) => ({
+    byTaxYear: index('idx_shared_caps_tax_year').on(table.taxYearId),
+  }),
+);
 
 export const deductionCategories = sqliteTable(
   'deduction_categories',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    code: text('code').notNull().unique(),
+    taxYearId: integer('tax_year_id').references(() => taxYears.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
     name: text('name').notNull(),
     capType: text('cap_type').$type<CapType>().notNull(),
     capAmountMinor: integer('cap_amount_minor'),
@@ -109,6 +117,7 @@ export const deductionCategories = sqliteTable(
     isBuiltin: integer('is_builtin', { mode: 'boolean' }).notNull().default(false),
   },
   (table) => ({
+    byTaxYear: index('idx_deduction_categories_tax_year').on(table.taxYearId),
     bySharedGroup: index('idx_deduction_categories_shared_group').on(table.sharedGroupId),
   }),
 );
@@ -135,14 +144,21 @@ export const deductionEntries = sqliteTable(
   }),
 );
 
-export const taxBrackets = sqliteTable('tax_brackets', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  lowerBoundMinor: integer('lower_bound_minor').notNull(),
-  /** `null` = the open-ended top bracket. */
-  upperBoundMinor: integer('upper_bound_minor'),
-  rateBp: integer('rate_bp').notNull(),
-  sortOrder: integer('sort_order').notNull().unique(),
-});
+export const taxBrackets = sqliteTable(
+  'tax_brackets',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taxYearId: integer('tax_year_id').references(() => taxYears.id, { onDelete: 'cascade' }),
+    lowerBoundMinor: integer('lower_bound_minor').notNull(),
+    /** `null` = the open-ended top bracket. */
+    upperBoundMinor: integer('upper_bound_minor'),
+    rateBp: integer('rate_bp').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (table) => ({
+    byTaxYear: index('idx_tax_brackets_tax_year').on(table.taxYearId),
+  }),
+);
 
 export const auditLog = sqliteTable(
   'audit_log',
@@ -160,6 +176,50 @@ export const auditLog = sqliteTable(
   }),
 );
 
+export const recurringTemplates = sqliteTable(
+  'recurring_templates',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    kind: text('kind').$type<TransactionKind>().notNull(),
+    generalCategory: text('general_category').$type<GeneralCategory>().notNull(),
+    dueDay: integer('due_day').notNull(),
+    defaultAmountMinor: integer('default_amount_minor'),
+    defaultNote: text('default_note').notNull().default(''),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (table) => ({
+    byActive: index('idx_recurring_templates_active').on(table.isActive),
+  }),
+);
+
+export type RecurringMonthlyStatus = 'completed' | 'skipped';
+
+export const recurringMonthlyLogs = sqliteTable(
+  'recurring_monthly_logs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    templateId: integer('template_id')
+      .notNull()
+      .references(() => recurringTemplates.id, { onDelete: 'cascade' }),
+    yearMonth: text('year_month').notNull(),
+    status: text('status').$type<RecurringMonthlyStatus>().notNull(),
+    transactionId: integer('transaction_id').references(() => transactions.id, {
+      onDelete: 'set null',
+    }),
+    recordedAt: text('recorded_at').notNull().default(UTC_NOW),
+  },
+  (table) => ({
+    uniqueTemplateMonth: uniqueIndex('idx_recurring_logs_unique_template_month').on(
+      table.templateId,
+      table.yearMonth,
+    ),
+    byTemplate: index('idx_recurring_logs_template').on(table.templateId),
+    byMonth: index('idx_recurring_logs_month').on(table.yearMonth),
+  }),
+);
+
 export type TaxYearRow = typeof taxYears.$inferSelect;
 export type TransactionRow = typeof transactions.$inferSelect;
 export type AttachmentRow = typeof attachments.$inferSelect;
@@ -168,3 +228,6 @@ export type DeductionCategoryRow = typeof deductionCategories.$inferSelect;
 export type DeductionEntryRow = typeof deductionEntries.$inferSelect;
 export type TaxBracketRow = typeof taxBrackets.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
+export type RecurringTemplateRow = typeof recurringTemplates.$inferSelect;
+export type RecurringMonthlyLogRow = typeof recurringMonthlyLogs.$inferSelect;
+

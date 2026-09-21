@@ -66,11 +66,28 @@ import {
   type CommitImportResult,
   type ParseForPreviewResult,
 } from '../repositories/csv';
+import {
+  createTemplate,
+  deleteTemplate,
+  getMonthlyChecklist,
+  listTemplates,
+  recordRecurringItem,
+  setTemplateActive as setRecurringTemplateActive,
+  skipRecurringItem,
+  undoRecurringItem,
+  updateTemplate,
+  type CreateRecurringTemplateInput,
+  type MonthlyChecklistItem,
+  type RecordRecurringInput,
+  type UpdateRecurringTemplateInput,
+} from '../repositories/recurring';
 import type { ComputeYearResult } from '../calc/computeYear';
 import type {
   DeductionCategoryRow,
   DeductionEntryRow,
   ExpenseMethod,
+  RecurringMonthlyLogRow,
+  RecurringTemplateRow,
   SharedCapRow,
   TaxBracketRow,
   TaxYearRow,
@@ -106,10 +123,10 @@ function guessMimeType(filePath: string): string {
 function gatherYearInputs(sqlite: BetterSqlite3.Database, yearId: number): CloseTaxYearInput {
   return {
     transactions: listByYear(sqlite, yearId),
-    deductionCategories: listCategories(sqlite),
+    deductionCategories: listCategories(sqlite, yearId),
     deductionEntries: listEntries(sqlite, yearId),
-    sharedCaps: getSharedCaps(sqlite),
-    brackets: getBrackets(sqlite),
+    sharedCaps: getSharedCaps(sqlite, yearId),
+    brackets: getBrackets(sqlite, yearId),
   };
 }
 
@@ -157,8 +174,8 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
 
     // `deductions` (ANA-0001 §API/backend changes): the entry-time surface — only active
     // categories (AC-17: archived ones don't appear as an option to add), plus setEntry.
-    'deductions:listCategories': (): DeductionCategoryRow[] =>
-      listCategories(ctx.getSqlite()).filter((c) => c.isActive),
+    'deductions:listCategories': (taxYearId?: number | null): DeductionCategoryRow[] =>
+      listCategories(ctx.getSqlite(), taxYearId).filter((c) => c.isActive),
     'deductions:setEntry': (input: SetEntryInput): DeductionEntryRow =>
       setEntry(ctx.getSqlite(), input),
     'deductions:listEntries': (taxYearId: number): DeductionEntryRow[] =>
@@ -167,7 +184,8 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     // `settings` (ANA-0001 §API/backend changes): the management surface — every category
     // (including archived, so Settings can reactivate one), plus create/archive/rename and
     // the shared-cap/bracket editors.
-    'settings:getCaps': (): DeductionCategoryRow[] => listCategories(ctx.getSqlite()),
+    'settings:getCaps': (taxYearId?: number | null): DeductionCategoryRow[] =>
+      listCategories(ctx.getSqlite(), taxYearId),
     'settings:createCategory': (input: CreateCategoryInput): DeductionCategoryRow =>
       createCategory(ctx.getSqlite(), input),
     'settings:updateCategory': (
@@ -176,10 +194,12 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
     ): DeductionCategoryRow => updateCategory(ctx.getSqlite(), categoryId, input),
     'settings:setCategoryActive': (id: number, isActive: boolean): DeductionCategoryRow =>
       setCategoryActive(ctx.getSqlite(), id, isActive),
-    'settings:getSharedCaps': (): SharedCapRow[] => getSharedCaps(ctx.getSqlite()),
+    'settings:getSharedCaps': (taxYearId?: number | null): SharedCapRow[] =>
+      getSharedCaps(ctx.getSqlite(), taxYearId),
     'settings:updateSharedCap': (id: number, newCapAmountMinor: number): SharedCapRow =>
       updateSharedCap(ctx.getSqlite(), id, newCapAmountMinor),
-    'settings:getBrackets': (): TaxBracketRow[] => getBrackets(ctx.getSqlite()),
+    'settings:getBrackets': (taxYearId?: number | null): TaxBracketRow[] =>
+      getBrackets(ctx.getSqlite(), taxYearId),
     'settings:updateBracket': (
       id: number,
       rateBp: number,
@@ -211,6 +231,29 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       parseForPreview(ctx.getSqlite(), filePath, targetYear),
     'csv:commitImport': (input: CommitImportInput): CommitImportResult =>
       commitImport(ctx.getSqlite(), input),
+
+    // `recurring` (REQ-0005, ANA-0005): Template management & monthly checklist operations
+    'recurring:listTemplates': (includeInactive?: boolean): RecurringTemplateRow[] =>
+      listTemplates(ctx.getSqlite(), includeInactive),
+    'recurring:createTemplate': (input: CreateRecurringTemplateInput): RecurringTemplateRow =>
+      createTemplate(ctx.getSqlite(), input),
+    'recurring:updateTemplate': (
+      id: number,
+      input: UpdateRecurringTemplateInput,
+    ): RecurringTemplateRow => updateTemplate(ctx.getSqlite(), id, input),
+    'recurring:setTemplateActive': (id: number, isActive: boolean): RecurringTemplateRow =>
+      setRecurringTemplateActive(ctx.getSqlite(), id, isActive),
+    'recurring:deleteTemplate': (id: number): void => deleteTemplate(ctx.getSqlite(), id),
+    'recurring:getMonthlyChecklist': (yearMonth: string): MonthlyChecklistItem[] =>
+      getMonthlyChecklist(ctx.getSqlite(), yearMonth),
+    'recurring:record': (
+      input: RecordRecurringInput,
+    ): { log: RecurringMonthlyLogRow; transaction: TransactionRow } =>
+      recordRecurringItem(ctx.getSqlite(), input),
+    'recurring:skip': (templateId: number, yearMonth: string): RecurringMonthlyLogRow =>
+      skipRecurringItem(ctx.getSqlite(), templateId, yearMonth),
+    'recurring:undo': (templateId: number, yearMonth: string): void =>
+      undoRecurringItem(ctx.getSqlite(), templateId, yearMonth),
   } as const;
 }
 

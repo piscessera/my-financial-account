@@ -1,0 +1,7 @@
+plan: PLAN-0001
+branch: claude/missing-ui-dev-startup-f0830b
+worktree: .claude/worktrees/missing-ui-dev-startup-f0830b
+status: executing
+started: 2026-09-17T14:52:20Z
+continuations: 0
+note: harness confines Write/Edit and Agent-tool sub-agents to the session's own worktree; plan/PLAN-NNNN sibling worktrees are unreachable, so this stream executes inline on the session branch instead and fast-forwards main after each task.

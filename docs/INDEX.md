@@ -21,11 +21,23 @@ sub-agents receive their IDs in the dispatch payload.
 | IMPL-0002 | Change data folder path after setup | implementation | implemented | — | PLAN-0002 | 2026-09-19 |
 | REV-0003 | PLAN-0002 close — change data folder acceptance review | review | implemented | — | PLAN-0002, ANA-0002, TC-0002, REQ-0002 | 2026-09-19 |
 
+| REQ-0003 | Add remark field and net amount column to income and expense | requirement | implemented | S | ANA-0003, TC-0003 | 2026-09-21 |
+| ANA-0003 | Add remark field and net amount column to income and expense — design | analysis | implemented | S | REQ-0003, TC-0003 | 2026-09-21 |
+| TC-0003 | Add remark field and net amount column to income and expense — test cases | test-cases | implemented | — | ANA-0003, REQ-0003 | 2026-09-21 |
+| REQ-0004 | Per-tax-year tax brackets and deduction configurations with baseline template | requirement | implemented | M | ANA-0004, TC-0004, PLAN-0004 | 2026-09-21 |
+| ANA-0004 | Per-tax-year tax brackets and deduction configurations with baseline template — design | analysis | implemented | M | REQ-0004, TC-0004, PLAN-0004 | 2026-09-21 |
+| TC-0004 | Per-tax-year tax brackets and deduction configurations with baseline template — test cases | test-cases | implemented | — | ANA-0004, PLAN-0004, REQ-0004 | 2026-09-21 |
+| PLAN-0004 | Per-tax-year tax brackets and deduction configurations with baseline template | plan | implemented | M | ANA-0004, TC-0004, REQ-0004 | 2026-09-21 |
+| REQ-0005 | Monthly recurring checklist for general transactions | requirement | implemented | M | ANA-0005, TC-0005, PLAN-0005 | 2026-09-21 |
+| ANA-0005 | Monthly recurring checklist for general transactions — design | analysis | implemented | M | REQ-0005, TC-0005, PLAN-0005 | 2026-09-21 |
+| TC-0005 | Monthly recurring checklist for general transactions — test cases | test-cases | implemented | — | ANA-0005, PLAN-0005, REQ-0005 | 2026-09-21 |
+| PLAN-0005 | Monthly recurring checklist for general transactions | plan | implemented | M | ANA-0005, TC-0005, REQ-0005 | 2026-09-21 |
+
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 3 | 3 | 3 | 2 | 3 | 1 | 4 | 3 |
+| 6 | 6 | 6 | 2 | 6 | 1 | 4 | 3 |
 
 ## Status vocabulary
 
@@ -36,4 +48,3 @@ investigations/ideas may be `parked` (visible in dev-status, never silently drop
 
 | ID | Gate | Since |
 |----|------|-------|
-| — | *(none)* | |

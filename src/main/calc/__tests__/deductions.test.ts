@@ -14,6 +14,7 @@ function category(
   overrides: Partial<DeductionCategoryRow> & Pick<DeductionCategoryRow, 'id' | 'capType'>,
 ): DeductionCategoryRow {
   return {
+    taxYearId: null,
     code: `cat-${overrides.id}`,
     name: `Category ${overrides.id}`,
     capAmountMinor: null,
@@ -76,7 +77,7 @@ describe('TC-0001 #8: per-count cap scales with count', () => {
 
 describe('TC-0001 #9: shared-group cap sums across categories', () => {
   it('caps the combined contribution at the group total, once it is exceeded', () => {
-    const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'Life+Health', capAmountMinor: 100_000_00 };
     const life = category({ id: 1, capType: 'shared_group_member', sharedGroupId: 1 });
     const health = category({ id: 2, capType: 'shared_group_member', sharedGroupId: 1 });
 
@@ -94,7 +95,7 @@ describe('TC-0001 #9: shared-group cap sums across categories', () => {
 
 describe("TC-0001 #10: a shared-group member's own sub-cap still applies", () => {
   it('limits that member to its own sub-cap even while the group total is still under its cap', () => {
-    const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'Life+Health', capAmountMinor: 100_000_00 };
     const life = category({ id: 1, capType: 'shared_group_member', sharedGroupId: 1 });
     const healthSelf = category({
       id: 2,
@@ -135,7 +136,7 @@ describe('TC-0001 #30: deduction headroom never shows negative', () => {
   });
 
   it('is null for a shared-group member with no sub-cap of its own', () => {
-    const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'Life+Health', capAmountMinor: 100_000_00 };
     const life = category({ id: 1, capType: 'shared_group_member', sharedGroupId: 1 });
     const result = computeDeductions([life], [entry(1, 60_000_00)], [group]);
 
@@ -146,7 +147,7 @@ describe('TC-0001 #30: deduction headroom never shows negative', () => {
 describe('mixed categories', () => {
   it('sums non-grouped categories and grouped categories together', () => {
     const donation = category({ id: 1, capType: 'fixed', capAmountMinor: 100_000_00 });
-    const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'Life+Health', capAmountMinor: 100_000_00 };
     const life = category({ id: 2, capType: 'shared_group_member', sharedGroupId: 1 });
 
     const result = computeDeductions(

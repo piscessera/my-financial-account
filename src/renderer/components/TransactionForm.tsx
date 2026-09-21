@@ -27,6 +27,8 @@ export interface TransactionFormValues {
 interface TransactionFormProps {
   /** Present → edit mode (matches the repository: taxRelevant/kind/section never change on update). */
   readonly initial?: TransactionRow;
+  readonly defaultTaxRelevant?: boolean;
+  readonly lockTaxRelevant?: boolean;
   readonly busy?: boolean;
   readonly submitLabel?: string;
   readonly onSubmit: (values: TransactionFormValues) => void | Promise<void>;
@@ -63,6 +65,8 @@ type Errors = Partial<
  */
 export default function TransactionForm({
   initial,
+  defaultTaxRelevant,
+  lockTaxRelevant = false,
   busy = false,
   submitLabel,
   onSubmit,
@@ -70,7 +74,9 @@ export default function TransactionForm({
 }: TransactionFormProps): JSX.Element {
   const editing = initial !== undefined;
 
-  const [taxRelevant, setTaxRelevant] = useState(initial?.taxRelevant ?? true);
+  const [taxRelevant, setTaxRelevant] = useState(
+    initial?.taxRelevant ?? defaultTaxRelevant ?? true,
+  );
   const [kind, setKind] = useState<TransactionKind>(initial?.kind ?? 'income');
   const [incomeSection, setIncomeSection] = useState<IncomeSection | null>(
     initial?.incomeSection ?? null,
@@ -154,8 +160,36 @@ export default function TransactionForm({
 
   return (
     <form className="panel" onSubmit={(e) => void handleSubmit(e)}>
+      {editing && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '8px 14px',
+            background: 'var(--accent-soft)',
+            borderRadius: 8,
+            color: 'var(--accent)',
+            fontWeight: 600,
+            fontSize: 13,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>✏️ กำลังแก้ไขรายการ #{initial.id} ({initial.taxRelevant ? 'รายการภาษี' : 'รายการทั่วไป'})</span>
+          {onCancel && (
+            <button
+              type="button"
+              className="row-action"
+              style={{ margin: 0, fontWeight: 600 }}
+              onClick={onCancel}
+            >
+              ยกเลิกการแก้ไข
+            </button>
+          )}
+        </div>
+      )}
       <div className="form-grid">
-        {!editing && (
+        {!editing && !lockTaxRelevant && (
           <div className="field span2">
             <label>นับเป็นรายการภาษีหรือไม่</label>
             <div className="chip-row">
@@ -287,12 +321,10 @@ export default function TransactionForm({
           </>
         )}
 
-        {!taxRelevant && (
-          <div className="field span2">
-            <label>หมายเหตุ (ถ้ามี)</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-        )}
+        <div className="field span2">
+          <label>หมายเหตุ (ถ้ามี)</label>
+          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
 
         {!editing && taxRelevant && (
           <div className="field span2">

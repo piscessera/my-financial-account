@@ -5,6 +5,8 @@ import type {
   DeductionCategoryRow,
   DeductionEntryRow,
   ExpenseMethod,
+  RecurringMonthlyLogRow,
+  RecurringTemplateRow,
   SharedCapRow,
   TaxBracketRow,
   TaxYearRow,
@@ -27,6 +29,12 @@ import type {
   CreateTransactionInput,
   UpdateTransactionInput,
 } from '../src/main/repositories/transactions';
+import type {
+  CreateRecurringTemplateInput,
+  MonthlyChecklistItem,
+  RecordRecurringInput,
+  UpdateRecurringTemplateInput,
+} from '../src/main/repositories/recurring';
 import type { LockCheckResult } from '../src/main/lockFile';
 import type { ComputeYearResult } from '../src/main/calc/computeYear';
 import type {
@@ -99,8 +107,8 @@ const api = {
   },
   deductions: {
     /** Active categories only — the Deductions screen's "add an entry" picker (AC-17). */
-    listCategories: (): Promise<DeductionCategoryRow[]> =>
-      ipcRenderer.invoke('deductions:listCategories'),
+    listCategories: (taxYearId?: number | null): Promise<DeductionCategoryRow[]> =>
+      ipcRenderer.invoke('deductions:listCategories', taxYearId),
     setEntry: (input: SetEntryInput): Promise<DeductionEntryRow> =>
       ipcRenderer.invoke('deductions:setEntry', input),
     listEntries: (taxYearId: number): Promise<DeductionEntryRow[]> =>
@@ -108,7 +116,8 @@ const api = {
   },
   settings: {
     /** Every category, including archived ones (Settings can reactivate them, AC-17). */
-    getCaps: (): Promise<DeductionCategoryRow[]> => ipcRenderer.invoke('settings:getCaps'),
+    getCaps: (taxYearId?: number | null): Promise<DeductionCategoryRow[]> =>
+      ipcRenderer.invoke('settings:getCaps', taxYearId),
     createCategory: (input: CreateCategoryInput): Promise<DeductionCategoryRow> =>
       ipcRenderer.invoke('settings:createCategory', input),
     updateCategory: (
@@ -118,10 +127,12 @@ const api = {
       ipcRenderer.invoke('settings:updateCategory', categoryId, input),
     setCategoryActive: (id: number, isActive: boolean): Promise<DeductionCategoryRow> =>
       ipcRenderer.invoke('settings:setCategoryActive', id, isActive),
-    getSharedCaps: (): Promise<SharedCapRow[]> => ipcRenderer.invoke('settings:getSharedCaps'),
+    getSharedCaps: (taxYearId?: number | null): Promise<SharedCapRow[]> =>
+      ipcRenderer.invoke('settings:getSharedCaps', taxYearId),
     updateSharedCap: (id: number, newCapAmountMinor: number): Promise<SharedCapRow> =>
       ipcRenderer.invoke('settings:updateSharedCap', id, newCapAmountMinor),
-    getBrackets: (): Promise<TaxBracketRow[]> => ipcRenderer.invoke('settings:getBrackets'),
+    getBrackets: (taxYearId?: number | null): Promise<TaxBracketRow[]> =>
+      ipcRenderer.invoke('settings:getBrackets', taxYearId),
     updateBracket: (
       id: number,
       rateBp: number,
@@ -149,6 +160,31 @@ const api = {
       ipcRenderer.invoke('csv:chooseSavePath', defaultFilename),
     /** Native open dialog restricted to `.csv`; resolves the chosen path, or `null` if cancelled. */
     chooseImportFile: (): Promise<string | null> => ipcRenderer.invoke('csv:chooseImportFile'),
+  },
+  recurring: {
+    listTemplates: (includeInactive?: boolean): Promise<RecurringTemplateRow[]> =>
+      ipcRenderer.invoke('recurring:listTemplates', includeInactive),
+    createTemplate: (input: CreateRecurringTemplateInput): Promise<RecurringTemplateRow> =>
+      ipcRenderer.invoke('recurring:createTemplate', input),
+    updateTemplate: (
+      id: number,
+      input: UpdateRecurringTemplateInput,
+    ): Promise<RecurringTemplateRow> =>
+      ipcRenderer.invoke('recurring:updateTemplate', id, input),
+    setTemplateActive: (id: number, isActive: boolean): Promise<RecurringTemplateRow> =>
+      ipcRenderer.invoke('recurring:setTemplateActive', id, isActive),
+    deleteTemplate: (id: number): Promise<void> =>
+      ipcRenderer.invoke('recurring:deleteTemplate', id),
+    getMonthlyChecklist: (yearMonth: string): Promise<MonthlyChecklistItem[]> =>
+      ipcRenderer.invoke('recurring:getMonthlyChecklist', yearMonth),
+    record: (
+      input: RecordRecurringInput,
+    ): Promise<{ log: RecurringMonthlyLogRow; transaction: TransactionRow }> =>
+      ipcRenderer.invoke('recurring:record', input),
+    skip: (templateId: number, yearMonth: string): Promise<RecurringMonthlyLogRow> =>
+      ipcRenderer.invoke('recurring:skip', templateId, yearMonth),
+    undo: (templateId: number, yearMonth: string): Promise<void> =>
+      ipcRenderer.invoke('recurring:undo', templateId, yearMonth),
   },
 } as const;
 

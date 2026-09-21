@@ -157,6 +157,74 @@ export function createTaxYear(
       action: 'create',
       after: row as unknown as Record<string, unknown>,
     });
+
+    // 1. Clone baseline shared_caps
+    const baselineSharedCaps = sqlite
+      .prepare(`SELECT * FROM shared_caps WHERE tax_year_id IS NULL ORDER BY name ASC`)
+      .all() as { id: number; name: string; cap_amount_minor: number }[];
+    const sharedGroupMap = new Map<number, number>();
+    const insertSharedCap = sqlite.prepare(
+      `INSERT INTO shared_caps (tax_year_id, name, cap_amount_minor) VALUES (?, ?, ?)`,
+    );
+    for (const cap of baselineSharedCaps) {
+      const res = insertSharedCap.run(row.id, cap.name, cap.cap_amount_minor);
+      sharedGroupMap.set(cap.id, Number(res.lastInsertRowid));
+    }
+
+    // 2. Clone baseline deduction_categories
+    const baselineCategories = sqlite
+      .prepare(`SELECT * FROM deduction_categories WHERE tax_year_id IS NULL ORDER BY sort_order ASC`)
+      .all() as {
+      id: number;
+      code: string;
+      name: string;
+      cap_type: string;
+      cap_amount_minor: number | null;
+      shared_group_id: number | null;
+      sort_order: number;
+      description: string;
+      is_active: number;
+      is_builtin: number;
+    }[];
+    const insertCategory = sqlite.prepare(
+      `INSERT INTO deduction_categories (tax_year_id, code, name, cap_type, cap_amount_minor, shared_group_id, sort_order, description, is_active, is_builtin)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const cat of baselineCategories) {
+      const newGroupId =
+        cat.shared_group_id != null ? (sharedGroupMap.get(cat.shared_group_id) ?? null) : null;
+      insertCategory.run(
+        row.id,
+        cat.code,
+        cat.name,
+        cat.cap_type,
+        cat.cap_amount_minor,
+        newGroupId,
+        cat.sort_order,
+        cat.description,
+        cat.is_active,
+        cat.is_builtin,
+      );
+    }
+
+    // 3. Clone baseline tax_brackets
+    const baselineBrackets = sqlite
+      .prepare(`SELECT * FROM tax_brackets WHERE tax_year_id IS NULL ORDER BY sort_order ASC`)
+      .all() as {
+      id: number;
+      lower_bound_minor: number;
+      upper_bound_minor: number | null;
+      rate_bp: number;
+      sort_order: number;
+    }[];
+    const insertBracket = sqlite.prepare(
+      `INSERT INTO tax_brackets (tax_year_id, lower_bound_minor, upper_bound_minor, rate_bp, sort_order)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    for (const b of baselineBrackets) {
+      insertBracket.run(row.id, b.lower_bound_minor, b.upper_bound_minor, b.rate_bp, b.sort_order);
+    }
+
     return row;
   });
   return run(input.year);

@@ -48,6 +48,26 @@ describe('updateTransaction — TC-0001 #16: edit while year open', () => {
     expect((updateEntry?.before as { amountMinor: number }).amountMinor).toBe(1_000_000);
     expect((updateEntry?.after as { amountMinor: number }).amountMinor).toBe(1_500_000);
   });
+
+  it('TC-0003 #8: updates the note and records an audit_log row with before/after', () => {
+    const created = createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 1_000_000,
+      note: 'Initial note',
+    });
+
+    const updated = updateTransaction(temp.sqlite, created.id, { note: 'Updated remark' });
+
+    expect(updated.note).toBe('Updated remark');
+    const history = getTransactionHistory(temp.sqlite, created.id);
+    const updateEntry = history.find((entry) => entry.action === 'update');
+    expect(updateEntry).toBeDefined();
+    expect((updateEntry?.before as { note: string }).note).toBe('Initial note');
+    expect((updateEntry?.after as { note: string }).note).toBe('Updated remark');
+  });
 });
 
 describe('updateTransaction — TC-0001 #18: rejected on closed year', () => {

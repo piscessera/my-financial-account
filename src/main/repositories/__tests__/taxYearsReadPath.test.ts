@@ -24,6 +24,7 @@ afterEach(() => {
 
 const donation: DeductionCategoryRow = {
   id: 1,
+  taxYearId: null,
   code: 'donation',
   name: 'Donation',
   capType: 'fixed',

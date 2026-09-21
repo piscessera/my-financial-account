@@ -12,6 +12,8 @@ const EXPECTED_TABLES = [
   'audit_log',
   'deduction_categories',
   'deduction_entries',
+  'recurring_monthly_logs',
+  'recurring_templates',
   'shared_caps',
   'tax_brackets',
   'tax_years',
@@ -74,7 +76,7 @@ describe('migrateToLatest', () => {
     expect(handle.migration).toEqual({
       from: 0,
       to: LATEST_SCHEMA_VERSION,
-      applied: ['001-initial-schema'],
+      applied: ['001-initial-schema', '002-year-scoped-config', '003-recurring-checklist'],
     });
   });
 
