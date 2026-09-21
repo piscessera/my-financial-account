@@ -10,13 +10,14 @@ import { computeTax } from '../brackets';
 
 // Standard Thai progressive PIT brackets (also PROTO-0001's settings.html reference table).
 const TAX_2025_BRACKETS: TaxBracketRow[] = [
-  { id: 1, lowerBoundMinor: 0, upperBoundMinor: 150_000_00, rateBp: 0, sortOrder: 1 },
-  { id: 2, lowerBoundMinor: 150_000_00, upperBoundMinor: 300_000_00, rateBp: 500, sortOrder: 2 },
-  { id: 3, lowerBoundMinor: 300_000_00, upperBoundMinor: 500_000_00, rateBp: 1000, sortOrder: 3 },
-  { id: 4, lowerBoundMinor: 500_000_00, upperBoundMinor: 750_000_00, rateBp: 1500, sortOrder: 4 },
-  { id: 5, lowerBoundMinor: 750_000_00, upperBoundMinor: 1_000_000_00, rateBp: 2000, sortOrder: 5 },
+  { id: 1, taxYearId: null, lowerBoundMinor: 0, upperBoundMinor: 150_000_00, rateBp: 0, sortOrder: 1 },
+  { id: 2, taxYearId: null, lowerBoundMinor: 150_000_00, upperBoundMinor: 300_000_00, rateBp: 500, sortOrder: 2 },
+  { id: 3, taxYearId: null, lowerBoundMinor: 300_000_00, upperBoundMinor: 500_000_00, rateBp: 1000, sortOrder: 3 },
+  { id: 4, taxYearId: null, lowerBoundMinor: 500_000_00, upperBoundMinor: 750_000_00, rateBp: 1500, sortOrder: 4 },
+  { id: 5, taxYearId: null, lowerBoundMinor: 750_000_00, upperBoundMinor: 1_000_000_00, rateBp: 2000, sortOrder: 5 },
   {
     id: 6,
+    taxYearId: null,
     lowerBoundMinor: 1_000_000_00,
     upperBoundMinor: 2_000_000_00,
     rateBp: 2500,
@@ -24,12 +25,13 @@ const TAX_2025_BRACKETS: TaxBracketRow[] = [
   },
   {
     id: 7,
+    taxYearId: null,
     lowerBoundMinor: 2_000_000_00,
     upperBoundMinor: 5_000_000_00,
     rateBp: 3000,
     sortOrder: 7,
   },
-  { id: 8, lowerBoundMinor: 5_000_000_00, upperBoundMinor: null, rateBp: 3500, sortOrder: 8 },
+  { id: 8, taxYearId: null, lowerBoundMinor: 5_000_000_00, upperBoundMinor: null, rateBp: 3500, sortOrder: 8 },
 ];
 
 describe('TC-0001 #11: progressive bracket calculation, multi-bracket', () => {

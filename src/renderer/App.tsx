@@ -51,6 +51,13 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           </a>
           <a
             href="#"
+            className={screen === 'summary' ? 'active' : ''}
+            onClick={() => setScreen('summary')}
+          >
+            สรุปปี
+          </a>
+          <a
+            href="#"
             className={screen === 'entry' ? 'active' : ''}
             onClick={() => setScreen('entry')}
           >
@@ -76,13 +83,6 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
             onClick={() => setScreen('taxYears')}
           >
             ปีภาษี
-          </a>
-          <a
-            href="#"
-            className={screen === 'summary' ? 'active' : ''}
-            onClick={() => setScreen('summary')}
-          >
-            สรุปปี
           </a>
           <a
             href="#"

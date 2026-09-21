@@ -50,7 +50,9 @@ export type AuditEntityType =
   | 'deduction_category'
   | 'tax_year'
   | 'setting'
-  | 'data_location';
+  | 'data_location'
+  | 'recurring_template'
+  | 'recurring_monthly_log';
 
 /**
  * What happened to the entity.

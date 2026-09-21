@@ -5,6 +5,7 @@ import type { GeneralCategory, TransactionRow } from '../../main/db/schema';
 import type { AuditEntry } from '../../main/repositories/auditLog';
 import HistoryPanel from '../components/HistoryPanel';
 import LedgerTable from '../components/LedgerTable';
+import RecurringChecklist from '../components/RecurringChecklist';
 import TransactionForm, { type TransactionFormValues } from '../components/TransactionForm';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
@@ -155,6 +156,12 @@ export default function Entry(): JSX.Element {
           {feedback.message}
         </p>
       )}
+
+      <RecurringChecklist
+        taxYearId={yearId}
+        yearMonth={`${yearState.year.year}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+        onTransactionCreated={() => void reload(yearId)}
+      />
 
       {editing ? (
         <TransactionForm
