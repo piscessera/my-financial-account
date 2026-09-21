@@ -4,7 +4,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { openTempDatabase } from '../../db/__tests__/helpers';
-import { SettingsError, getBrackets, getSharedCaps, updateBracket, updateSharedCap } from '../settings';
+import {
+  SettingsError,
+  getBrackets,
+  getSharedCaps,
+  updateBracket,
+  updateSharedCap,
+} from '../settings';
 
 type TempDb = ReturnType<typeof openTempDatabase>;
 
@@ -25,7 +31,12 @@ function insertSharedCap(name: string, capAmountMinor: number): number {
   return Number(info.lastInsertRowid);
 }
 
-function insertBracket(lower: number, upper: number | null, rateBp: number, sortOrder: number): number {
+function insertBracket(
+  lower: number,
+  upper: number | null,
+  rateBp: number,
+  sortOrder: number,
+): number {
   const info = temp.sqlite
     .prepare(
       `INSERT INTO tax_brackets (lower_bound_minor, upper_bound_minor, rate_bp, sort_order) VALUES (?, ?, ?, ?)`,
@@ -38,7 +49,10 @@ describe('shared caps', () => {
   it('getSharedCaps lists every group', () => {
     insertSharedCap('Life+Health Insurance', 100_000_00);
     insertSharedCap('RMF/SSF', 500_000_00);
-    expect(getSharedCaps(temp.sqlite).map((c) => c.name)).toEqual(['Life+Health Insurance', 'RMF/SSF']);
+    expect(getSharedCaps(temp.sqlite).map((c) => c.name)).toEqual([
+      'Life+Health Insurance',
+      'RMF/SSF',
+    ]);
   });
 
   it('updateSharedCap edits the group total and audit-logs it', () => {
@@ -47,7 +61,9 @@ describe('shared caps', () => {
 
     expect(updated.capAmountMinor).toBe(120_000_00);
     const row = temp.sqlite
-      .prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'setting' AND entity_id = ?`)
+      .prepare(
+        `SELECT COUNT(*) AS n FROM audit_log WHERE entity_type = 'setting' AND entity_id = ?`,
+      )
       .get(id) as { n: number };
     expect(row.n).toBe(1);
   });
@@ -80,7 +96,9 @@ describe('tax brackets', () => {
 
   it('rejects upperBoundMinor <= lowerBoundMinor', () => {
     const id = insertBracket(10_000_00, 15_000_00, 500, 1);
-    expect(() => updateBracket(temp.sqlite, id, 500, { upperBoundMinor: 5_000_00 })).toThrow(SettingsError);
+    expect(() => updateBracket(temp.sqlite, id, 500, { upperBoundMinor: 5_000_00 })).toThrow(
+      SettingsError,
+    );
   });
 
   it('rejects an out-of-range rate', () => {

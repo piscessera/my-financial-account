@@ -14,7 +14,10 @@ interface TaxYearSwitcherProps {
  * mockup page exists for this exact component; it matches the `year-pill` nav element's stated
  * behavior (ANA-0001 §UI changes) plus the Settings/Entry screens' expense-method fields.
  */
-export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYearSwitcherProps): JSX.Element {
+export default function TaxYearSwitcher({
+  selectedYearId,
+  onSelectYear,
+}: TaxYearSwitcherProps): JSX.Element {
   const [years, setYears] = useState<TaxYearRow[]>([]);
   const [hasExisting40_5_8Income, setHasExisting40_5_8Income] = useState(false);
   const [newYearText, setNewYearText] = useState('');
@@ -40,7 +43,9 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
     }
     void window.api.transactions.listByYear(selectedYearId).then((transactions) => {
       setHasExisting40_5_8Income(
-        transactions.some((t) => t.status === 'active' && t.kind === 'income' && t.incomeSection === '40_5_8'),
+        transactions.some(
+          (t) => t.status === 'active' && t.kind === 'income' && t.incomeSection === '40_5_8',
+        ),
       );
     });
   }, [selectedYearId]);
@@ -95,7 +100,9 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
   function handleSelectMethod(method: ExpenseMethod): void {
     if (!selectedYear) return;
     const isMidYearSwitch =
-      selectedYear.expenseMethod !== null && selectedYear.expenseMethod !== method && hasExisting40_5_8Income;
+      selectedYear.expenseMethod !== null &&
+      selectedYear.expenseMethod !== method &&
+      hasExisting40_5_8Income;
     if (isMidYearSwitch) {
       setPendingMethod(method);
       return;
@@ -123,10 +130,20 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
       <div className="form-grid" style={{ marginTop: 14 }}>
         <div className="field">
           <label>สร้างปีภาษีใหม่ (พ.ศ.)</label>
-          <input type="text" inputMode="numeric" value={newYearText} onChange={(e) => setNewYearText(e.target.value)} />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={newYearText}
+            onChange={(e) => setNewYearText(e.target.value)}
+          />
         </div>
         <div className="field" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void handleCreateYear()}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={busy}
+            onClick={() => void handleCreateYear()}
+          >
             + สร้างปีภาษี
           </button>
         </div>
@@ -154,7 +171,12 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
           {(pendingMethod === 'lump_sum' || selectedYear.expenseMethod === 'lump_sum') && (
             <div className="field" style={{ marginTop: 10, maxWidth: 200 }}>
               <label>อัตราเหมาจ่าย (%)</label>
-              <input type="text" inputMode="decimal" value={rateText} onChange={(e) => setRateText(e.target.value)} />
+              <input
+                type="text"
+                inputMode="decimal"
+                value={rateText}
+                onChange={(e) => setRateText(e.target.value)}
+              />
             </div>
           )}
         </div>
@@ -165,15 +187,24 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
           <h3>เปลี่ยนวิธีหักค่าใช้จ่ายกลางปี?</h3>
           <p>
             ปีนี้มีรายได้ 40(5)-(8) บันทึกไว้แล้วด้วยวิธี{' '}
-            {selectedYear?.expenseMethod === 'lump_sum' ? 'เหมาจ่าย' : 'ตามจริง'} — การเปลี่ยนวิธีจะมีผลกับการคำนวณทั้งปี
-            ไม่ใช่แค่รายการใหม่
+            {selectedYear?.expenseMethod === 'lump_sum' ? 'เหมาจ่าย' : 'ตามจริง'} —
+            การเปลี่ยนวิธีจะมีผลกับการคำนวณทั้งปี ไม่ใช่แค่รายการใหม่
           </p>
           <ul>
-            {pendingMethod === 'actual' && <li>ต้องบันทึกรายจ่ายจริงให้ครบ ไม่เช่นนั้นตัวเลขหักค่าใช้จ่ายจะเป็น 0</li>}
-            {pendingMethod === 'lump_sum' && <li>รายจ่ายที่เคยบันทึกไว้จะไม่ถูกใช้ในการคำนวณอีกต่อไป</li>}
+            {pendingMethod === 'actual' && (
+              <li>ต้องบันทึกรายจ่ายจริงให้ครบ ไม่เช่นนั้นตัวเลขหักค่าใช้จ่ายจะเป็น 0</li>
+            )}
+            {pendingMethod === 'lump_sum' && (
+              <li>รายจ่ายที่เคยบันทึกไว้จะไม่ถูกใช้ในการคำนวณอีกต่อไป</li>
+            )}
           </ul>
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setPendingMethod(null)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => setPendingMethod(null)}
+            >
               ยกเลิก
             </button>
             <button
@@ -189,7 +220,11 @@ export default function TaxYearSwitcher({ selectedYearId, onSelectYear }: TaxYea
       )}
 
       {feedback && (
-        <p role={feedback.kind === 'error' ? 'alert' : 'status'} className="muted" style={{ marginTop: 10 }}>
+        <p
+          role={feedback.kind === 'error' ? 'alert' : 'status'}
+          className="muted"
+          style={{ marginTop: 10 }}
+        >
           {feedback.message}
         </p>
       )}

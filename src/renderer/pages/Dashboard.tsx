@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { ComputeYearResult } from '../../main/calc/computeYear';
 import { formatSatangAsBaht } from '../../main/calc/money';
-import type { DeductionCategoryRow, GeneralCategory, SharedCapRow, TransactionRow } from '../../main/db/schema';
+import type {
+  DeductionCategoryRow,
+  GeneralCategory,
+  SharedCapRow,
+  TransactionRow,
+} from '../../main/db/schema';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 const GENERAL_CATEGORY_LABELS: Record<GeneralCategory, string> = {
@@ -57,7 +62,12 @@ export default function Dashboard(): JSX.Element {
   }, [yearState, reload]);
 
   if (yearState.status === 'loading') return <div className="page">กำลังโหลด...</div>;
-  if (yearState.status === 'error') return <div className="page" role="alert">{yearState.message}</div>;
+  if (yearState.status === 'error')
+    return (
+      <div className="page" role="alert">
+        {yearState.message}
+      </div>
+    );
   if (!result) return <div className="page">กำลังโหลด...</div>;
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
@@ -90,12 +100,14 @@ export default function Dashboard(): JSX.Element {
     }),
   ];
 
-  const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map((category) => ({
-    category,
-    total: generalTransactions
-      .filter((t) => t.generalCategory === category)
-      .reduce((sum, t) => sum + t.amountMinor, 0),
-  }));
+  const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map(
+    (category) => ({
+      category,
+      total: generalTransactions
+        .filter((t) => t.generalCategory === category)
+        .reduce((sum, t) => sum + t.amountMinor, 0),
+    }),
+  );
 
   if (!hasAnyTransactions) {
     return (
@@ -135,7 +147,11 @@ export default function Dashboard(): JSX.Element {
           <div className="v num">{formatSatangAsBaht(result.netTaxableMinor)}</div>
         </div>
         <div className={`tile ${result.balance.direction === 'refund' ? 'good' : 'bad'}`}>
-          <div className="k">{result.balance.direction === 'refund' ? 'ประมาณการ — ขอคืนได้' : 'ประมาณการ — ต้องจ่ายเพิ่ม'}</div>
+          <div className="k">
+            {result.balance.direction === 'refund'
+              ? 'ประมาณการ — ขอคืนได้'
+              : 'ประมาณการ — ต้องจ่ายเพิ่ม'}
+          </div>
           <div className="v num">฿{formatSatangAsBaht(result.balance.amountMinor)}</div>
         </div>
       </div>
@@ -151,14 +167,26 @@ export default function Dashboard(): JSX.Element {
                 <div className="ded-row" style={{ gridTemplateColumns: '1fr 160px' }} key={row.key}>
                   <div>
                     <div className="ded-name">
-                      {row.label} <span className="muted">(เพดาน {row.capMinor !== null ? formatSatangAsBaht(row.capMinor) : '—'})</span>
+                      {row.label}{' '}
+                      <span className="muted">
+                        (เพดาน {row.capMinor !== null ? formatSatangAsBaht(row.capMinor) : '—'})
+                      </span>
                     </div>
                     <div className="headroom-bar">
-                      <span style={{ width: `${percent}%`, background: overCap ? 'var(--bad)' : undefined }} />
+                      <span
+                        style={{
+                          width: `${percent}%`,
+                          background: overCap ? 'var(--bad)' : undefined,
+                        }}
+                      />
                     </div>
                   </div>
-                  <div className="num" style={{ textAlign: 'right', color: overCap ? 'var(--bad)' : undefined }}>
-                    {formatSatangAsBaht(row.usedMinor)} / {row.capMinor !== null ? formatSatangAsBaht(row.capMinor) : '—'}
+                  <div
+                    className="num"
+                    style={{ textAlign: 'right', color: overCap ? 'var(--bad)' : undefined }}
+                  >
+                    {formatSatangAsBaht(row.usedMinor)} /{' '}
+                    {row.capMinor !== null ? formatSatangAsBaht(row.capMinor) : '—'}
                   </div>
                 </div>
               );

@@ -32,7 +32,9 @@ function configDir(): string {
 function requireOpenSqlite() {
   const handle = getAppDatabase();
   if (!handle) {
-    throw new Error('App database is not open yet — complete onboarding (choose a data folder) first.');
+    throw new Error(
+      'App database is not open yet — complete onboarding (choose a data folder) first.',
+    );
   }
   return handle.sqlite;
 }

@@ -21,7 +21,10 @@ const GENERAL_CATEGORY_LABELS: Record<GeneralCategory, string> = {
 };
 
 function transactionLabel(row: TransactionRow): string {
-  return row.sourcePayer ?? (row.generalCategory ? GENERAL_CATEGORY_LABELS[row.generalCategory] : `รายการ #${row.id}`);
+  return (
+    row.sourcePayer ??
+    (row.generalCategory ? GENERAL_CATEGORY_LABELS[row.generalCategory] : `รายการ #${row.id}`)
+  );
 }
 
 export default function Entry(): JSX.Element {
@@ -31,7 +34,9 @@ export default function Entry(): JSX.Element {
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [editing, setEditing] = useState<TransactionRow | null>(null);
-  const [history, setHistory] = useState<{ row: TransactionRow; entries: AuditEntry[] } | null>(null);
+  const [history, setHistory] = useState<{ row: TransactionRow; entries: AuditEntry[] } | null>(
+    null,
+  );
 
   const reload = useCallback(async (yearId: number) => {
     const rows = await window.api.transactions.listByYear(yearId);
@@ -72,7 +77,11 @@ export default function Entry(): JSX.Element {
     }
   }
 
-  async function handleUpdate(yearId: number, id: number, values: TransactionFormValues): Promise<void> {
+  async function handleUpdate(
+    yearId: number,
+    id: number,
+    values: TransactionFormValues,
+  ): Promise<void> {
     setBusy(true);
     setFeedback(null);
     try {
@@ -112,17 +121,24 @@ export default function Entry(): JSX.Element {
   }
 
   if (yearState.status === 'loading') return <div className="page">กำลังโหลด...</div>;
-  if (yearState.status === 'error') return <div className="page" role="alert">{yearState.message}</div>;
+  if (yearState.status === 'error')
+    return (
+      <div className="page" role="alert">
+        {yearState.message}
+      </div>
+    );
 
   const yearId = yearState.year.id;
   const taxTransactions = transactions.filter((t) => t.taxRelevant);
   const generalTransactions = transactions.filter((t) => !t.taxRelevant && t.status === 'active');
-  const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map((category) => ({
-    category,
-    total: generalTransactions
-      .filter((t) => t.generalCategory === category)
-      .reduce((sum, t) => sum + t.amountMinor, 0),
-  }));
+  const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map(
+    (category) => ({
+      category,
+      total: generalTransactions
+        .filter((t) => t.generalCategory === category)
+        .reduce((sum, t) => sum + t.amountMinor, 0),
+    }),
+  );
 
   return (
     <div className="page">
@@ -148,13 +164,23 @@ export default function Entry(): JSX.Element {
           onCancel={() => setEditing(null)}
         />
       ) : (
-        <TransactionForm key={formKey} busy={busy} onSubmit={(values) => handleCreate(yearId, values)} />
+        <TransactionForm
+          key={formKey}
+          busy={busy}
+          onSubmit={(values) => handleCreate(yearId, values)}
+        />
       )}
 
       <div className="panel" style={{ marginTop: 20 }}>
         <div
           className="section-label"
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
         >
           <span>🧾 รายการภาษี — ปี {yearState.year.year} (จัดกลุ่มรายเดือน)</span>
         </div>
@@ -169,7 +195,13 @@ export default function Entry(): JSX.Element {
       <div className="panel" style={{ marginTop: 20, borderColor: 'var(--amber)' }}>
         <div
           className="section-label"
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
         >
           <span>🛒 รายการทั่วไป (ไม่นับภาษี) — ปี {yearState.year.year}</span>
           <span className="muted">ไม่ถูกนำไปคำนวณภาษีเลย (AC-14)</span>
@@ -203,7 +235,10 @@ export default function Entry(): JSX.Element {
                   <td>{row.date}</td>
                   <td>
                     {row.generalCategory && (
-                      <span className="tag" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
+                      <span
+                        className="tag"
+                        style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
+                      >
                         {GENERAL_CATEGORY_LABELS[row.generalCategory]}
                       </span>
                     )}
@@ -214,7 +249,11 @@ export default function Entry(): JSX.Element {
                     <button type="button" className="row-action" onClick={() => setEditing(row)}>
                       แก้ไข
                     </button>
-                    <button type="button" className="row-action muted" onClick={() => void handleVoid(yearId, row)}>
+                    <button
+                      type="button"
+                      className="row-action muted"
+                      onClick={() => void handleVoid(yearId, row)}
+                    >
                       Void
                     </button>
                   </td>

@@ -55,14 +55,21 @@ function assertCreateInput(input: CreateCategoryInput): void {
     }
   } else {
     if (input.sharedGroupId != null) {
-      throw new DeductionError('sharedGroupId must be omitted unless capType is "shared_group_member".');
+      throw new DeductionError(
+        'sharedGroupId must be omitted unless capType is "shared_group_member".',
+      );
     }
     if (input.capAmountMinor == null) {
       throw new DeductionError(`capAmountMinor is required when capType is "${input.capType}".`);
     }
   }
-  if (input.capAmountMinor != null && (!Number.isSafeInteger(input.capAmountMinor) || input.capAmountMinor < 0)) {
-    throw new DeductionError(`capAmountMinor must be a non-negative integer, got ${String(input.capAmountMinor)}.`);
+  if (
+    input.capAmountMinor != null &&
+    (!Number.isSafeInteger(input.capAmountMinor) || input.capAmountMinor < 0)
+  ) {
+    throw new DeductionError(
+      `capAmountMinor must be a non-negative integer, got ${String(input.capAmountMinor)}.`,
+    );
   }
 }
 
@@ -91,11 +98,15 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
       `INSERT INTO deduction_categories (${CATEGORY_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     selectCategoryById: sqlite.prepare(`SELECT * FROM deduction_categories WHERE id = ?`),
-    selectAllCategories: sqlite.prepare(`SELECT * FROM deduction_categories ORDER BY sort_order ASC, id ASC`),
+    selectAllCategories: sqlite.prepare(
+      `SELECT * FROM deduction_categories ORDER BY sort_order ASC, id ASC`,
+    ),
     updateCategoryFields: sqlite.prepare(
       `UPDATE deduction_categories SET name = ?, cap_amount_minor = ? WHERE id = ?`,
     ),
-    updateCategoryActive: sqlite.prepare(`UPDATE deduction_categories SET is_active = ? WHERE id = ?`),
+    updateCategoryActive: sqlite.prepare(
+      `UPDATE deduction_categories SET is_active = ? WHERE id = ?`,
+    ),
     upsertEntry: sqlite.prepare(
       `INSERT INTO deduction_entries (tax_year_id, category_id, amount_minor, count)
        VALUES (?, ?, ?, ?)
@@ -182,12 +193,13 @@ export function createCategory(
 
 /** Every category, including archived ones — callers filter `isActive` for the "add" picker (AC-17). */
 export function listCategories(sqlite: BetterSqlite3.Database): DeductionCategoryRow[] {
-  return statementsFor(sqlite)
-    .selectAllCategories.all()
-    .map(toCategoryRow);
+  return statementsFor(sqlite).selectAllCategories.all().map(toCategoryRow);
 }
 
-export function getCategory(sqlite: BetterSqlite3.Database, id: number): DeductionCategoryRow | undefined {
+export function getCategory(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+): DeductionCategoryRow | undefined {
   const raw = statementsFor(sqlite).selectCategoryById.get(id);
   return raw === undefined ? undefined : toCategoryRow(raw);
 }
@@ -234,11 +246,15 @@ export function updateCategory(
 ): DeductionCategoryRow {
   const run = sqlite.transaction(() => {
     const before = requireCategory(sqlite, id);
-    const name = input.name !== undefined && input.name.trim().length > 0 ? input.name : before.name;
-    const capAmountMinor = input.capAmountMinor !== undefined ? input.capAmountMinor : before.capAmountMinor;
+    const name =
+      input.name !== undefined && input.name.trim().length > 0 ? input.name : before.name;
+    const capAmountMinor =
+      input.capAmountMinor !== undefined ? input.capAmountMinor : before.capAmountMinor;
 
     if (capAmountMinor != null && (!Number.isSafeInteger(capAmountMinor) || capAmountMinor < 0)) {
-      throw new DeductionError(`capAmountMinor must be a non-negative integer, got ${String(capAmountMinor)}.`);
+      throw new DeductionError(
+        `capAmountMinor must be a non-negative integer, got ${String(capAmountMinor)}.`,
+      );
     }
     if (before.capType !== 'shared_group_member' && capAmountMinor == null) {
       throw new DeductionError(`capAmountMinor is required for capType "${before.capType}".`);
@@ -294,7 +310,9 @@ export interface SetEntryInput {
  */
 export function setEntry(sqlite: BetterSqlite3.Database, input: SetEntryInput): DeductionEntryRow {
   if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor < 0) {
-    throw new DeductionError(`amountMinor must be a non-negative integer, got ${String(input.amountMinor)}.`);
+    throw new DeductionError(
+      `amountMinor must be a non-negative integer, got ${String(input.amountMinor)}.`,
+    );
   }
   if (input.count != null && (!Number.isSafeInteger(input.count) || input.count < 0)) {
     throw new DeductionError(`count must be a non-negative integer, got ${String(input.count)}.`);
@@ -303,8 +321,15 @@ export function setEntry(sqlite: BetterSqlite3.Database, input: SetEntryInput): 
   const run = sqlite.transaction(() => {
     const beforeRaw = statementsFor(sqlite).selectEntry.get(input.taxYearId, input.categoryId);
     const before = beforeRaw === undefined ? null : toEntryRow(beforeRaw);
-    statementsFor(sqlite).upsertEntry.run(input.taxYearId, input.categoryId, input.amountMinor, input.count ?? null);
-    const after = toEntryRow(statementsFor(sqlite).selectEntry.get(input.taxYearId, input.categoryId));
+    statementsFor(sqlite).upsertEntry.run(
+      input.taxYearId,
+      input.categoryId,
+      input.amountMinor,
+      input.count ?? null,
+    );
+    const after = toEntryRow(
+      statementsFor(sqlite).selectEntry.get(input.taxYearId, input.categoryId),
+    );
     recordMutation(sqlite, {
       entityType: 'deduction_entry',
       entityId: after.id,
@@ -318,8 +343,9 @@ export function setEntry(sqlite: BetterSqlite3.Database, input: SetEntryInput): 
 }
 
 /** Every deduction entry for one tax year — the calc engine's (AT-4.2) raw input. */
-export function listEntries(sqlite: BetterSqlite3.Database, taxYearId: number): DeductionEntryRow[] {
-  return statementsFor(sqlite)
-    .selectEntriesByYear.all(taxYearId)
-    .map(toEntryRow);
+export function listEntries(
+  sqlite: BetterSqlite3.Database,
+  taxYearId: number,
+): DeductionEntryRow[] {
+  return statementsFor(sqlite).selectEntriesByYear.all(taxYearId).map(toEntryRow);
 }

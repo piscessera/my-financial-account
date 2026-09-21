@@ -101,14 +101,20 @@ function assertCreateInput(input: CreateTransactionInput): void {
       throw new TransactionError('generalCategory must be omitted for a tax-relevant transaction.');
     }
     if (input.kind === 'income' && input.incomeSection == null) {
-      throw new TransactionError('incomeSection is required for a tax-relevant income transaction.');
+      throw new TransactionError(
+        'incomeSection is required for a tax-relevant income transaction.',
+      );
     }
   } else {
     if (input.generalCategory == null) {
-      throw new TransactionError('generalCategory is required for a general (non-tax) transaction.');
+      throw new TransactionError(
+        'generalCategory is required for a general (non-tax) transaction.',
+      );
     }
     if (input.incomeSection != null) {
-      throw new TransactionError('incomeSection must be omitted for a general (non-tax) transaction.');
+      throw new TransactionError(
+        'incomeSection must be omitted for a general (non-tax) transaction.',
+      );
     }
   }
 }
@@ -224,7 +230,10 @@ function requireRow(sqlite: BetterSqlite3.Database, id: number): TransactionRow 
 }
 
 /** Create a transaction (tax-relevant or general shape) as `active`. Audit-logs as `create` (INV-4). */
-export function createTransaction(sqlite: BetterSqlite3.Database, input: CreateTransactionInput): TransactionRow {
+export function createTransaction(
+  sqlite: BetterSqlite3.Database,
+  input: CreateTransactionInput,
+): TransactionRow {
   assertCreateInput(input);
   const taxRelevant = input.taxRelevant ?? true;
 
@@ -280,19 +289,24 @@ export function voidTransaction(sqlite: BetterSqlite3.Database, id: number): Tra
 }
 
 /** One transaction by id, or `undefined` if it doesn't exist. */
-export function getTransaction(sqlite: BetterSqlite3.Database, id: number): TransactionRow | undefined {
+export function getTransaction(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+): TransactionRow | undefined {
   const raw = statementsFor(sqlite).selectById.get(id);
   return raw === undefined ? undefined : toTransactionRow(raw);
 }
 
 /** Every transaction (active, voided, and reversal rows alike) for one tax year, date-ordered. */
 export function listByYear(sqlite: BetterSqlite3.Database, taxYearId: number): TransactionRow[] {
-  return statementsFor(sqlite)
-    .selectByTaxYear.all(taxYearId)
-    .map(toTransactionRow);
+  return statementsFor(sqlite).selectByTaxYear.all(taxYearId).map(toTransactionRow);
 }
 
-function requireOpenTaxYear(sqlite: BetterSqlite3.Database, taxYearId: number, action: string): void {
+function requireOpenTaxYear(
+  sqlite: BetterSqlite3.Database,
+  taxYearId: number,
+  action: string,
+): void {
   const taxYear = getTaxYear(sqlite, taxYearId);
   if (taxYear === undefined) throw new TransactionError(`tax_years row ${taxYearId} not found.`);
   if (taxYear.status === 'closed') {

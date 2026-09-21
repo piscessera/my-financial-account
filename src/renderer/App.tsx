@@ -18,7 +18,8 @@ type LoadState =
   | { status: 'needsOnboarding' }
   | { status: 'ready'; info: DataLocationInfo };
 
-type Screen = 'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears' | 'summary' | 'importExport';
+type Screen =
+  'dashboard' | 'entry' | 'deductions' | 'settings' | 'taxYears' | 'summary' | 'importExport';
 
 /**
  * Minimal nav shell, PROTO-0001's `app-nav` (design/DESIGN.md), with plain local-state screen
@@ -41,25 +42,53 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
       <nav className="app-nav">
         <div className="brand">🧾 สมุดภาษีรายปี</div>
         <div className="links">
-          <a href="#" className={screen === 'dashboard' ? 'active' : ''} onClick={() => setScreen('dashboard')}>
+          <a
+            href="#"
+            className={screen === 'dashboard' ? 'active' : ''}
+            onClick={() => setScreen('dashboard')}
+          >
             Dashboard
           </a>
-          <a href="#" className={screen === 'entry' ? 'active' : ''} onClick={() => setScreen('entry')}>
+          <a
+            href="#"
+            className={screen === 'entry' ? 'active' : ''}
+            onClick={() => setScreen('entry')}
+          >
             บันทึกรายรับ-รายจ่าย
           </a>
-          <a href="#" className={screen === 'deductions' ? 'active' : ''} onClick={() => setScreen('deductions')}>
+          <a
+            href="#"
+            className={screen === 'deductions' ? 'active' : ''}
+            onClick={() => setScreen('deductions')}
+          >
             ค่าลดหย่อน
           </a>
-          <a href="#" className={screen === 'settings' ? 'active' : ''} onClick={() => setScreen('settings')}>
+          <a
+            href="#"
+            className={screen === 'settings' ? 'active' : ''}
+            onClick={() => setScreen('settings')}
+          >
             ตั้งค่า
           </a>
-          <a href="#" className={screen === 'taxYears' ? 'active' : ''} onClick={() => setScreen('taxYears')}>
+          <a
+            href="#"
+            className={screen === 'taxYears' ? 'active' : ''}
+            onClick={() => setScreen('taxYears')}
+          >
             ปีภาษี
           </a>
-          <a href="#" className={screen === 'summary' ? 'active' : ''} onClick={() => setScreen('summary')}>
+          <a
+            href="#"
+            className={screen === 'summary' ? 'active' : ''}
+            onClick={() => setScreen('summary')}
+          >
             สรุปปี
           </a>
-          <a href="#" className={screen === 'importExport' ? 'active' : ''} onClick={() => setScreen('importExport')}>
+          <a
+            href="#"
+            className={screen === 'importExport' ? 'active' : ''}
+            onClick={() => setScreen('importExport')}
+          >
             นำเข้า/ส่งออก
           </a>
         </div>
@@ -77,7 +106,10 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <div className="page-head">
             <h1>ปีภาษี</h1>
           </div>
-          <TaxYearSwitcher selectedYearId={selectedYear?.id ?? null} onSelectYear={setSelectedYear} />
+          <TaxYearSwitcher
+            selectedYearId={selectedYear?.id ?? null}
+            onSelectYear={setSelectedYear}
+          />
         </div>
       )}
       {screen === 'summary' && <Summary />}

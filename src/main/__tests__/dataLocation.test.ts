@@ -148,9 +148,7 @@ describe('changeFolder', () => {
     try {
       createInFolder(otherConfigDir, targetDir); // target already has a DB
 
-      expect(() => changeFolder(configDir, dataDir, targetDir, 'move')).toThrow(
-        /already exists/i,
-      );
+      expect(() => changeFolder(configDir, dataDir, targetDir, 'move')).toThrow(/already exists/i);
       expect(readDataLocationConfig(configDir)).toEqual({ folderPath: dataDir });
       expect(existsSync(resolveDbPath(dataDir))).toBe(true);
     } finally {

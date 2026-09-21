@@ -90,7 +90,9 @@ describe('createTransaction — TC-0001 #2: reject missing required field', () =
       }),
     ).toThrow(TransactionError);
 
-    const row = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM transactions`).get() as { n: number };
+    const row = temp.sqlite.prepare(`SELECT COUNT(*) AS n FROM transactions`).get() as {
+      n: number;
+    };
     expect(row.n).toBe(0);
   });
 

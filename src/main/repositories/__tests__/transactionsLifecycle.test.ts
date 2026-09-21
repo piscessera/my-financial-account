@@ -93,7 +93,7 @@ describe('createReversal — TC-0001 #19: reversal entry after close', () => {
     expect(all).toHaveLength(2);
   });
 
-  it('rejects a reversal when the original transaction\'s tax year is still open', () => {
+  it("rejects a reversal when the original transaction's tax year is still open", () => {
     const original = createTransaction(temp.sqlite, {
       taxYearId,
       kind: 'income',

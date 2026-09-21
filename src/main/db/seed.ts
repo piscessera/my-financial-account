@@ -69,10 +69,7 @@ function countRows(sqlite: BetterSqlite3.Database, table: string): number {
  * transaction. Skips (returns `{ skipped: true }`) if any of the three tables is non-empty,
  * so re-opening an already-seeded (or user-populated) database never inserts duplicates.
  */
-export function seedDatabase(
-  sqlite: BetterSqlite3.Database,
-  dataSet: SeedDataSet,
-): SeedResult {
+export function seedDatabase(sqlite: BetterSqlite3.Database, dataSet: SeedDataSet): SeedResult {
   const alreadySeeded =
     countRows(sqlite, 'shared_caps') > 0 ||
     countRows(sqlite, 'deduction_categories') > 0 ||

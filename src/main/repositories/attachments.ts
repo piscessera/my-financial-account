@@ -114,7 +114,9 @@ export function addAttachment(
   input: AddAttachmentInput,
 ): AttachmentRow {
   if (!Number.isSafeInteger(input.transactionId)) {
-    throw new AttachmentError(`transactionId must be an integer, got ${String(input.transactionId)}.`);
+    throw new AttachmentError(
+      `transactionId must be an integer, got ${String(input.transactionId)}.`,
+    );
   }
   if (!existsSync(input.sourceFilePath)) {
     throw new AttachmentError(`Source file does not exist: ${input.sourceFilePath}`);
@@ -131,7 +133,11 @@ export function addAttachment(
   mkdirSync(targetDir, { recursive: true });
   const storedFilename = uniqueStoredFilename(targetDir, originalFilename);
   copyFileSync(input.sourceFilePath, path.join(targetDir, storedFilename));
-  const relativePath = toRelativePath(ATTACHMENTS_DIRNAME, String(input.transactionId), storedFilename);
+  const relativePath = toRelativePath(
+    ATTACHMENTS_DIRNAME,
+    String(input.transactionId),
+    storedFilename,
+  );
 
   const run = sqlite.transaction(() => {
     const info = statementsFor(sqlite).insert.run(
@@ -141,7 +147,8 @@ export function addAttachment(
       input.mimeType,
     );
     const raw = statementsFor(sqlite).selectById.get(Number(info.lastInsertRowid));
-    if (raw === undefined) throw new AttachmentError('Insert succeeded but the row could not be read back.');
+    if (raw === undefined)
+      throw new AttachmentError('Insert succeeded but the row could not be read back.');
     const row = toAttachmentRow(raw);
     recordMutation(sqlite, {
       entityType: 'attachment',
@@ -155,8 +162,9 @@ export function addAttachment(
 }
 
 /** All attachments for one transaction, oldest first. No remove method exists (by design). */
-export function listAttachments(sqlite: BetterSqlite3.Database, transactionId: number): AttachmentRow[] {
-  return statementsFor(sqlite)
-    .selectByTransaction.all(transactionId)
-    .map(toAttachmentRow);
+export function listAttachments(
+  sqlite: BetterSqlite3.Database,
+  transactionId: number,
+): AttachmentRow[] {
+  return statementsFor(sqlite).selectByTransaction.all(transactionId).map(toAttachmentRow);
 }

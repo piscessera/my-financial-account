@@ -84,7 +84,11 @@ function toCsvRow(row: TransactionRow): string {
  * its status (`active`/`voided`) or origin (manual entry, a reversal, a prior import), one row
  * each (TC-0001 #43). Read-only: never touches the DB beyond the `SELECT` in `listByYear`.
  */
-export function exportLedger(sqlite: BetterSqlite3.Database, yearId: number, destPath: string): void {
+export function exportLedger(
+  sqlite: BetterSqlite3.Database,
+  yearId: number,
+  destPath: string,
+): void {
   const rows = listByYear(sqlite, yearId);
   const lines = [LEDGER_CSV_COLUMNS.join(','), ...rows.map(toCsvRow)];
   writeFileSync(destPath, lines.join('\r\n') + '\r\n', 'utf8');
@@ -114,7 +118,10 @@ export function exportSummary(destPath: string, year: number, result: ComputeYea
     ['balance_direction', result.balance.direction],
     ['balance_amount', formatSatangAsBaht(result.balance.amountMinor, { grouping: false })],
   ];
-  const lines = ['field,value', ...rows.map(([field, value]) => `${csvField(field)},${csvField(value)}`)];
+  const lines = [
+    'field,value',
+    ...rows.map(([field, value]) => `${csvField(field)},${csvField(value)}`),
+  ];
   writeFileSync(destPath, lines.join('\r\n') + '\r\n', 'utf8');
 }
 
@@ -169,7 +176,10 @@ export interface ParseForPreviewResult {
   readonly rows: readonly ParsedLedgerRow[];
 }
 
-function validateRow(raw: Record<string, string>): { data?: CreateTransactionInput; errors: string[] } {
+function validateRow(raw: Record<string, string>): {
+  data?: CreateTransactionInput;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   if (!DATE_RE.test(raw.date ?? '')) errors.push('date must be "YYYY-MM-DD".');
@@ -184,7 +194,8 @@ function validateRow(raw: Record<string, string>): { data?: CreateTransactionInp
   if (incomeSection !== null && !VALID_INCOME_SECTIONS.has(incomeSection)) {
     errors.push(`income_section "${raw.income_section}" is not valid.`);
   }
-  const generalCategory = raw.general_category === '' ? null : (raw.general_category as GeneralCategory);
+  const generalCategory =
+    raw.general_category === '' ? null : (raw.general_category as GeneralCategory);
   if (generalCategory !== null && !VALID_GENERAL_CATEGORIES.has(generalCategory)) {
     errors.push(`general_category "${raw.general_category}" is not valid.`);
   }
@@ -202,9 +213,11 @@ function validateRow(raw: Record<string, string>): { data?: CreateTransactionInp
   }
 
   const amountResult = tryParseBahtToSatang(raw.amount ?? '');
-  if (!amountResult.ok || amountResult.satang === 0) errors.push('amount must be a non-zero valid baht amount.');
+  if (!amountResult.ok || amountResult.satang === 0)
+    errors.push('amount must be a non-zero valid baht amount.');
   const whtResult = tryParseBahtToSatang(raw.wht === '' ? '0' : (raw.wht ?? ''));
-  if (!whtResult.ok || whtResult.satang < 0) errors.push('wht must be a valid non-negative baht amount.');
+  if (!whtResult.ok || whtResult.satang < 0)
+    errors.push('wht must be a valid non-negative baht amount.');
 
   if (errors.length > 0 || !amountResult.ok || !whtResult.ok) return { errors };
 
@@ -263,7 +276,9 @@ export function parseForPreview(
 
     const { data, errors } = validateRow(raw);
     if (yearIsClosed) {
-      errors.push(`Tax year ${targetYear} is already closed in this install — cannot import into it (INV-2b).`);
+      errors.push(
+        `Tax year ${targetYear} is already closed in this install — cannot import into it (INV-2b).`,
+      );
     }
     const valid = errors.length === 0;
     return { rowNumber: index + 1, raw, valid, errors, data: valid ? data : undefined };
@@ -296,7 +311,10 @@ export interface CommitImportResult {
  * whole batch (filename + imported/skipped counts, AC-24), on top of each row's own individual
  * `create` audit entry from `createTransaction`.
  */
-export function commitImport(sqlite: BetterSqlite3.Database, input: CommitImportInput): CommitImportResult {
+export function commitImport(
+  sqlite: BetterSqlite3.Database,
+  input: CommitImportInput,
+): CommitImportResult {
   const run = sqlite.transaction(() => {
     const existing = listTaxYears(sqlite).find((y) => y.year === input.targetYear);
     const year = existing ?? createTaxYear(sqlite, { year: input.targetYear });

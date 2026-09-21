@@ -60,7 +60,9 @@ describe('seedDatabase', () => {
       });
 
       const lifeInsurance = db.sqlite
-        .prepare(`SELECT cap_type, shared_group_id, cap_amount_minor FROM deduction_categories WHERE code = 'life_insurance'`)
+        .prepare(
+          `SELECT cap_type, shared_group_id, cap_amount_minor FROM deduction_categories WHERE code = 'life_insurance'`,
+        )
         .get() as { cap_type: string; shared_group_id: number; cap_amount_minor: number | null };
       const sharedCap = db.sqlite
         .prepare(`SELECT id, cap_amount_minor FROM shared_caps WHERE name = 'insurance_group'`)

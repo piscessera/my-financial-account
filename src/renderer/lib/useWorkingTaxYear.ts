@@ -26,11 +26,13 @@ export function useWorkingTaxYear(): WorkingTaxYearState {
       try {
         const years = await window.api.taxYears.list();
         const wanted = currentBuddhistYear();
-        const existing = years.find((y) => y.year === wanted) ?? years.find((y) => y.status === 'open');
+        const existing =
+          years.find((y) => y.year === wanted) ?? years.find((y) => y.status === 'open');
         const year = existing ?? (await window.api.taxYears.create(wanted));
         if (!cancelled) setState({ status: 'ready', year });
       } catch (err) {
-        if (!cancelled) setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
+        if (!cancelled)
+          setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
       }
     })();
     return () => {

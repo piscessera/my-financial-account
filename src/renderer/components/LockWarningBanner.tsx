@@ -9,7 +9,8 @@ export default function LockWarningBanner({ previous }: LockWarningBannerProps):
   return (
     <div role="alert" style={{ background: '#fff3cd', padding: '12px 16px', marginBottom: 16 }}>
       อาจมีอีกเครื่อง/หน้าต่างหนึ่งเปิดข้อมูลชุดนี้อยู่
-      {previous ? ` (${previous.hostname}, ${previous.timestamp})` : ''} — การแก้ไขพร้อมกันอาจทำให้ข้อมูลขัดแย้งกัน
+      {previous ? ` (${previous.hostname}, ${previous.timestamp})` : ''} —
+      การแก้ไขพร้อมกันอาจทำให้ข้อมูลขัดแย้งกัน
     </div>
   );
 }

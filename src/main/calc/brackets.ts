@@ -46,7 +46,10 @@ function taxForBracket(amountMinor: number, rateBp: number): Satang {
  * `sortOrder`). Each bracket's contribution is `min(netTaxable, upperBound) - lowerBound`,
  * clamped to `>= 0`; the last bracket's `upperBoundMinor` is `null` (open-ended).
  */
-export function computeTax(netTaxableMinor: Satang, brackets: readonly TaxBracketRow[]): ComputeTaxResult {
+export function computeTax(
+  netTaxableMinor: Satang,
+  brackets: readonly TaxBracketRow[],
+): ComputeTaxResult {
   assertSatang(netTaxableMinor);
   const floored = Math.max(netTaxableMinor, 0);
 
@@ -60,8 +63,14 @@ export function computeTax(netTaxableMinor: Satang, brackets: readonly TaxBracke
       0,
       Math.min(floored, upper ?? floored) - bracket.lowerBoundMinor,
     );
-    const taxMinor = amountInBracketMinor > 0 ? taxForBracket(amountInBracketMinor, bracket.rateBp) : 0;
-    breakdown.push({ bracketId: bracket.id, amountInBracketMinor, rateBp: bracket.rateBp, taxMinor });
+    const taxMinor =
+      amountInBracketMinor > 0 ? taxForBracket(amountInBracketMinor, bracket.rateBp) : 0;
+    breakdown.push({
+      bracketId: bracket.id,
+      amountInBracketMinor,
+      rateBp: bracket.rateBp,
+      taxMinor,
+    });
     totalTaxMinor += taxMinor;
   }
 

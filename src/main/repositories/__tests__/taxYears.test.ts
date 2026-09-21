@@ -96,15 +96,19 @@ describe('setExpenseMethod', () => {
 
   it('rejects lump_sum without a rate', () => {
     const year = createTaxYear(temp.sqlite, { year: 2569 });
-    expect(() =>
-      setExpenseMethod(temp.sqlite, { id: year.id, expenseMethod: 'lump_sum' }),
-    ).toThrow(TaxYearError);
+    expect(() => setExpenseMethod(temp.sqlite, { id: year.id, expenseMethod: 'lump_sum' })).toThrow(
+      TaxYearError,
+    );
   });
 
   it('rejects a rate outside [0, 10000] bp', () => {
     const year = createTaxYear(temp.sqlite, { year: 2569 });
     expect(() =>
-      setExpenseMethod(temp.sqlite, { id: year.id, expenseMethod: 'lump_sum', lumpSumRateBp: 10001 }),
+      setExpenseMethod(temp.sqlite, {
+        id: year.id,
+        expenseMethod: 'lump_sum',
+        lumpSumRateBp: 10001,
+      }),
     ).toThrow(TaxYearError);
   });
 

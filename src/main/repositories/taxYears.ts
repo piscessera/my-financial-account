@@ -70,9 +70,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
   if (cached) return cached;
 
   const statements: Statements = {
-    insert: sqlite.prepare(
-      `INSERT INTO tax_years (year, status) VALUES (?, 'open')`,
-    ),
+    insert: sqlite.prepare(`INSERT INTO tax_years (year, status) VALUES (?, 'open')`),
     selectById: sqlite.prepare(`SELECT * FROM tax_years WHERE id = ?`),
     selectByYear: sqlite.prepare(`SELECT * FROM tax_years WHERE year = ?`),
     selectAll: sqlite.prepare(`SELECT * FROM tax_years ORDER BY year ASC`),
@@ -138,7 +136,10 @@ function requireRow(sqlite: BetterSqlite3.Database, id: number): TaxYearRow {
 }
 
 /** Create a new tax year, `open`, with no expense method set yet. */
-export function createTaxYear(sqlite: BetterSqlite3.Database, input: CreateTaxYearInput): TaxYearRow {
+export function createTaxYear(
+  sqlite: BetterSqlite3.Database,
+  input: CreateTaxYearInput,
+): TaxYearRow {
   if (!Number.isSafeInteger(input.year)) {
     throw new TaxYearError(`tax_years.year must be an integer, got ${String(input.year)}.`);
   }
@@ -163,9 +164,7 @@ export function createTaxYear(sqlite: BetterSqlite3.Database, input: CreateTaxYe
 
 /** All tax years, ascending by calendar year. Multiple rows may be `open` at once (AC-7c). */
 export function listTaxYears(sqlite: BetterSqlite3.Database): TaxYearRow[] {
-  return statementsFor(sqlite)
-    .selectAll.all()
-    .map(toTaxYearRow);
+  return statementsFor(sqlite).selectAll.all().map(toTaxYearRow);
 }
 
 /** One tax year by id, or `undefined` if it doesn't exist. */
@@ -180,7 +179,10 @@ export function getTaxYear(sqlite: BetterSqlite3.Database, id: number): TaxYearR
  * validated here so the caller gets a `TaxYearError`, not an opaque SQLite CHECK failure.
  * Audit-logged as an `update` (INV-4): this changes a live entity's state, unlike `create`.
  */
-export function setExpenseMethod(sqlite: BetterSqlite3.Database, input: SetExpenseMethodInput): TaxYearRow {
+export function setExpenseMethod(
+  sqlite: BetterSqlite3.Database,
+  input: SetExpenseMethodInput,
+): TaxYearRow {
   const { id, expenseMethod, lumpSumRateBp = null } = input;
 
   if (expenseMethod === 'lump_sum') {
@@ -219,7 +221,11 @@ export function setExpenseMethod(sqlite: BetterSqlite3.Database, input: SetExpen
  * real lifecycle methods once they exist. Exists so P2's closed-year immutability tests
  * (INV-2b) don't have to wait on P4.
  */
-export function setStatusForTest(sqlite: BetterSqlite3.Database, id: number, status: TaxYearStatus): TaxYearRow {
+export function setStatusForTest(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+  status: TaxYearStatus,
+): TaxYearRow {
   statementsFor(sqlite).updateStatusForTest.run(status, status, id);
   return requireRow(sqlite, id);
 }
@@ -297,10 +303,15 @@ export function close(
  * or bracket rate edited in Settings *after* close must never change what a closed year
  * displays. An **open** year has no snapshot yet, so this computes it live from `liveInputs`.
  */
-export function getYearResult(taxYear: TaxYearRow, liveInputs: CloseTaxYearInput): ComputeYearResult {
+export function getYearResult(
+  taxYear: TaxYearRow,
+  liveInputs: CloseTaxYearInput,
+): ComputeYearResult {
   if (taxYear.status === 'closed') {
     if (taxYear.frozenResultJson === null) {
-      throw new TaxYearError(`tax_years row ${taxYear.id} is closed but has no frozen_result_json.`);
+      throw new TaxYearError(
+        `tax_years row ${taxYear.id} is closed but has no frozen_result_json.`,
+      );
     }
     return JSON.parse(taxYear.frozenResultJson) as ComputeYearResult;
   }

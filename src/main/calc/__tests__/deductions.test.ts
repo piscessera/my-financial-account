@@ -10,7 +10,9 @@ import { computeDeductions } from '../deductions';
 
 let nextEntryId = 1;
 
-function category(overrides: Partial<DeductionCategoryRow> & Pick<DeductionCategoryRow, 'id' | 'capType'>): DeductionCategoryRow {
+function category(
+  overrides: Partial<DeductionCategoryRow> & Pick<DeductionCategoryRow, 'id' | 'capType'>,
+): DeductionCategoryRow {
   return {
     code: `cat-${overrides.id}`,
     name: `Category ${overrides.id}`,
@@ -24,8 +26,19 @@ function category(overrides: Partial<DeductionCategoryRow> & Pick<DeductionCateg
   };
 }
 
-function entry(categoryId: number, amountMinor: number, count: number | null = null): DeductionEntryRow {
-  return { id: nextEntryId++, taxYearId: 1, categoryId, amountMinor, count, updatedAt: '2026-01-01T00:00:00.000Z' };
+function entry(
+  categoryId: number,
+  amountMinor: number,
+  count: number | null = null,
+): DeductionEntryRow {
+  return {
+    id: nextEntryId++,
+    taxYearId: 1,
+    categoryId,
+    amountMinor,
+    count,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
 }
 
 describe('TC-0001 #6: fixed cap, at or below', () => {
@@ -79,7 +92,7 @@ describe('TC-0001 #9: shared-group cap sums across categories', () => {
   });
 });
 
-describe('TC-0001 #10: a shared-group member\'s own sub-cap still applies', () => {
+describe("TC-0001 #10: a shared-group member's own sub-cap still applies", () => {
   it('limits that member to its own sub-cap even while the group total is still under its cap', () => {
     const group: SharedCapRow = { id: 1, name: 'Life+Health', capAmountMinor: 100_000_00 };
     const life = category({ id: 1, capType: 'shared_group_member', sharedGroupId: 1 });

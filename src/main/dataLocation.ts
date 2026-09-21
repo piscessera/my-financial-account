@@ -141,7 +141,9 @@ export interface ChangeFolderResult {
 function requireInfo(configDir: string): DataLocationInfo {
   const info = getDataLocationInfo(configDir);
   if (!info) {
-    throw new DataLocationError('changeFolder: failed to read back the data location it just wrote.');
+    throw new DataLocationError(
+      'changeFolder: failed to read back the data location it just wrote.',
+    );
   }
   return info;
 }
@@ -189,7 +191,9 @@ export function changeFolder(
   mode: ChangeFolderMode,
 ): ChangeFolderResult {
   if (path.resolve(currentFolderPath) === path.resolve(targetFolderPath)) {
-    throw new DataLocationError('changeFolder: the selected folder is already the current data folder.');
+    throw new DataLocationError(
+      'changeFolder: the selected folder is already the current data folder.',
+    );
   }
 
   if (mode === 'switch') {

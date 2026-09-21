@@ -18,8 +18,18 @@ const INCOME_SECTION_TAGS: Record<IncomeSection, string> = {
 };
 
 const THAI_MONTHS = [
-  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+  'มกราคม',
+  'กุมภาพันธ์',
+  'มีนาคม',
+  'เมษายน',
+  'พฤษภาคม',
+  'มิถุนายน',
+  'กรกฎาคม',
+  'สิงหาคม',
+  'กันยายน',
+  'ตุลาคม',
+  'พฤศจิกายน',
+  'ธันวาคม',
 ];
 
 function monthKeyOf(dateIso: string): string {
@@ -125,7 +135,9 @@ export default function LedgerTable({
                       {row.reversalOfId !== null ? (
                         <span className="pill reversal">reversal</span>
                       ) : (
-                        row.incomeSection && <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
+                        row.incomeSection && (
+                          <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
+                        )
                       )}
                     </td>
                     <td>{row.sourcePayer ?? '—'}</td>
@@ -140,15 +152,27 @@ export default function LedgerTable({
                           <button type="button" className="row-action" onClick={() => onEdit(row)}>
                             แก้ไข
                           </button>
-                          <button type="button" className="row-action" onClick={() => onShowHistory(row)}>
+                          <button
+                            type="button"
+                            className="row-action"
+                            onClick={() => onShowHistory(row)}
+                          >
                             ประวัติ
                           </button>
-                          <button type="button" className="row-action muted" onClick={() => onVoid(row)}>
+                          <button
+                            type="button"
+                            className="row-action muted"
+                            onClick={() => onVoid(row)}
+                          >
                             Void
                           </button>
                         </>
                       ) : (
-                        <button type="button" className="row-action muted" onClick={() => onShowHistory(row)}>
+                        <button
+                          type="button"
+                          className="row-action muted"
+                          onClick={() => onShowHistory(row)}
+                        >
                           ปรับเป็นศูนย์แล้ว — ดูประวัติ
                         </button>
                       )}

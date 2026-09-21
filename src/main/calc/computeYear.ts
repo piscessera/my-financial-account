@@ -58,7 +58,10 @@ export interface ComputeYearResult {
   readonly balance: { readonly direction: 'due' | 'refund'; readonly amountMinor: Satang };
 }
 
-function sumWhere(transactions: readonly TransactionRow[], predicate: (t: TransactionRow) => boolean): Satang {
+function sumWhere(
+  transactions: readonly TransactionRow[],
+  predicate: (t: TransactionRow) => boolean,
+): Satang {
   return transactions.filter(predicate).reduce((sum, t) => sum + t.amountMinor, 0);
 }
 
@@ -66,15 +69,28 @@ export function computeYear(input: ComputeYearInput): ComputeYearResult {
   // The one filter every figure below derives from (INV-8): tax-relevant AND active. A voided
   // row (TC-0001 #17's "no hard delete" path) contributes nothing, same as a general
   // transaction contributes nothing — both are excluded here, not specially cased later.
-  const activeTaxRelevant = input.transactions.filter((t) => t.taxRelevant && t.status === 'active');
+  const activeTaxRelevant = input.transactions.filter(
+    (t) => t.taxRelevant && t.status === 'active',
+  );
 
   const incomeBySection: IncomeBySection = {
-    section40_1Minor: sumWhere(activeTaxRelevant, (t) => t.kind === 'income' && t.incomeSection === '40_1'),
-    section40_2Minor: sumWhere(activeTaxRelevant, (t) => t.kind === 'income' && t.incomeSection === '40_2'),
-    section40_5_8Minor: sumWhere(activeTaxRelevant, (t) => t.kind === 'income' && t.incomeSection === '40_5_8'),
+    section40_1Minor: sumWhere(
+      activeTaxRelevant,
+      (t) => t.kind === 'income' && t.incomeSection === '40_1',
+    ),
+    section40_2Minor: sumWhere(
+      activeTaxRelevant,
+      (t) => t.kind === 'income' && t.incomeSection === '40_2',
+    ),
+    section40_5_8Minor: sumWhere(
+      activeTaxRelevant,
+      (t) => t.kind === 'income' && t.incomeSection === '40_5_8',
+    ),
   };
   const totalIncomeMinor =
-    incomeBySection.section40_1Minor + incomeBySection.section40_2Minor + incomeBySection.section40_5_8Minor;
+    incomeBySection.section40_1Minor +
+    incomeBySection.section40_2Minor +
+    incomeBySection.section40_5_8Minor;
 
   const totalExpenseMinor = sumWhere(activeTaxRelevant, (t) => t.kind === 'expense');
   const whtTotalMinor = activeTaxRelevant.reduce((sum, t) => sum + t.whtMinor, 0);
@@ -89,10 +105,17 @@ export function computeYear(input: ComputeYearInput): ComputeYearResult {
           actualExpensesMinor: totalExpenseMinor,
         });
 
-  const deductions = computeDeductions(input.deductionCategories, input.deductionEntries, input.sharedCaps);
+  const deductions = computeDeductions(
+    input.deductionCategories,
+    input.deductionEntries,
+    input.sharedCaps,
+  );
   const totalDeductionsMinor = deductions.totalMinor;
 
-  const netTaxableMinor = Math.max(totalIncomeMinor - expenseDeductionMinor - totalDeductionsMinor, 0);
+  const netTaxableMinor = Math.max(
+    totalIncomeMinor - expenseDeductionMinor - totalDeductionsMinor,
+    0,
+  );
   assertSatang(netTaxableMinor);
 
   const bracket = computeTax(netTaxableMinor, input.brackets);
