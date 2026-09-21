@@ -26,6 +26,7 @@ export class DeductionError extends Error {
 }
 
 export interface CreateCategoryInput {
+  readonly taxYearId?: number | null;
   readonly code: string;
   readonly name: string;
   readonly capType: CapType;
@@ -43,6 +44,16 @@ export interface UpdateCategoryInput {
   readonly name?: string;
   /** Ignored (never sent to the DB) for `shared_group_member` sub-caps — see note below. */
   readonly capAmountMinor?: number | null;
+}
+
+function assertYearNotClosed(sqlite: BetterSqlite3.Database, taxYearId: number | null | undefined): void {
+  if (taxYearId === null || taxYearId === undefined) return;
+  const yearRow = sqlite.prepare(`SELECT closed_at FROM tax_years WHERE id = ?`).get(taxYearId) as
+    | { closed_at: string | null }
+    | undefined;
+  if (yearRow && yearRow.closed_at !== null) {
+    throw new DeductionError('Cannot edit categories for a closed tax year (INV-7).');
+  }
 }
 
 function assertCreateInput(input: CreateCategoryInput): void {
@@ -87,7 +98,7 @@ interface Statements {
 const statementCache = new WeakMap<BetterSqlite3.Database, Statements>();
 
 const CATEGORY_COLUMNS =
-  'code, name, cap_type, cap_amount_minor, shared_group_id, sort_order, description, is_builtin';
+  'tax_year_id, code, name, cap_type, cap_amount_minor, shared_group_id, sort_order, description, is_builtin';
 
 function statementsFor(sqlite: BetterSqlite3.Database): Statements {
   const cached = statementCache.get(sqlite);
@@ -95,7 +106,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
 
   const statements: Statements = {
     insertCategory: sqlite.prepare(
-      `INSERT INTO deduction_categories (${CATEGORY_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO deduction_categories (${CATEGORY_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     selectCategoryById: sqlite.prepare(`SELECT * FROM deduction_categories WHERE id = ?`),
     selectAllCategories: sqlite.prepare(
@@ -125,6 +136,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
 
 interface RawCategoryRow {
   id: number;
+  tax_year_id: number | null;
   code: string;
   name: string;
   cap_type: CapType;
@@ -140,6 +152,7 @@ function toCategoryRow(raw: unknown): DeductionCategoryRow {
   const row = raw as RawCategoryRow;
   return {
     id: row.id,
+    taxYearId: row.tax_year_id,
     code: row.code,
     name: row.name,
     capType: row.cap_type,
@@ -159,26 +172,32 @@ function requireCategory(sqlite: BetterSqlite3.Database, id: number): DeductionC
 }
 
 /**
- * Create a new deduction category (AC-16) — how a one-off government measure gets added
- * without a code change. Audit-logs as `create` (INV-4).
+ * Create a new deduction category (AC-16).
  */
 export function createCategory(
   sqlite: BetterSqlite3.Database,
   input: CreateCategoryInput,
 ): DeductionCategoryRow {
   assertCreateInput(input);
+  assertYearNotClosed(sqlite, input.taxYearId);
 
   const run = sqlite.transaction(() => {
-    const info = statementsFor(sqlite).insertCategory.run(
-      input.code,
-      input.name,
-      input.capType,
-      input.capAmountMinor ?? null,
-      input.sharedGroupId ?? null,
-      input.sortOrder ?? 0,
-      input.description ?? '',
-      input.isBuiltin ? 1 : 0,
-    );
+    const info = sqlite
+      .prepare(
+        `INSERT INTO deduction_categories (tax_year_id, code, name, cap_type, cap_amount_minor, shared_group_id, sort_order, description, is_builtin)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.taxYearId ?? null,
+        input.code,
+        input.name,
+        input.capType,
+        input.capAmountMinor ?? null,
+        input.sharedGroupId ?? null,
+        input.sortOrder ?? 0,
+        input.description ?? '',
+        input.isBuiltin ? 1 : 0,
+      );
     const row = requireCategory(sqlite, Number(info.lastInsertRowid));
     recordMutation(sqlite, {
       entityType: 'deduction_category',
@@ -191,50 +210,37 @@ export function createCategory(
   return run();
 }
 
-/** Every category, including archived ones — callers filter `isActive` for the "add" picker (AC-17). */
-export function listCategories(sqlite: BetterSqlite3.Database): DeductionCategoryRow[] {
-  return statementsFor(sqlite).selectAllCategories.all().map(toCategoryRow);
+/** Every category for a specific tax year, or baseline defaults if omitted/null. */
+export function listCategories(
+  sqlite: BetterSqlite3.Database,
+  taxYearId?: number | null,
+): DeductionCategoryRow[] {
+  if (typeof taxYearId === 'number') {
+    const yearCategories = sqlite
+      .prepare(
+        `SELECT * FROM deduction_categories WHERE tax_year_id = ? ORDER BY sort_order ASC, id ASC`,
+      )
+      .all(taxYearId)
+      .map(toCategoryRow);
+    if (yearCategories.length > 0) return yearCategories;
+  }
+  return sqlite
+    .prepare(
+      `SELECT * FROM deduction_categories WHERE tax_year_id IS NULL ORDER BY sort_order ASC, id ASC`,
+    )
+    .all()
+    .map(toCategoryRow);
 }
 
 export function getCategory(
   sqlite: BetterSqlite3.Database,
   id: number,
 ): DeductionCategoryRow | undefined {
-  const raw = statementsFor(sqlite).selectCategoryById.get(id);
+  const raw = sqlite.prepare(`SELECT * FROM deduction_categories WHERE id = ?`).get(id);
   return raw === undefined ? undefined : toCategoryRow(raw);
 }
 
 /**
- * Archive (`isActive: false`) or reactivate (`true`) a category (AC-17). Archiving only
- * affects discoverability for *new* entries — existing `deduction_entries` rows referencing
- * it are untouched (TC-0001 #38); reactivating restores it unchanged (TC-0001 #39).
- * Audit-logs as `update` (INV-4).
- */
-export function setCategoryActive(
-  sqlite: BetterSqlite3.Database,
-  id: number,
-  isActive: boolean,
-): DeductionCategoryRow {
-  const run = sqlite.transaction(() => {
-    const before = requireCategory(sqlite, id);
-    statementsFor(sqlite).updateCategoryActive.run(isActive ? 1 : 0, id);
-    const after = requireCategory(sqlite, id);
-    recordMutation(sqlite, {
-      entityType: 'deduction_category',
-      entityId: id,
-      action: 'update',
-      before: before as unknown as Record<string, unknown>,
-      after: after as unknown as Record<string, unknown>,
-    });
-    return after;
-  });
-  return run();
-}
-
-/**
- * Rename a category and/or change its cap amount (AC-11, TC-0001 #40) — the cap and existing
- * entries otherwise unaffected; shown everywhere the category appears since there is only one
- * row. **Not** for a `shared_group_member`'s sub-cap change of shape (`capType`/
  * `sharedGroupId` never change here — that would be a different category, not an edit) — its
  * `capAmountMinor` sub-cap *can* still be adjusted through this same field. Audit-logs as
  * `update` (INV-4).
@@ -246,6 +252,8 @@ export function updateCategory(
 ): DeductionCategoryRow {
   const run = sqlite.transaction(() => {
     const before = requireCategory(sqlite, id);
+    assertYearNotClosed(sqlite, before.taxYearId);
+
     const name =
       input.name !== undefined && input.name.trim().length > 0 ? input.name : before.name;
     const capAmountMinor =
@@ -261,6 +269,34 @@ export function updateCategory(
     }
 
     statementsFor(sqlite).updateCategoryFields.run(name, capAmountMinor, id);
+    const after = requireCategory(sqlite, id);
+    recordMutation(sqlite, {
+      entityType: 'deduction_category',
+      entityId: id,
+      action: 'update',
+      before: before as unknown as Record<string, unknown>,
+      after: after as unknown as Record<string, unknown>,
+    });
+    return after;
+  });
+  return run();
+}
+
+/**
+ * Archive or reactivate a category (AC-17). An archived category stays in the database and in
+ * existing entries, but doesn't appear in listCategories() (the new-entry picker). Audit-logs
+ * as `update` (INV-4).
+ */
+export function setCategoryActive(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+  isActive: boolean,
+): DeductionCategoryRow {
+  const run = sqlite.transaction(() => {
+    const before = requireCategory(sqlite, id);
+    assertYearNotClosed(sqlite, before.taxYearId);
+
+    statementsFor(sqlite).updateCategoryActive.run(isActive ? 1 : 0, id);
     const after = requireCategory(sqlite, id);
     recordMutation(sqlite, {
       entityType: 'deduction_category',

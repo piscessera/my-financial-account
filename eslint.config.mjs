@@ -22,7 +22,15 @@ const networkModules = ['http', 'https', 'net', 'node:http', 'node:https', 'node
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/dist-electron/**', '**/node_modules/**', '.claude/**', 'claude/**'],
+    ignores: [
+      '**/dist/**',
+      '**/dist-electron/**',
+      '**/node_modules/**',
+      '.agents/**',
+      'agents/**',
+      '.claude/**',
+      'claude/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

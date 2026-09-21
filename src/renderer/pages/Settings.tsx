@@ -6,6 +6,7 @@ import type {
   DeductionCategoryRow,
   SharedCapRow,
   TaxBracketRow,
+  TaxYearRow,
 } from '../../main/db/schema';
 import type { ChangeFolderMode, DataLocationInfo } from '../../main/dataLocation';
 
@@ -58,17 +59,18 @@ type FolderChangeState =
   | { readonly step: 'warnExisting'; readonly targetFolderPath: string };
 
 /**
- * Settings screen (AT-3.6) — PROTO-0001 `settings.html`. The mockup's "+ add category" example
- * (a brand-new shared group, "Easy e-Receipt 2569") assumes creating a shared-cap *group* too,
- * but ANA-0001's `settings` API has no `createSharedCap` — only `updateSharedCap` on an
- * existing one. Adding a `shared_group_member` category here can only attach to an *existing*
- * group; creating a new group is out of this screen's (and the design's) scope.
+ * Settings screen — Supports both System Baseline Defaults and Per-Year Configurations (REQ-0004 AC-6).
  */
 export default function Settings(): JSX.Element {
   const [dataLocation, setDataLocation] = useState<DataLocationInfo | null>(null);
+  const [taxYears, setTaxYears] = useState<TaxYearRow[]>([]);
+  const [activeTab, setActiveTab] = useState<'baseline' | 'year'>('baseline');
+  const [selectedTaxYearId, setSelectedTaxYearId] = useState<number | null>(null);
+
   const [categories, setCategories] = useState<DeductionCategoryRow[]>([]);
   const [sharedCaps, setSharedCaps] = useState<SharedCapRow[]>([]);
   const [brackets, setBrackets] = useState<TaxBracketRow[]>([]);
+
   const [editingCategory, setEditingCategory] = useState<CategoryEditState | null>(null);
   const [editingBracket, setEditingBracket] = useState<BracketEditState | null>(null);
   const [addingCategory, setAddingCategory] = useState<NewCategoryState | null>(null);
@@ -76,18 +78,36 @@ export default function Settings(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
 
+  const selectedTaxYear = taxYears.find((y) => y.id === selectedTaxYearId);
+  const isYearClosed = activeTab === 'year' && selectedTaxYear?.closedAt != null;
+
   const reload = useCallback(async () => {
-    const [info, caps, groups, bracketRows] = await Promise.all([
+    const [info, years] = await Promise.all([
       window.api.dataLocation.get(),
-      window.api.settings.getCaps(),
-      window.api.settings.getSharedCaps(),
-      window.api.settings.getBrackets(),
+      window.api.taxYears.list(),
     ]);
     setDataLocation(info);
+    setTaxYears(years);
+
+    let yearIdToQuery: number | null = null;
+    if (activeTab === 'year') {
+      if (selectedTaxYearId !== null && years.some((y) => y.id === selectedTaxYearId)) {
+        yearIdToQuery = selectedTaxYearId;
+      } else if (years.length > 0) {
+        yearIdToQuery = years[0].id;
+        setSelectedTaxYearId(years[0].id);
+      }
+    }
+
+    const [caps, groups, bracketRows] = await Promise.all([
+      window.api.settings.getCaps(yearIdToQuery),
+      window.api.settings.getSharedCaps(yearIdToQuery),
+      window.api.settings.getBrackets(yearIdToQuery),
+    ]);
     setCategories(caps);
     setSharedCaps(groups);
     setBrackets(bracketRows);
-  }, []);
+  }, [activeTab, selectedTaxYearId]);
 
   useEffect(() => {
     void reload();
@@ -96,7 +116,7 @@ export default function Settings(): JSX.Element {
   async function handleChooseFolder(): Promise<void> {
     setFeedback(null);
     const picked = await window.api.dataLocation.chooseFolder();
-    if (!picked) return; // cancelled at the OS picker (TC-0002 #2)
+    if (!picked) return;
     const hasExistingDb = await window.api.dataLocation.targetHasExistingDb(picked);
     setFolderChange({
       step: hasExistingDb ? 'warnExisting' : 'confirmMove',
@@ -104,7 +124,6 @@ export default function Settings(): JSX.Element {
     });
   }
 
-  /** Confirm step — `mode` is fixed per step (`confirmMove` -> 'move', `warnExisting`'s "ใช้ไฟล์ที่นั่น" -> 'switch'). */
   async function handleConfirmFolderChange(mode: ChangeFolderMode): Promise<void> {
     if (!folderChange) return;
     setBusy(true);
@@ -123,8 +142,6 @@ export default function Settings(): JSX.Element {
           : 'เปลี่ยนโฟลเดอร์เรียบร้อยแล้ว',
       });
     } catch (err) {
-      // Leave `folderChange` and `dataLocation` as-is on failure (TC-0002 #15) — the user can
-      // retry or cancel; the displayed folder still shows the original, working location.
       setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
     } finally {
       setBusy(false);
@@ -190,6 +207,7 @@ export default function Settings(): JSX.Element {
       }
 
       await window.api.settings.createCategory({
+        taxYearId: activeTab === 'year' ? selectedTaxYearId : null,
         code: addingCategory.name.trim().toLowerCase().replace(/\s+/g, '_'),
         name: addingCategory.name.trim(),
         capType: addingCategory.capType,
@@ -232,8 +250,7 @@ export default function Settings(): JSX.Element {
       <div className="page-head">
         <h1>ตั้งค่า</h1>
         <p>
-          แก้ไขเพดานค่าลดหย่อนและอัตราภาษีขั้นบันได (AC-11) — มีผลกับปีภาษีที่ &quot;เปิด&quot;
-          อยู่เท่านั้น ทุกการแก้ไขถูกบันทึกไว้
+          แก้ไขเพดานค่าลดหย่อนและอัตราภาษีขั้นบันได — รองรับทั้งแม่แบบค่าเริ่มต้นระบบและแยกรายปีภาษี (REQ-0004)
         </p>
       </div>
 
@@ -243,6 +260,7 @@ export default function Settings(): JSX.Element {
         </p>
       )}
 
+      {/* Data Location Panel */}
       <div className="panel">
         <div
           className="section-label"
@@ -347,7 +365,93 @@ export default function Settings(): JSX.Element {
         </div>
       )}
 
-      <div className="panel" style={{ marginTop: 20 }}>
+      {/* Scope Selector Tabs */}
+      <div
+        style={{
+          marginTop: 24,
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div className="chip-row">
+          <button
+            type="button"
+            className={`chip ${activeTab === 'baseline' ? 'active' : ''}`}
+            onClick={() => setActiveTab('baseline')}
+          >
+            🏢 แม่แบบค่าเริ่มต้นระบบ (Baseline Defaults)
+          </button>
+          <button
+            type="button"
+            className={`chip ${activeTab === 'year' ? 'active' : ''}`}
+            onClick={() => setActiveTab('year')}
+          >
+            📅 การตั้งค่าปีภาษี (Year-Specific)
+          </button>
+        </div>
+
+        {activeTab === 'year' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>เลือกปีภาษี:</span>
+            <select
+              value={selectedTaxYearId ?? ''}
+              onChange={(e) => setSelectedTaxYearId(Number(e.target.value))}
+              style={{
+                background: 'var(--card-bg, #1a1a24)',
+                color: 'var(--fg, #f0f0f5)',
+                border: '1px solid var(--border, #333)',
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
+            >
+              {taxYears.map((y) => (
+                <option key={y.id} value={y.id}>
+                  ปีภาษี {y.year} {y.closedAt ? '🔒 (ปิดรอบแล้ว)' : '🟢 (เปิดอยู่)'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {activeTab === 'baseline' && (
+        <div
+          style={{
+            padding: '10px 14px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            borderLeft: '4px solid #3b82f6',
+            borderRadius: 4,
+            fontSize: 13,
+            marginBottom: 16,
+          }}
+        >
+          💡 <strong>แม่แบบค่าเริ่มต้นระบบ (Baseline Template):</strong> ค่าเพดานและอัตราภาษีในส่วนนี้จะถูกใช้คัดลอกเป็นค่าตั้งต้นอัตโนมัติเมื่อมีการสร้างปีภาษีใหม่
+        </div>
+      )}
+
+      {isYearClosed && (
+        <div
+          style={{
+            padding: '10px 14px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            borderLeft: '4px solid #ef4444',
+            borderRadius: 4,
+            fontSize: 13,
+            marginBottom: 16,
+            color: '#fca5a5',
+          }}
+        >
+          🔒 <strong>ปีภาษีนี้ถูกปิดรอบแล้ว (Closed Tax Year):</strong> ตามกฎความถูกต้องทางบัญชี (INV-7) ข้อมูลอัตราภาษีและเพดานค่าลดหย่อนของปีที่ปิดแล้วจะไม่สามารถแก้ไขได้
+        </div>
+      )}
+
+      {/* Deduction Categories Panel */}
+      <div className="panel">
         <div
           className="section-label"
           style={{
@@ -358,11 +462,14 @@ export default function Settings(): JSX.Element {
             gap: 8,
           }}
         >
-          <span>เพดานค่าลดหย่อน</span>
+          <span>
+            เพดานค่าลดหย่อน {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
+          </span>
           <button
             type="button"
             className="btn btn-primary"
             style={{ padding: '8px 14px', fontSize: 13 }}
+            disabled={isYearClosed}
             onClick={() => setAddingCategory(BLANK_NEW_CATEGORY)}
           >
             + เพิ่มหมวดหมู่ใหม่
@@ -401,57 +508,56 @@ export default function Settings(): JSX.Element {
                   </span>
                 </td>
                 <td>
-                  {category.isActive ? (
-                    <button
-                      type="button"
-                      className="row-action"
-                      onClick={() =>
-                        setEditingCategory({
-                          id: category.id,
-                          name: category.name,
-                          capAmountText:
-                            category.capAmountMinor !== null
-                              ? (category.capAmountMinor / 100).toFixed(2)
-                              : '',
-                        })
-                      }
-                    >
-                      แก้ไข
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="row-action"
-                      onClick={() => void handleToggleActive(category)}
-                    >
-                      เปิดใช้อีกครั้ง
-                    </button>
-                  )}
-                  {category.isActive && (
-                    <button
-                      type="button"
-                      className="row-action muted"
-                      onClick={() => void handleToggleActive(category)}
-                    >
-                      เก็บถาวร
-                    </button>
+                  {!isYearClosed && (
+                    <>
+                      {category.isActive ? (
+                        <button
+                          type="button"
+                          className="row-action"
+                          onClick={() =>
+                            setEditingCategory({
+                              id: category.id,
+                              name: category.name,
+                              capAmountText:
+                                category.capAmountMinor !== null
+                                  ? (category.capAmountMinor / 100).toFixed(2)
+                                  : '',
+                            })
+                          }
+                        >
+                          แก้ไข
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="row-action"
+                          onClick={() => void handleToggleActive(category)}
+                        >
+                          เปิดใช้อีกครั้ง
+                        </button>
+                      )}
+                      {category.isActive && (
+                        <button
+                          type="button"
+                          className="row-action muted"
+                          onClick={() => void handleToggleActive(category)}
+                        >
+                          เก็บถาวร
+                        </button>
+                      )}
+                    </>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="muted" style={{ marginTop: 10 }}>
-          หมวดหมู่ที่ &quot;เก็บถาวรแล้ว&quot;
-          จะไม่ปรากฏเป็นตัวเลือกใหม่ในหน้าค่าลดหย่อนของปีที่เปิดอยู่
-          แต่ปีภาษีที่เคยใช้อยู่แล้วจะยังเห็นข้อมูลและคำนวณเหมือนเดิมทุกประการ (AC-17)
-        </div>
       </div>
 
       {editingCategory && (
         <div className="panel" style={{ marginTop: 20 }}>
           <div className="section-label">
-            กำลังแก้ไข: {editingCategory.name} (AC-11 — แก้ได้ทั้งชื่อและเพดาน)
+            กำลังแก้ไข: {editingCategory.name}
           </div>
           <div className="form-grid">
             <div className="field span2">
@@ -497,7 +603,7 @@ export default function Settings(): JSX.Element {
 
       {addingCategory && (
         <div className="panel" style={{ marginTop: 20 }}>
-          <div className="section-label">+ เพิ่มหมวดหมู่ค่าลดหย่อนใหม่ (AC-16)</div>
+          <div className="section-label">+ เพิ่มหมวดหมู่ค่าลดหย่อนใหม่</div>
           <div className="form-grid">
             <div className="field span2">
               <label>ชื่อหมวดหมู่</label>
@@ -590,10 +696,13 @@ export default function Settings(): JSX.Element {
         </div>
       )}
 
+      {/* Tax Brackets Panel */}
       <div className="panel" style={{ marginTop: 20 }}>
-        <div className="section-label">อัตราภาษีขั้นบันได</div>
+        <div className="section-label">
+          อัตราภาษีขั้นบันได {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
+        </div>
         {brackets.length === 0 ? (
-          <p className="muted">ยังไม่มีข้อมูลอัตราภาษี — รอข้อมูลอ้างอิง TAX-2025</p>
+          <p className="muted">ยังไม่มีข้อมูลอัตราภาษี</p>
         ) : (
           <table className="bracket-table">
             <thead>
@@ -611,18 +720,20 @@ export default function Settings(): JSX.Element {
                     {bracket.rateBp === 0 ? 'ยกเว้น' : `${(bracket.rateBp / 100).toFixed(0)}%`}
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="row-action"
-                      onClick={() =>
-                        setEditingBracket({
-                          id: bracket.id,
-                          rateText: (bracket.rateBp / 100).toFixed(0),
-                        })
-                      }
-                    >
-                      แก้ไข
-                    </button>
+                    {!isYearClosed && (
+                      <button
+                        type="button"
+                        className="row-action"
+                        onClick={() =>
+                          setEditingBracket({
+                            id: bracket.id,
+                            rateText: (bracket.rateBp / 100).toFixed(0),
+                          })
+                        }
+                      >
+                        แก้ไข
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

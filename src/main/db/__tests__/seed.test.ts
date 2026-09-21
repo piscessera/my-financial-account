@@ -30,19 +30,19 @@ const FIXTURE_SEED: SeedDataSet = {
 };
 
 describe('seedDatabase', () => {
-  it('seeds the built-in (currently empty) TAX-2025 set without error', () => {
+  it('seeds the built-in TAX-2025 set without error', () => {
     const db = openTempDatabase();
     try {
       const result = seedDatabase(db.sqlite, TAX_YEAR_2025_SEED);
       expect(result).toEqual({
         skipped: false,
-        sharedCapsInserted: 0,
-        deductionCategoriesInserted: 0,
-        taxBracketsInserted: 0,
+        sharedCapsInserted: 1,
+        deductionCategoriesInserted: 5,
+        taxBracketsInserted: 8,
       });
-      expect(countRows(db.sqlite, 'shared_caps')).toBe(0);
-      expect(countRows(db.sqlite, 'deduction_categories')).toBe(0);
-      expect(countRows(db.sqlite, 'tax_brackets')).toBe(0);
+      expect(countRows(db.sqlite, 'shared_caps')).toBe(1);
+      expect(countRows(db.sqlite, 'deduction_categories')).toBe(5);
+      expect(countRows(db.sqlite, 'tax_brackets')).toBe(8);
     } finally {
       db.dispose();
     }

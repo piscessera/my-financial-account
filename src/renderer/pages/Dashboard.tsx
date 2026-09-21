@@ -8,6 +8,8 @@ import type {
   SharedCapRow,
   TransactionRow,
 } from '../../main/db/schema';
+import CategoryDonutChart, { type DonutSegment } from '../components/CategoryDonutChart';
+import MonthlyTrendChart from '../components/MonthlyTrendChart';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 const GENERAL_CATEGORY_LABELS: Record<GeneralCategory, string> = {
@@ -16,6 +18,24 @@ const GENERAL_CATEGORY_LABELS: Record<GeneralCategory, string> = {
   housing: 'ที่อยู่อาศัย',
   other: 'อื่นๆ',
 };
+
+const GENERAL_CATEGORY_COLORS: Record<GeneralCategory, string> = {
+  food: '#e2a24b', // amber
+  shopping: '#7c92ff', // accent / blue
+  housing: '#5fce93', // good / green
+  other: '#9ba2b0', // gray
+};
+
+const DEDUCTION_COLORS = [
+  '#7c92ff',
+  '#5fce93',
+  '#e2a24b',
+  '#9d7cff',
+  '#f0796a',
+  '#38bdf8',
+  '#fb7185',
+  '#a3e635',
+];
 
 interface HeadroomRow {
   readonly key: string;
@@ -29,17 +49,12 @@ function headroomPercent(usedMinor: number, capMinor: number | null): number {
   return Math.min(100, Math.round((usedMinor / capMinor) * 100));
 }
 
-/**
- * Dashboard (AT-4.6) — PROTO-0001 `dashboard.html`. Live tax tiles (TC-0001 #29: reflects a
- * new transaction immediately, no close required), deduction headroom (shared-group members
- * collapsed into one combined row, matching the mockup), and a fully separate general-
- * transactions section (TC-0001 #36, AC-15 — never merged with the tax figures above it).
- */
 export default function Dashboard(): JSX.Element {
   const yearState = useWorkingTaxYear();
   const [result, setResult] = useState<ComputeYearResult | null>(null);
   const [categories, setCategories] = useState<DeductionCategoryRow[]>([]);
   const [sharedCaps, setSharedCaps] = useState<SharedCapRow[]>([]);
+  const [allTransactions, setAllTransactions] = useState<TransactionRow[]>([]);
   const [generalTransactions, setGeneralTransactions] = useState<TransactionRow[]>([]);
   const [hasAnyTransactions, setHasAnyTransactions] = useState(false);
 
@@ -53,6 +68,7 @@ export default function Dashboard(): JSX.Element {
     setResult(computed);
     setCategories(cats);
     setSharedCaps(caps);
+    setAllTransactions(transactions);
     setGeneralTransactions(transactions.filter((t) => !t.taxRelevant && t.status === 'active'));
     setHasAnyTransactions(transactions.length > 0);
   }, []);
@@ -109,6 +125,24 @@ export default function Dashboard(): JSX.Element {
     }),
   );
 
+  // Build segments for General Expense Donut Chart
+  const expenseSegments: DonutSegment[] = generalTotalsByCategory
+    .filter((g) => g.total > 0)
+    .map((g) => ({
+      label: GENERAL_CATEGORY_LABELS[g.category],
+      valueMinor: g.total,
+      color: GENERAL_CATEGORY_COLORS[g.category],
+    }));
+
+  // Build segments for Deductions Donut Chart
+  const deductionSegments: DonutSegment[] = headroomRows
+    .filter((h) => h.usedMinor > 0)
+    .map((h, i) => ({
+      label: h.label,
+      valueMinor: h.usedMinor,
+      color: DEDUCTION_COLORS[i % DEDUCTION_COLORS.length],
+    }));
+
   if (!hasAnyTransactions) {
     return (
       <div className="page">
@@ -156,8 +190,25 @@ export default function Dashboard(): JSX.Element {
         </div>
       </div>
 
+      {/* 12-Month Cashflow & Tax Trend Graph */}
+      <MonthlyTrendChart transactions={allTransactions} year={yearState.year.year} />
+
+      {/* Breakdown Donut Charts Side-by-Side */}
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginTop: 20 }}>
+        <CategoryDonutChart
+          title="🍩 สัดส่วนรายจ่ายทั่วไปตามหมวดหมู่"
+          segments={expenseSegments}
+          emptyMessage="ยังไม่มีรายจ่ายทั่วไปในปีนี้"
+        />
+        <CategoryDonutChart
+          title="🎯 สัดส่วนการใช้สิทธิลดหย่อนภาษี"
+          segments={deductionSegments}
+          emptyMessage="ยังไม่มีการบันทึกค่าลดหย่อนในปีนี้"
+        />
+      </div>
+
       {headroomRows.length > 0 && (
-        <div className="panel">
+        <div className="panel" style={{ marginTop: 20 }}>
           <div className="section-label">เพดานค่าลดหย่อน — ใช้ไปแล้ว / คงเหลือ</div>
           <div className="ded-group">
             {headroomRows.map((row) => {

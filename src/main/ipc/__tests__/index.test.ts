@@ -202,7 +202,7 @@ describe('taxYears:close/reopen + calc:computeYear (AT-4.5)', () => {
     });
 
     const before = handlers['calc:computeYear'](year.id);
-    const secondBracket = handlers['settings:getBrackets']().find((b) => b.sortOrder === 2);
+    const secondBracket = handlers['settings:getBrackets'](year.id).find((b) => b.sortOrder === 2);
     handlers['settings:updateBracket'](secondBracket?.id as number, 2000); // 5% -> 20%
     const after = handlers['calc:computeYear'](year.id);
 

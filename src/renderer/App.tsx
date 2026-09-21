@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { DataLocationInfo } from '../main/dataLocation';
 import type { LockInfo } from '../main/lockFile';
 import type { TaxYearRow } from '../main/db/schema';
+import logoUrl from './assets/logo.png';
 import LockWarningBanner from './components/LockWarningBanner';
 import TaxYearSwitcher from './components/TaxYearSwitcher';
 import Onboarding from './pages/Onboarding';
@@ -40,7 +41,20 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
   return (
     <>
       <nav className="app-nav">
-        <div className="brand">🧾 สมุดภาษีรายปี</div>
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src={logoUrl}
+            alt="Logo"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
+          <span>สมุดภาษีรายปี</span>
+        </div>
         <div className="links">
           <a
             href="#"
@@ -48,6 +62,13 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
             onClick={() => setScreen('dashboard')}
           >
             Dashboard
+          </a>
+          <a
+            href="#"
+            className={screen === 'summary' ? 'active' : ''}
+            onClick={() => setScreen('summary')}
+          >
+            สรุปปี
           </a>
           <a
             href="#"
@@ -76,13 +97,6 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
             onClick={() => setScreen('taxYears')}
           >
             ปีภาษี
-          </a>
-          <a
-            href="#"
-            className={screen === 'summary' ? 'active' : ''}
-            onClick={() => setScreen('summary')}
-          >
-            สรุปปี
           </a>
           <a
             href="#"

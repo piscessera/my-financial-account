@@ -1,9 +1,13 @@
-import type { PreloadApi } from '../../electron/preload';
-
-declare global {
-  interface Window {
-    api: PreloadApi;
-  }
+declare module '*.png' {
+  const content: string;
+  export default content;
 }
 
-export {};
+declare module '*.svg' {
+  const content: string;
+  export default content;
+}
+
+interface Window {
+  api: import('../../electron/preload').PreloadApi;
+}
