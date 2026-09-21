@@ -145,8 +145,8 @@ export default function ManageRecurringModal({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(3px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -162,10 +162,10 @@ export default function ManageRecurringModal({
           maxWidth: 680,
           maxHeight: '90vh',
           overflowY: 'auto',
-          background: 'var(--panel-bg, #181824)',
-          borderRadius: 12,
-          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-          border: '1px solid var(--border, #333)',
+          background: 'var(--surface)',
+          borderRadius: 14,
+          boxShadow: 'var(--shadow)',
+          border: '1px solid var(--line)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -177,11 +177,11 @@ export default function ManageRecurringModal({
             marginBottom: 16,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: 18 }}>⚙️ จัดการแม่แบบรายการประจำ</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--ink)' }}>⚙️ จัดการแม่แบบรายการประจำ</h2>
           <button
             type="button"
             className="btn btn-ghost"
-            style={{ padding: '4px 10px', fontSize: 13 }}
+            style={{ padding: '4px 10px', fontSize: 13, border: '1px solid var(--line)' }}
             onClick={onClose}
           >
             ✕ ปิด
@@ -192,10 +192,10 @@ export default function ManageRecurringModal({
           <div
             style={{
               padding: '8px 12px',
-              background: 'rgba(239, 68, 68, 0.15)',
-              borderLeft: '4px solid #ef4444',
-              borderRadius: 4,
-              color: '#fca5a5',
+              background: 'var(--bad-soft)',
+              borderLeft: '4px solid var(--bad)',
+              borderRadius: 6,
+              color: 'var(--bad)',
               fontSize: 13,
               marginBottom: 14,
             }}

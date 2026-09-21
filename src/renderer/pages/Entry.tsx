@@ -35,6 +35,8 @@ export default function Entry(): JSX.Element {
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [editing, setEditing] = useState<TransactionRow | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'tax' | 'general' | 'all'>('tax');
   const [history, setHistory] = useState<{ row: TransactionRow; entries: AuditEntry[] } | null>(
     null,
   );
@@ -47,6 +49,16 @@ export default function Entry(): JSX.Element {
   useEffect(() => {
     if (yearState.status === 'ready') void reload(yearState.year.id);
   }, [yearState, reload]);
+
+  function startEdit(row: TransactionRow): void {
+    setEditing(row);
+    setIsFormOpen(true);
+    if (row.taxRelevant) {
+      setActiveTab('tax');
+    } else {
+      setActiveTab('general');
+    }
+  }
 
   async function handleCreate(yearId: number, values: TransactionFormValues): Promise<void> {
     setBusy(true);
@@ -70,6 +82,7 @@ export default function Entry(): JSX.Element {
       }
       setFeedback({ kind: 'ok', message: 'บันทึกรายการเรียบร้อยแล้ว' });
       setFormKey((k) => k + 1); // remounts TransactionForm to clear its fields
+      setIsFormOpen(false); // smoothly collapse after adding
       await reload(yearId);
     } catch (err) {
       setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
@@ -98,6 +111,7 @@ export default function Entry(): JSX.Element {
       });
       setFeedback({ kind: 'ok', message: 'บันทึกการแก้ไขเรียบร้อยแล้ว' });
       setEditing(null);
+      setIsFormOpen(false);
       await reload(yearId);
     } catch (err) {
       setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
@@ -143,133 +157,221 @@ export default function Entry(): JSX.Element {
 
   return (
     <div className="page">
-      <div className="page-head">
+      <div className="page-head" style={{ marginBottom: 20 }}>
         <h1>บันทึกรายรับ-รายจ่าย</h1>
         <p>
-          ปีภาษีนี้ยัง &quot;เปิด&quot; อยู่ — แก้ไขรายการที่บันทึกไว้ได้โดยตรง
-          ทุกการแก้ไขจะถูกบันทึกไว้ (ดูได้ที่ &quot;ประวัติ&quot;)
+          ปีภาษี {yearState.year.year} ({yearState.year.status === 'open' ? 'เปิด' : 'ปิดแล้ว'}) — บันทึกรายการรายรับ-รายจ่ายและเช็คลิสต์ประจำเดือน
         </p>
       </div>
 
       {feedback && (
-        <p role={feedback.kind === 'error' ? 'alert' : 'status'} className="muted">
+        <div
+          role={feedback.kind === 'error' ? 'alert' : 'status'}
+          style={{
+            marginBottom: 16,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: feedback.kind === 'error' ? 'var(--bad-soft)' : 'var(--good-soft)',
+            color: feedback.kind === 'error' ? 'var(--bad)' : 'var(--good)',
+            fontWeight: 500,
+            fontSize: 13.5,
+          }}
+        >
           {feedback.message}
-        </p>
+        </div>
       )}
 
-      <RecurringChecklist
-        taxYearId={yearId}
-        yearMonth={`${yearState.year.year}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
-        onTransactionCreated={() => void reload(yearId)}
-      />
-
-      {editing ? (
-        <TransactionForm
-          initial={editing}
-          busy={busy}
-          onSubmit={(values) => handleUpdate(yearId, editing.id, values)}
-          onCancel={() => setEditing(null)}
-        />
-      ) : (
-        <TransactionForm
-          key={formKey}
-          busy={busy}
-          onSubmit={(values) => handleCreate(yearId, values)}
-        />
-      )}
-
-      <div className="panel" style={{ marginTop: 20 }}>
-        <div
-          className="section-label"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            flexWrap: 'wrap',
-            gap: 8,
-          }}
-        >
-          <span>🧾 รายการภาษี — ปี {yearState.year.year} (จัดกลุ่มรายเดือน)</span>
-        </div>
-        <LedgerTable
-          transactions={taxTransactions}
-          onEdit={(row) => setEditing(row)}
-          onVoid={(row) => void handleVoid(yearId, row)}
-          onShowHistory={(row) => void handleShowHistory(row)}
-        />
-      </div>
-
-      <div className="panel" style={{ marginTop: 20, borderColor: 'var(--amber)' }}>
-        <div
-          className="section-label"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            flexWrap: 'wrap',
-            gap: 8,
-          }}
-        >
-          <span>🛒 รายการทั่วไป (ไม่นับภาษี) — ปี {yearState.year.year}</span>
-          <span className="muted">ไม่ถูกนำไปคำนวณภาษีเลย (AC-14)</span>
+      {/* Top View Selector & Quick Action */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div className="chip-row">
+          <button
+            type="button"
+            className={`chip${activeTab === 'tax' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('tax');
+              setEditing(null);
+            }}
+          >
+            🧾 รายการภาษี ({taxTransactions.length})
+          </button>
+          <button
+            type="button"
+            className={`chip${activeTab === 'general' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('general');
+              setEditing(null);
+            }}
+          >
+            🛒 รายการทั่วไป & ประจำเดือน ({generalTransactions.length})
+          </button>
+          <button
+            type="button"
+            className={`chip${activeTab === 'all' ? ' active' : ''}`}
+            onClick={() => {
+              setActiveTab('all');
+              setEditing(null);
+            }}
+          >
+            📑 ทั้งหมด ({transactions.length})
+          </button>
         </div>
 
-        <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 18 }}>
-          {generalTotalsByCategory.map(({ category, total }) => (
-            <div className="tile" key={category}>
-              <div className="k">{GENERAL_CATEGORY_LABELS[category]}</div>
-              <div className="v num">{formatSatangAsBaht(total)}</div>
-            </div>
-          ))}
-        </div>
-
-        {generalTransactions.length === 0 ? (
-          <p className="muted">ยังไม่มีรายการทั่วไปในปีนี้</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>วันที่</th>
-                <th>หมวดหมู่</th>
-                <th>หมายเหตุ</th>
-                <th>จำนวนเงิน</th>
-                <th>การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {generalTransactions.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.date}</td>
-                  <td>
-                    {row.generalCategory && (
-                      <span
-                        className="tag"
-                        style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
-                      >
-                        {GENERAL_CATEGORY_LABELS[row.generalCategory]}
-                      </span>
-                    )}
-                  </td>
-                  <td>{row.note ?? '—'}</td>
-                  <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
-                  <td>
-                    <button type="button" className="row-action" onClick={() => setEditing(row)}>
-                      แก้ไข
-                    </button>
-                    <button
-                      type="button"
-                      className="row-action muted"
-                      onClick={() => void handleVoid(yearId, row)}
-                    >
-                      Void
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {!editing && (
+          <button
+            type="button"
+            className={`btn ${isFormOpen ? 'btn-ghost' : 'btn-primary'}`}
+            style={{ padding: '8px 16px', fontSize: 13.5 }}
+            onClick={() => setIsFormOpen(!isFormOpen)}
+          >
+            {isFormOpen
+              ? '✕ ซ่อนฟอร์มบันทึก'
+              : `➕ เพิ่ม${activeTab === 'tax' ? 'รายการภาษี' : activeTab === 'general' ? 'รายการทั่วไป' : 'รายการใหม่'}`}
+          </button>
         )}
       </div>
+
+      {/* Transaction Form (Collapsible or Open on Edit) */}
+      {(isFormOpen || editing) && (
+        <div style={{ marginBottom: 20 }}>
+          {editing ? (
+            <TransactionForm
+              initial={editing}
+              busy={busy}
+              onSubmit={(values) => handleUpdate(yearId, editing.id, values)}
+              onCancel={() => {
+                setEditing(null);
+                setIsFormOpen(false);
+              }}
+            />
+          ) : (
+            <TransactionForm
+              key={formKey}
+              defaultTaxRelevant={activeTab !== 'general'}
+              busy={busy}
+              onSubmit={(values) => handleCreate(yearId, values)}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* General & Recurring Section (Visible in 'general' or 'all' tabs) */}
+      {(activeTab === 'general' || activeTab === 'all') && (
+        <>
+          <RecurringChecklist
+            taxYearId={yearId}
+            yearMonth={`${yearState.year.year}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+            onTransactionCreated={() => void reload(yearId)}
+          />
+
+          <div className="panel" style={{ marginBottom: 20, borderColor: 'var(--amber)' }}>
+            <div
+              className="section-label"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 15 }}>🛒 รายการทั่วไป (ไม่นับภาษี) — ปี {yearState.year.year}</span>
+              <span className="muted">ไม่ถูกนำไปคำนวณภาษี (AC-14)</span>
+            </div>
+
+            <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 18 }}>
+              {generalTotalsByCategory.map(({ category, total }) => (
+                <div className="tile" key={category}>
+                  <div className="k">{GENERAL_CATEGORY_LABELS[category]}</div>
+                  <div className="v num">{formatSatangAsBaht(total)}</div>
+                </div>
+              ))}
+            </div>
+
+            {generalTransactions.length === 0 ? (
+              <p className="muted">ยังไม่มีรายการทั่วไปในปีนี้</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>วันที่</th>
+                    <th>หมวดหมู่</th>
+                    <th>หมายเหตุ</th>
+                    <th>จำนวนเงิน</th>
+                    <th>การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {generalTransactions.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.date}</td>
+                      <td>
+                        {row.generalCategory && (
+                          <span
+                            className="tag"
+                            style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
+                          >
+                            {GENERAL_CATEGORY_LABELS[row.generalCategory]}
+                          </span>
+                        )}
+                      </td>
+                      <td>{row.note ?? '—'}</td>
+                      <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
+                      <td>
+                        <button type="button" className="row-action" onClick={() => startEdit(row)}>
+                          แก้ไข
+                        </button>
+                        <button
+                          type="button"
+                          className="row-action muted"
+                          onClick={() => void handleVoid(yearId, row)}
+                        >
+                          Void
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Tax Ledger Section (Visible in 'tax' or 'all' tabs) */}
+      {(activeTab === 'tax' || activeTab === 'all') && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div
+            className="section-label"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 15 }}>🧾 รายการภาษี — ปี {yearState.year.year} (จัดกลุ่มรายเดือน)</span>
+            <span className="muted">นำไปรวมคำนวณภาษีเงินได้บุคคลธรรมดา</span>
+          </div>
+          <LedgerTable
+            transactions={taxTransactions}
+            onEdit={(row) => startEdit(row)}
+            onVoid={(row) => void handleVoid(yearId, row)}
+            onShowHistory={(row) => void handleShowHistory(row)}
+          />
+        </div>
+      )}
 
       {history && (
         <HistoryPanel

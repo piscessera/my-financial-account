@@ -297,9 +297,9 @@ export default function RecurringChecklist({
                           className="pill"
                           style={{
                             fontSize: 11,
-                            background: 'rgba(234, 179, 8, 0.15)',
-                            color: '#fde047',
-                            border: '1px solid rgba(234, 179, 8, 0.3)',
+                            background: 'var(--amber-soft)',
+                            color: 'var(--amber)',
+                            border: '1px solid var(--amber)',
                           }}
                         >
                           ⏳ รอทำรายการ
@@ -321,7 +321,7 @@ export default function RecurringChecklist({
                           <button
                             type="button"
                             className="btn btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: 12 }}
+                            style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--line)' }}
                             disabled={busy}
                             onClick={() => void handleSkip(item.template.id)}
                           >
@@ -358,8 +358,8 @@ export default function RecurringChecklist({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -373,14 +373,16 @@ export default function RecurringChecklist({
             style={{
               width: '100%',
               maxWidth: 440,
-              background: 'var(--panel-bg, #181824)',
-              borderRadius: 12,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-              border: '1px solid var(--border, #333)',
+              background: 'var(--surface)',
+              borderRadius: 14,
+              boxShadow: 'var(--shadow)',
+              border: '1px solid var(--line)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="section-label">บันทึกรายการประจำ: {quickRecord.name}</div>
+            <div className="section-label" style={{ fontWeight: 600, fontSize: 15, color: 'var(--ink)' }}>
+              บันทึกรายการประจำ: {quickRecord.name}
+            </div>
             <div className="form-grid">
               <div className="field">
                 <label>จำนวนเงิน (บาท) *</label>
