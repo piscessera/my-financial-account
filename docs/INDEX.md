@@ -33,11 +33,15 @@ sub-agents receive their IDs in the dispatch payload.
 | TC-0005 | Monthly recurring checklist for general transactions — test cases | test-cases | implemented | — | ANA-0005, PLAN-0005, REQ-0005 | 2026-09-21 |
 | PLAN-0005 | Monthly recurring checklist for general transactions | plan | implemented | M | ANA-0005, TC-0005, REQ-0005 | 2026-09-21 |
 
+| REQ-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX | requirement | implemented | S | ANA-0006, TC-0006 | 2026-09-23 |
+| ANA-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX — design | analysis | implemented | S | REQ-0006, TC-0006 | 2026-09-23 |
+| TC-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX — test cases | test-cases | implemented | — | ANA-0006, REQ-0006 | 2026-09-23 |
+
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 6 | 6 | 6 | 2 | 6 | 1 | 4 | 3 |
+| 7 | 7 | 7 | 2 | 6 | 1 | 4 | 3 |
 
 ## Status vocabulary
 
