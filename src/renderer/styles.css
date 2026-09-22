@@ -300,23 +300,35 @@ h3 {
 .btn {
   border: none;
   border-radius: 9px;
-  padding: 11px 20px;
-  font-size: 14px;
+  padding: 10px 18px;
+  font-size: 13.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  transition: all 0.15s ease-in-out;
 }
 .btn-primary {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: 0 1px 3px rgba(52, 80, 201, 0.3);
+}
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(52, 80, 201, 0.4);
 }
 .btn-ghost {
   background: var(--surface-2);
   color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--line);
 }
 .btn-danger-outline {
   background: transparent;
@@ -327,6 +339,7 @@ h3 {
 .btn.disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  transform: none !important;
 }
 .form-actions {
   display: flex;
@@ -342,20 +355,38 @@ table {
   font-size: 13.5px;
 }
 thead th {
-  text-align: right;
-  font-weight: 500;
+  text-align: left;
+  font-weight: 600;
   color: var(--ink-soft);
-  font-size: 12px;
-  padding: 0 4px 8px;
-  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  padding: 8px 8px;
+  border-bottom: 1.5px solid var(--line);
+}
+thead th.num,
+thead th.right {
+  text-align: right;
+}
+thead th.center {
+  text-align: center;
 }
 tbody td {
-  padding: 10px 4px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
+  text-align: left;
+}
+tbody td.num,
+tbody td.right {
+  text-align: right;
+}
+tbody td.center {
+  text-align: center;
 }
 tbody tr:last-child td {
   border-bottom: none;
+}
+tbody tr:hover td {
+  background: rgba(0, 0, 0, 0.015);
 }
 .tag {
   font-size: 11.5px;
@@ -458,24 +489,40 @@ tbody tr:last-child td {
   }
 }
 
-/* ---- real form controls (the mockup used decorative <div class="control">/<div class="chip">
-   for static states only; the React screens use actual inputs/buttons, styled to match) ---- */
+/* ---- real form controls (matching TransactionForm and Entry) ---- */
 .field input,
-.field select {
+.field select,
+.ded-input {
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface-2);
-  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 9px 12px;
   font-size: 14px;
   color: var(--ink);
   font-family: inherit;
-  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.field input.num {
+.field input:focus,
+.field select:focus,
+.ded-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--surface);
+}
+.field input.num,
+.ded-input.num {
   font-family: 'JetBrains Mono', 'Sarabun', monospace;
+}
+.field input,
+.field select {
+  width: 100%;
 }
 button.chip {
   cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
 }
 button.dropzone {
   cursor: pointer;

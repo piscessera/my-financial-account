@@ -255,9 +255,9 @@ export default function RecurringChecklist({
                 <tr>
                   <th>วันที่</th>
                   <th>รายการ</th>
-                  <th>ยอดเงิน</th>
-                  <th>สถานะ</th>
-                  <th style={{ textAlign: 'right' }}>การดำเนินการ</th>
+                  <th className="num">ยอดเงิน</th>
+                  <th className="center">สถานะ</th>
+                  <th className="right">การดำเนินการ</th>
                 </tr>
               </thead>
               <tbody>

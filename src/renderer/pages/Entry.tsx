@@ -306,8 +306,8 @@ export default function Entry(): JSX.Element {
                     <th>วันที่</th>
                     <th>หมวดหมู่</th>
                     <th>หมายเหตุ</th>
-                    <th>จำนวนเงิน</th>
-                    <th>การจัดการ</th>
+                    <th className="num">จำนวนเงิน</th>
+                    <th className="center">การจัดการ</th>
                   </tr>
                 </thead>
                 <tbody>

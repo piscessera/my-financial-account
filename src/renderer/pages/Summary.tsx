@@ -154,7 +154,7 @@ export default function Summary(): JSX.Element {
             <tr>
               <th>ช่วงเงินได้สุทธิ (บาท)</th>
               <th>อัตรา</th>
-              <th>ภาษีในช่วงนี้</th>
+              <th className="num">ภาษีในช่วงนี้</th>
             </tr>
           </thead>
           <tbody>
@@ -168,7 +168,7 @@ export default function Summary(): JSX.Element {
                       : '—'}
                   </td>
                   <td>{b.rateBp === 0 ? 'ยกเว้น' : `${(b.rateBp / 100).toFixed(0)}%`}</td>
-                  <td>{formatSatangAsBaht(b.taxMinor)}</td>
+                  <td className="num">{formatSatangAsBaht(b.taxMinor)}</td>
                 </tr>
               );
             })}
@@ -256,8 +256,8 @@ export default function Summary(): JSX.Element {
               <tr>
                 <th>วันที่</th>
                 <th>รายการ</th>
-                <th>จำนวนเงิน</th>
-                <th>สถานะ</th>
+                <th className="num">จำนวนเงิน</th>
+                <th className="center">สถานะ</th>
               </tr>
             </thead>
             <tbody>

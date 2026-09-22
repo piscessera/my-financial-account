@@ -32,6 +32,21 @@ const THAI_MONTHS = [
   'ธันวาคม',
 ];
 
+const THAI_SHORT_MONTHS = [
+  'ม.ค.',
+  'ก.พ.',
+  'มี.ค.',
+  'เม.ย.',
+  'พ.ค.',
+  'มิ.ย.',
+  'ก.ค.',
+  'ส.ค.',
+  'ก.ย.',
+  'ต.ค.',
+  'พ.ย.',
+  'ธ.ค.',
+];
+
 function monthKeyOf(dateIso: string): string {
   return dateIso.slice(0, 7); // "YYYY-MM"
 }
@@ -44,7 +59,7 @@ function formatThaiMonthYear(monthKey: string): string {
 function formatShortDate(dateIso: string): string {
   const [year, month, day] = dateIso.split('-');
   const buddhistYearShort = (Number(year) + 543) % 100;
-  return `${day} ${THAI_MONTHS[Number(month) - 1].slice(0, 3)}. ${buddhistYearShort}`;
+  return `${day} ${THAI_SHORT_MONTHS[Number(month) - 1]} ${buddhistYearShort}`;
 }
 
 /**
@@ -110,10 +125,10 @@ export default function LedgerTable({
             <th>ประเภท</th>
             <th>แหล่งที่มา</th>
             <th>หมายเหตุ</th>
-            <th>จำนวนเงิน</th>
-            <th>WHT</th>
-            <th>ยอดสุทธิ</th>
-            <th>สถานะ</th>
+            <th className="num">จำนวนเงิน</th>
+            <th className="num">WHT</th>
+            <th className="num">ยอดสุทธิ</th>
+            <th className="center">สถานะ</th>
             <th>การจัดการ</th>
           </tr>
         </thead>
@@ -156,7 +171,7 @@ export default function LedgerTable({
                         row.kind === 'income' ? row.amountMinor - row.whtMinor : row.amountMinor,
                       )}
                     </td>
-                    <td>
+                    <td className="center">
                       <span className={`pill ${row.status}`}>{row.status}</span>
                     </td>
                     <td>

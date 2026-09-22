@@ -94,7 +94,7 @@ describe('LedgerTable (TC-0003 #4, #5, #6, #7)', () => {
       />,
     );
 
-    expect(html).toContain('<th>ยอดสุทธิ</th>');
+    expect(html).toContain('ยอดสุทธิ');
     // Amount: 10,000.00, WHT: 300.00, Net: 9,700.00
     expect(html).toContain('10,000.00');
     expect(html).toContain('300.00');
@@ -118,7 +118,7 @@ describe('LedgerTable (TC-0003 #4, #5, #6, #7)', () => {
       />,
     );
 
-    expect(html).toContain('<th>ยอดสุทธิ</th>');
+    expect(html).toContain('ยอดสุทธิ');
     expect(html).toContain('2,000.00');
   });
 
