@@ -294,6 +294,7 @@ export function getMonthlyChecklist(
         status: raw.status as TransactionStatus,
         reversalOfId: raw.reversal_of_id ? Number(raw.reversal_of_id) : null,
         deductionCategoryId: raw.deduction_category_id ? Number(raw.deduction_category_id) : null,
+        deductionAmountMinor: raw.deduction_amount_minor ? Number(raw.deduction_amount_minor) : null,
         source: (raw.source as any) ?? 'manual',
         createdAt: String(raw.created_at),
         updatedAt: String(raw.updated_at),

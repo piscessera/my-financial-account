@@ -306,5 +306,67 @@ describe('getDeductionSummary & getSourceTransactions (REQ-0007, AT-1.3)', () =>
     expect(item?.effectiveMinor).toBe(70_000_00);
     expect(item?.isOverCap).toBe(false);
   });
+
+  it('aggregates custom partial deductionAmountMinor on income and expense (REQ-0008, TC-0008 #7, #8)', () => {
+    const year = createTaxYear(temp.sqlite, { year: 2568 }).id;
+    const cat = createCategory(temp.sqlite, {
+      taxYearId: year,
+      code: 'life_insurance',
+      name: 'เบี้ยประกันชีวิต',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+
+    // Expense with partial deduction: total 15,000 THB, deductible 10,000 THB
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: cat.id,
+      deductionAmountMinor: 10_000_00,
+      date: '2025-05-10',
+      amountMinor: 15_000_00,
+      note: 'Life Insurance with Rider',
+    });
+
+    // Legacy/full transaction where deductionAmountMinor is null: total 20,000 THB
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: cat.id,
+      date: '2025-06-10',
+      amountMinor: 20_000_00,
+      note: 'Life Insurance Full',
+    });
+
+    // Income with partial deduction: total 50,000 THB, deductible 5,000 THB
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'income',
+      taxRelevant: true,
+      incomeSection: '40_1',
+      deductionCategoryId: cat.id,
+      deductionAmountMinor: 5_000_00,
+      date: '2025-07-10',
+      amountMinor: 50_000_00,
+      note: 'Salary with Insurance Benefit',
+    });
+
+    const sourceTx = getSourceTransactions(temp.sqlite, year, cat.id);
+    expect(sourceTx).toHaveLength(3);
+    expect(sourceTx.map((t) => t.deductionAmountMinor)).toEqual([5_000_00, null, 10_000_00]);
+
+    const summary = getDeductionSummary(temp.sqlite, year);
+    const item = summary.items.find((i) => i.category.id === cat.id);
+    expect(item).toBeDefined();
+    // 10,000 (custom) + 20,000 (full fallback) + 5,000 (income custom) = 35,000 THB
+    expect(item?.sourceExpenseMinor).toBe(35_000_00);
+    expect(item?.sourceExpenseCount).toBe(3);
+    expect(item?.effectiveMinor).toBe(35_000_00);
+  });
 });
+
 

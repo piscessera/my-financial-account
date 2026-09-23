@@ -40,12 +40,15 @@ sub-agents receive their IDs in the dispatch payload.
 | ANA-0007 | Tax bracket range customization and expense-to-deduction linkage — design | analysis | implemented | M | REQ-0007, TC-0007, PLAN-0007 | 2026-09-23 |
 | TC-0007 | Tax bracket range customization and expense-to-deduction linkage — test cases | test-cases | implemented | — | ANA-0007, REQ-0007, PLAN-0007 | 2026-09-23 |
 | PLAN-0007 | Tax bracket range customization and expense-to-deduction linkage | plan | implemented | M | ANA-0007, TC-0007, REQ-0007 | 2026-09-23 |
+| REQ-0008 | Custom tax deductible amount per transaction | requirement | implemented | S | ANA-0008, TC-0008 | 2026-09-23 |
+| ANA-0008 | Custom tax deductible amount per transaction — design | analysis | implemented | S | REQ-0008, TC-0008 | 2026-09-23 |
+| TC-0008 | Custom tax deductible amount per transaction — test cases | test-cases | implemented | — | ANA-0008, REQ-0008 | 2026-09-23 |
 
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 8 | 8 | 8 | 2 | 8 | 1 | 4 | 3 |
+| 9 | 9 | 9 | 2 | 8 | 1 | 4 | 3 |
 
 ## Status vocabulary
 

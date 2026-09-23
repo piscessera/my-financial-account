@@ -182,6 +182,9 @@ export default function LedgerTable({
                                 }}
                               >
                                 🏷️ {deductionCat.name}
+                                {row.deductionAmountMinor != null &&
+                                  row.deductionAmountMinor < row.amountMinor &&
+                                  ` (ลดหย่อน ${formatSatangAsBaht(row.deductionAmountMinor)})`}
                               </span>
                             )}
                           </>

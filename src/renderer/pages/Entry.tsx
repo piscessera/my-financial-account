@@ -76,6 +76,7 @@ export default function Entry(): JSX.Element {
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
         deductionCategoryId: values.deductionCategoryId,
+        deductionAmountMinor: values.deductionAmountMinor,
         date: values.date,
         amountMinor: values.amountMinor,
         whtMinor: values.whtMinor,
@@ -115,6 +116,7 @@ export default function Entry(): JSX.Element {
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
         deductionCategoryId: values.deductionCategoryId,
+        deductionAmountMinor: values.deductionAmountMinor,
       });
       setFeedback({ kind: 'ok', message: 'บันทึกการแก้ไขเรียบร้อยแล้ว' });
       setEditing(null);
@@ -343,6 +345,9 @@ export default function Entry(): JSX.Element {
                               style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
                             >
                               🏷️ {deductionCat.name}
+                              {row.deductionAmountMinor != null &&
+                                row.deductionAmountMinor < row.amountMinor &&
+                                ` (ลดหย่อน ${formatSatangAsBaht(row.deductionAmountMinor)})`}
                             </span>
                           ) : (
                             '—'

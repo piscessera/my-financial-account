@@ -56,8 +56,10 @@ export interface CreateTransactionInput {
   readonly incomeSection?: IncomeSection | null;
   /** Required iff `taxRelevant === false`; must be omitted for a tax-relevant row. */
   readonly generalCategory?: GeneralCategory | null;
-  /** Optional deduction category link for expense transactions (REQ-0007). */
+  /** Optional deduction category link (REQ-0007, REQ-0008). */
   readonly deductionCategoryId?: number | null;
+  /** Optional custom deduction amount in integer satang (REQ-0008, INV-8). */
+  readonly deductionAmountMinor?: number | null;
   /** `YYYY-MM-DD`. */
   readonly date: string;
   /** Integer satang, non-zero (INV-1). */
@@ -94,6 +96,22 @@ function assertCreateInput(input: CreateTransactionInput): void {
   const whtMinor = input.whtMinor ?? 0;
   if (!Number.isSafeInteger(whtMinor) || whtMinor < 0) {
     throw new TransactionError(`whtMinor must be an integer >= 0, got ${String(whtMinor)}.`);
+  }
+
+  // Deduction amount validation (REQ-0008, INV-8)
+  if (input.deductionCategoryId != null && input.deductionAmountMinor != null) {
+    if (!Number.isSafeInteger(input.deductionAmountMinor) || input.deductionAmountMinor <= 0) {
+      throw new TransactionError(
+        `deductionAmountMinor must be a positive integer (satang), got ${String(input.deductionAmountMinor)}.`,
+      );
+    }
+    if (input.deductionAmountMinor > Math.abs(input.amountMinor)) {
+      throw new TransactionError(
+        `deductionAmountMinor (${input.deductionAmountMinor}) cannot exceed amountMinor (${input.amountMinor}) (INV-8).`,
+      );
+    }
+  } else if (input.deductionCategoryId == null && input.deductionAmountMinor != null) {
+    throw new TransactionError('deductionAmountMinor requires deductionCategoryId.');
   }
 
   // Mirrors the three `transactions_*` CHECK constraints exactly (001-initial-schema.ts),
@@ -146,6 +164,7 @@ const INSERT_COLUMNS = [
   'note',
   'source',
   'deduction_category_id',
+  'deduction_amount_minor',
 ].join(', ');
 
 function statementsFor(sqlite: BetterSqlite3.Database): Statements {
@@ -154,11 +173,11 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
 
   const statements: Statements = {
     insert: sqlite.prepare(
-      `INSERT INTO transactions (${INSERT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (${INSERT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     insertReversal: sqlite.prepare(
       `INSERT INTO transactions (${INSERT_COLUMNS}, reversal_of_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     selectById: sqlite.prepare(`SELECT * FROM transactions WHERE id = ?`),
     selectByTaxYear: sqlite.prepare(
@@ -173,7 +192,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
       `UPDATE transactions
        SET income_section = ?, general_category = ?, date = ?, amount_minor = ?, wht_minor = ?,
            source_payer = ?, payer_tax_id = ?, note = ?, deduction_category_id = ?,
-           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           deduction_amount_minor = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = ?`,
     ),
   };
@@ -199,6 +218,7 @@ interface RawTransactionRow {
   reversal_of_id: number | null;
   source: TransactionSource;
   deduction_category_id: number | null;
+  deduction_amount_minor: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -223,6 +243,7 @@ function toTransactionRow(raw: unknown): TransactionRow {
     reversalOfId: row.reversal_of_id,
     source: row.source,
     deductionCategoryId: row.deduction_category_id,
+    deductionAmountMinor: row.deduction_amount_minor,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -241,7 +262,9 @@ export function createTransaction(
 ): TransactionRow {
   assertCreateInput(input);
   const taxRelevant = input.taxRelevant ?? true;
-  const deductionCategoryId = input.kind === 'expense' ? (input.deductionCategoryId ?? null) : null;
+  const deductionCategoryId = input.deductionCategoryId ?? null;
+  const deductionAmountMinor =
+    deductionCategoryId != null ? (input.deductionAmountMinor ?? null) : null;
 
   const run = sqlite.transaction(() => {
     const info = statementsFor(sqlite).insert.run(
@@ -258,6 +281,7 @@ export function createTransaction(
       input.note ?? null,
       input.source ?? 'manual',
       deductionCategoryId,
+      deductionAmountMinor,
     );
     const row = requireRow(sqlite, Number(info.lastInsertRowid));
     recordMutation(sqlite, {
@@ -332,6 +356,7 @@ export interface UpdateTransactionInput {
   readonly incomeSection?: IncomeSection | null;
   readonly generalCategory?: GeneralCategory | null;
   readonly deductionCategoryId?: number | null;
+  readonly deductionAmountMinor?: number | null;
 }
 
 /**
@@ -349,10 +374,15 @@ export function updateTransaction(
     requireOpenTaxYear(sqlite, before.taxYearId, 'edit');
 
     const deductionCategoryId =
-      before.kind === 'expense'
-        ? input.deductionCategoryId !== undefined
-          ? input.deductionCategoryId
-          : before.deductionCategoryId
+      input.deductionCategoryId !== undefined
+        ? input.deductionCategoryId
+        : before.deductionCategoryId;
+
+    const deductionAmountMinor =
+      deductionCategoryId != null
+        ? input.deductionAmountMinor !== undefined
+          ? input.deductionAmountMinor
+          : before.deductionAmountMinor
         : null;
 
     const merged = {
@@ -366,6 +396,7 @@ export function updateTransaction(
       payerTaxId: input.payerTaxId !== undefined ? input.payerTaxId : before.payerTaxId,
       note: input.note !== undefined ? input.note : before.note,
       deductionCategoryId,
+      deductionAmountMinor,
     };
 
     assertCreateInput({
@@ -378,6 +409,7 @@ export function updateTransaction(
       amountMinor: merged.amountMinor,
       whtMinor: merged.whtMinor,
       deductionCategoryId: merged.deductionCategoryId,
+      deductionAmountMinor: merged.deductionAmountMinor,
     });
 
     statementsFor(sqlite).updateFields.run(
@@ -390,6 +422,7 @@ export function updateTransaction(
       merged.payerTaxId,
       merged.note,
       merged.deductionCategoryId,
+      merged.deductionAmountMinor,
       id,
     );
     const after = requireRow(sqlite, id);
@@ -454,6 +487,7 @@ export function createReversal(
       input.note ?? `Reversal of transaction #${originalId}`,
       'manual',
       original.deductionCategoryId,
+      original.deductionAmountMinor ? -original.deductionAmountMinor : null,
       originalId,
     );
     const row = requireRow(sqlite, Number(info.lastInsertRowid));

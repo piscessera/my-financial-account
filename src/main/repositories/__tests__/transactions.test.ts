@@ -227,3 +227,84 @@ describe('voidTransaction — TC-0001 #17: no hard delete, only voiding', () => 
     expect(() => voidTransaction(temp.sqlite, created.id)).toThrow(TransactionError);
   });
 });
+
+describe('createTransaction — REQ-0008: custom deduction amount & INV-8', () => {
+  it('stores custom deductionAmountMinor on income and expense transactions', () => {
+    temp.sqlite
+      .prepare(
+        `INSERT INTO deduction_categories (code, name, cap_type, cap_amount_minor, sort_order) VALUES ('life', 'Life', 'fixed', 10000000, 1), ('sso', 'SSO', 'fixed', 900000, 2)`,
+      )
+      .run();
+
+    const expense = createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: 1,
+      deductionAmountMinor: 10_000_00,
+      date: '2026-03-15',
+      amountMinor: 15_000_00,
+    });
+    expect(expense.deductionCategoryId).toBe(1);
+    expect(expense.deductionAmountMinor).toBe(10_000_00);
+
+    const income = createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      taxRelevant: true,
+      incomeSection: '40_1',
+      deductionCategoryId: 2,
+      deductionAmountMinor: 5_000_00,
+      date: '2026-03-15',
+      amountMinor: 50_000_00,
+    });
+    expect(income.deductionCategoryId).toBe(2);
+    expect(income.deductionAmountMinor).toBe(5_000_00);
+  });
+
+  it('rejects deductionAmountMinor > amountMinor (INV-8)', () => {
+    expect(() =>
+      createTransaction(temp.sqlite, {
+        taxYearId,
+        kind: 'expense',
+        taxRelevant: false,
+        generalCategory: 'other',
+        deductionCategoryId: 1,
+        deductionAmountMinor: 20_000_00,
+        date: '2026-03-15',
+        amountMinor: 15_000_00,
+      }),
+    ).toThrow(TransactionError);
+  });
+
+  it('rejects non-positive deductionAmountMinor', () => {
+    expect(() =>
+      createTransaction(temp.sqlite, {
+        taxYearId,
+        kind: 'expense',
+        taxRelevant: false,
+        generalCategory: 'other',
+        deductionCategoryId: 1,
+        deductionAmountMinor: 0,
+        date: '2026-03-15',
+        amountMinor: 15_000_00,
+      }),
+    ).toThrow(TransactionError);
+  });
+
+  it('rejects deductionAmountMinor when deductionCategoryId is omitted', () => {
+    expect(() =>
+      createTransaction(temp.sqlite, {
+        taxYearId,
+        kind: 'expense',
+        taxRelevant: false,
+        generalCategory: 'other',
+        deductionAmountMinor: 5_000_00,
+        date: '2026-03-15',
+        amountMinor: 15_000_00,
+      }),
+    ).toThrow(TransactionError);
+  });
+});
+

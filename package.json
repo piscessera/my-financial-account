@@ -1,7 +1,7 @@
 {
   "name": "my-financial-account",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal finance app: annual Thai personal income tax income/expense tracker.",
   "author": "piscessera",
   "main": "dist-electron/main.js",

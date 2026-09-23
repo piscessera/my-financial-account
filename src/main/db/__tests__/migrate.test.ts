@@ -81,6 +81,7 @@ describe('migrateToLatest', () => {
         '002-year-scoped-config',
         '003-recurring-checklist',
         '004-expense-deduction-linkage',
+        '005-custom-deduction-amount',
       ],
     });
   });

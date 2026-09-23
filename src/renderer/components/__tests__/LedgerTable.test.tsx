@@ -26,6 +26,7 @@ function makeMockTransaction(overrides: Partial<TransactionRow> = {}): Transacti
     status: 'active',
     reversalOfId: null,
     deductionCategoryId: null,
+    deductionAmountMinor: null,
     source: 'manual',
     createdAt: '2026-03-15T00:00:00.000Z',
     updatedAt: '2026-03-15T00:00:00.000Z',
@@ -142,4 +143,41 @@ describe('LedgerTable (TC-0003 #4, #5, #6, #7)', () => {
     expect(html).toContain('รวมทั้งปี — ยอดรับสุทธิ');
     expect(html).toContain('97,000.00');
   });
+
+  it('TC-0008 #9: displays custom deduction amount badge when deductible is less than total amount', () => {
+    const tx = makeMockTransaction({
+      id: 1,
+      kind: 'expense',
+      deductionCategoryId: 10,
+      amountMinor: 15_000_00,
+      deductionAmountMinor: 10_000_00,
+    });
+
+    const html = renderToStaticMarkup(
+      <LedgerTable
+        transactions={[tx]}
+        deductionCategories={[
+          {
+            id: 10,
+            taxYearId: 1,
+            code: 'life',
+            name: 'ประกันชีวิต',
+            capType: 'fixed',
+            capAmountMinor: 100_000_00,
+            sharedGroupId: null,
+            sortOrder: 1,
+            description: '',
+            isActive: true,
+            isBuiltin: true,
+          },
+        ]}
+        onEdit={vi.fn()}
+        onVoid={vi.fn()}
+        onShowHistory={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('🏷️ ประกันชีวิต (ลดหย่อน 10,000.00)');
+  });
 });
+

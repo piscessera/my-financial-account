@@ -16,6 +16,7 @@ export interface TransactionFormValues {
   readonly incomeSection: IncomeSection | null;
   readonly generalCategory: GeneralCategory | null;
   readonly deductionCategoryId: number | null;
+  readonly deductionAmountMinor: number | null;
   readonly date: string;
   readonly amountMinor: number;
   readonly whtMinor: number;
@@ -56,7 +57,10 @@ function todayIso(): string {
 
 /** A field-level error map keyed by the field name shown in the UI. */
 type Errors = Partial<
-  Record<'incomeSection' | 'generalCategory' | 'date' | 'amount' | 'wht', string>
+  Record<
+    'incomeSection' | 'generalCategory' | 'date' | 'amount' | 'wht' | 'deductionAmount',
+    string
+  >
 >;
 
 /**
@@ -89,6 +93,13 @@ export default function TransactionForm({
   const [deductionCategoryId, setDeductionCategoryId] = useState<number | null>(
     initial?.deductionCategoryId ?? null,
   );
+  const [deductionAmountText, setDeductionAmountText] = useState(
+    initial?.deductionAmountMinor != null
+      ? (initial.deductionAmountMinor / 100).toFixed(2)
+      : initial
+        ? (initial.amountMinor / 100).toFixed(2)
+        : '',
+  );
   const [deductionCategories, setDeductionCategories] = useState<DeductionCategoryRow[]>([]);
   const [date, setDate] = useState(initial?.date ?? todayIso());
   const [amountText, setAmountText] = useState(
@@ -110,6 +121,26 @@ export default function TransactionForm({
       unmounted = true;
     };
   }, []);
+
+  function handleAmountChange(val: string): void {
+    if (
+      deductionCategoryId !== null &&
+      (deductionAmountText === amountText || deductionAmountText.trim() === '')
+    ) {
+      setDeductionAmountText(val);
+    }
+    setAmountText(val);
+  }
+
+  function handleCategoryChange(catId: number | null): void {
+    setDeductionCategoryId(catId);
+    if (catId !== null && deductionAmountText.trim() === '') {
+      setDeductionAmountText(amountText);
+    }
+    if (catId === null) {
+      setDeductionAmountText('');
+    }
+  }
 
   async function handleChooseAttachment(): Promise<void> {
     const chosen = await window.api.attachments.chooseFile();
@@ -144,6 +175,19 @@ export default function TransactionForm({
       }
     }
 
+    let deductionAmountMinor: number | null = null;
+    if (deductionCategoryId !== null) {
+      const dedText = deductionAmountText.trim() === '' ? amountText : deductionAmountText;
+      const dedResult = tryParseBahtToSatang(dedText);
+      if (!dedResult.ok || dedResult.satang <= 0) {
+        nextErrors.deductionAmount = 'กรุณาระบุจำนวนเงินลดหย่อนที่ถูกต้อง';
+      } else if (amountResult.ok && dedResult.satang > amountResult.satang) {
+        nextErrors.deductionAmount = 'จำนวนเงินลดหย่อนภาษีต้องไม่เกินจำนวนเงินของรายการ';
+      } else {
+        deductionAmountMinor = dedResult.satang;
+      }
+    }
+
     if (Object.keys(nextErrors).length > 0 || !amountResult.ok) {
       return { errors: nextErrors };
     }
@@ -155,7 +199,8 @@ export default function TransactionForm({
         kind,
         incomeSection: taxRelevant ? incomeSection : null,
         generalCategory: taxRelevant ? null : generalCategory,
-        deductionCategoryId: (kind === 'expense' || !taxRelevant) ? deductionCategoryId : null,
+        deductionCategoryId,
+        deductionAmountMinor,
         date,
         amountMinor: amountResult.satang,
         whtMinor: taxRelevant ? whtMinor : 0,
@@ -288,31 +333,61 @@ export default function TransactionForm({
           </div>
         )}
 
-        {(kind === 'expense' || !taxRelevant) && deductionCategories.length > 0 && (
+        {deductionCategories.length > 0 && (
           <div className="field span2">
             <label>🏷️ ใช้เป็นสิทธิลดหย่อนภาษี (Tax Deduction Tag — ไม่บังคับ)</label>
-            <select
-              value={deductionCategoryId ?? ''}
-              onChange={(e) =>
-                setDeductionCategoryId(e.target.value ? Number(e.target.value) : null)
-              }
-              style={{
-                background: 'var(--card-bg, #1a1a24)',
-                color: 'var(--fg, #f0f0f5)',
-                border: '1px solid var(--border, #333)',
-                padding: '8px 12px',
-                borderRadius: 6,
-                fontSize: 14,
-                width: '100%',
-              }}
-            >
-              <option value="">— ไม่ใช้เป็นสิทธิลดหย่อนภาษี —</option>
-              {deductionCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.capAmountMinor ? `(เพดาน ${(c.capAmountMinor / 100).toLocaleString('th-TH')} บาท)` : ''}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <select
+                  value={deductionCategoryId ?? ''}
+                  onChange={(e) =>
+                    handleCategoryChange(e.target.value ? Number(e.target.value) : null)
+                  }
+                  style={{
+                    background: 'var(--card-bg, #1a1a24)',
+                    color: 'var(--fg, #f0f0f5)',
+                    border: '1px solid var(--border, #333)',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    width: '100%',
+                  }}
+                >
+                  <option value="">— ไม่ใช้เป็นสิทธิลดหย่อนภาษี —</option>
+                  {deductionCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.capAmountMinor ? `(เพดาน ${(c.capAmountMinor / 100).toLocaleString('th-TH')} บาท)` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {deductionCategoryId !== null && (
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={deductionAmountText}
+                    onChange={(e) => setDeductionAmountText(e.target.value)}
+                    placeholder="จำนวนเงินลดหย่อน (บาท)"
+                    style={{
+                      background: 'var(--card-bg, #1a1a24)',
+                      color: 'var(--fg, #f0f0f5)',
+                      border: '1px solid var(--border, #333)',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      width: '100%',
+                    }}
+                  />
+                  <div style={{ fontSize: 12, color: 'var(--fg-muted, #888)', marginTop: 4 }}>
+                    จำนวนเงินที่นำไปลดหย่อนภาษีได้ (บาท)
+                  </div>
+                  {errors.deductionAmount && (
+                    <div className="error-msg">{errors.deductionAmount}</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -328,7 +403,7 @@ export default function TransactionForm({
             type="text"
             inputMode="decimal"
             value={amountText}
-            onChange={(e) => setAmountText(e.target.value)}
+            onChange={(e) => handleAmountChange(e.target.value)}
             placeholder="0.00"
           />
           {errors.amount && <div className="error-msg">{errors.amount}</div>}
