@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
-import type { GeneralCategory, TransactionRow } from '../../main/db/schema';
+import type { DeductionCategoryRow, GeneralCategory, TransactionRow } from '../../main/db/schema';
 import type { AuditEntry } from '../../main/repositories/auditLog';
 import HistoryPanel from '../components/HistoryPanel';
 import LedgerTable from '../components/LedgerTable';
@@ -31,6 +31,7 @@ function transactionLabel(row: TransactionRow): string {
 export default function Entry(): JSX.Element {
   const yearState = useWorkingTaxYear();
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [deductionCategories, setDeductionCategories] = useState<DeductionCategoryRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
   const [formKey, setFormKey] = useState(0);
@@ -42,8 +43,12 @@ export default function Entry(): JSX.Element {
   );
 
   const reload = useCallback(async (yearId: number) => {
-    const rows = await window.api.transactions.listByYear(yearId);
+    const [rows, cats] = await Promise.all([
+      window.api.transactions.listByYear(yearId),
+      window.api.deductions.listCategories(),
+    ]);
     setTransactions(rows);
+    setDeductionCategories(cats);
   }, []);
 
   useEffect(() => {
@@ -70,6 +75,7 @@ export default function Entry(): JSX.Element {
         taxRelevant: values.taxRelevant,
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
+        deductionCategoryId: values.deductionCategoryId,
         date: values.date,
         amountMinor: values.amountMinor,
         whtMinor: values.whtMinor,
@@ -108,6 +114,7 @@ export default function Entry(): JSX.Element {
         note: values.note,
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
+        deductionCategoryId: values.deductionCategoryId,
       });
       setFeedback({ kind: 'ok', message: 'บันทึกการแก้ไขเรียบร้อยแล้ว' });
       setEditing(null);
@@ -305,41 +312,59 @@ export default function Entry(): JSX.Element {
                   <tr>
                     <th>วันที่</th>
                     <th>หมวดหมู่</th>
+                    <th>สิทธิลดหย่อน</th>
                     <th>หมายเหตุ</th>
                     <th className="num">จำนวนเงิน</th>
                     <th className="center">การจัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {generalTransactions.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.date}</td>
-                      <td>
-                        {row.generalCategory && (
-                          <span
-                            className="tag"
-                            style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
+                  {generalTransactions.map((row) => {
+                    const deductionCat = row.deductionCategoryId
+                      ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
+                      : null;
+                    return (
+                      <tr key={row.id}>
+                        <td>{row.date}</td>
+                        <td>
+                          {row.generalCategory && (
+                            <span
+                              className="tag"
+                              style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
+                            >
+                              {GENERAL_CATEGORY_LABELS[row.generalCategory]}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {deductionCat ? (
+                            <span
+                              className="tag"
+                              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                            >
+                              🏷️ {deductionCat.name}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td>{row.note ?? '—'}</td>
+                        <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
+                        <td>
+                          <button type="button" className="row-action" onClick={() => startEdit(row)}>
+                            แก้ไข
+                          </button>
+                          <button
+                            type="button"
+                            className="row-action muted"
+                            onClick={() => void handleVoid(yearId, row)}
                           >
-                            {GENERAL_CATEGORY_LABELS[row.generalCategory]}
-                          </span>
-                        )}
-                      </td>
-                      <td>{row.note ?? '—'}</td>
-                      <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
-                      <td>
-                        <button type="button" className="row-action" onClick={() => startEdit(row)}>
-                          แก้ไข
-                        </button>
-                        <button
-                          type="button"
-                          className="row-action muted"
-                          onClick={() => void handleVoid(yearId, row)}
-                        >
-                          Void
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                            Void
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -366,6 +391,7 @@ export default function Entry(): JSX.Element {
           </div>
           <LedgerTable
             transactions={taxTransactions}
+            deductionCategories={deductionCategories}
             onEdit={(row) => startEdit(row)}
             onVoid={(row) => void handleVoid(yearId, row)}
             onShowHistory={(row) => void handleShowHistory(row)}

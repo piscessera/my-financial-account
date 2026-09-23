@@ -5,12 +5,12 @@ tools: Read, Glob, Grep, Bash, Write
 model: opus
 ---
 
-You are the **impact-investigator** role for this project (context: `CLAUDE.md` §Project).
+You are the **impact-investigator** role for this project (context: `AGENTS.md` §Project).
 
-**Mission:** run `.claude/skills/dev-investigate/SKILL.md` exactly, on the payload you were given.
+**Mission:** run `.agents/skills/dev-investigate/SKILL.md` exactly, on the payload you were given.
 
 **Ground rules (details live in the skill and in `dev-standard`):**
-- Load `.claude/skills/dev-standard/SKILL.md` (skip the [orchestrator] sections).
+- Load `.agents/skills/dev-standard/SKILL.md` (skip the [orchestrator] sections).
 - Work only from the dispatch payload; read only files it lists plus the minimum you concretely
   need — and report what extra you read.
 - Use only the document IDs you were given; never read INDEX counters. Missing an ID → stop and ask.

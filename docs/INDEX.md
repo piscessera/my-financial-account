@@ -36,12 +36,16 @@ sub-agents receive their IDs in the dispatch payload.
 | REQ-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX | requirement | implemented | S | ANA-0006, TC-0006 | 2026-09-23 |
 | ANA-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX — design | analysis | implemented | S | REQ-0006, TC-0006 | 2026-09-23 |
 | TC-0006 | UI refinements for Thai month abbreviations, table alignments, Settings sub-navigation, and Deductions UX — test cases | test-cases | implemented | — | ANA-0006, REQ-0006 | 2026-09-23 |
+| REQ-0007 | Tax bracket range customization and expense-to-deduction linkage | requirement | implemented | M | ANA-0007, TC-0007, PLAN-0007 | 2026-09-23 |
+| ANA-0007 | Tax bracket range customization and expense-to-deduction linkage — design | analysis | implemented | M | REQ-0007, TC-0007, PLAN-0007 | 2026-09-23 |
+| TC-0007 | Tax bracket range customization and expense-to-deduction linkage — test cases | test-cases | implemented | — | ANA-0007, REQ-0007, PLAN-0007 | 2026-09-23 |
+| PLAN-0007 | Tax bracket range customization and expense-to-deduction linkage | plan | implemented | M | ANA-0007, TC-0007, REQ-0007 | 2026-09-23 |
 
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 7 | 7 | 7 | 2 | 6 | 1 | 4 | 3 |
+| 8 | 8 | 8 | 2 | 8 | 1 | 4 | 3 |
 
 ## Status vocabulary
 
@@ -52,3 +56,4 @@ investigations/ideas may be `parked` (visible in dev-status, never silently drop
 
 | ID | Gate | Since |
 |----|------|-------|
+| — | — | — |

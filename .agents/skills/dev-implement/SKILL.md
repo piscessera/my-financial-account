@@ -16,16 +16,17 @@ PROTO screen(s) for UI tasks, worktree path, allocated IDs.
    row + TC cases + ANA excerpt are the contract. Read only code files in the payload's read
    list, plus the minimum extra you concretely need (report what you read).
 2. Implement the code **and** its unit tests together (every linked `Unit` TC case gets a test).
-   UI tasks must match the accepted PROTO screen(s) — states, layout, wording. If you can't, stop.
+   UI tasks must match the accepted PROTO screen(s) and `DESIGN.md` — tokens, components, states,
+   layout, wording. If you can't, stop.
 3. Run the full relevant suites in the worktree; all must pass. Match the project's formatter /
-   linter (CLAUDE.md §Project).
+   linter (AGENTS.md §Project).
 4. Commit: conventional message referencing the AT + TC ids, e.g.
    `feat(tasks): add due-date filter (AT-2.3, TC-0002 #14-#16)`. Never commit `.env`/secrets.
 5. Update, in the worktree:
    - PLAN task checkbox `☐ → ☑`,
    - TC `Result` + `Test ref` (`pass` + `file::test name`, or `manual` + reason — no silent gaps),
    - **IMPL note:** create `docs/70-implementation/IMPL-NNNN-slug/AT-x.y.md` from
-     `.claude/templates/IMPL-task.md`. **≤ 40 lines. No code, no diffs, no test output** — cite
+     `.agents/templates/IMPL-task.md`. **≤ 40 lines. No code, no diffs, no test output** — cite
      the commit hash and test names instead (git holds the detail). Then append one row to the
      folder's `README.md` task table.
 6. Continue to the next task in the payload unless a stop condition hits.

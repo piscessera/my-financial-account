@@ -72,6 +72,7 @@ function tx(overrides: Partial<TransactionRow> & Pick<TransactionRow, 'kind'>): 
     note: null,
     status: 'active',
     reversalOfId: null,
+    deductionCategoryId: null,
     source: 'manual',
     createdAt: '2026-03-15T00:00:00.000Z',
     updatedAt: '2026-03-15T00:00:00.000Z',
@@ -290,3 +291,111 @@ describe('TC-0001 #23: exact decimal summation, no float drift', () => {
     expect(result.totalIncomeMinor).toBe(12_569_37); // hand-verified exact sum, in satang
   });
 });
+
+describe('TC-0007 #10, #11, #13: linked expense deductions & statutory cap enforcement in computeYear', () => {
+  it('aggregates linked expenses, caps at statutory limit, and calculates net taxable income', () => {
+    const income = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 600_000_00 });
+    // Life insurance expense: 120,000 THB (cap: 100,000 THB)
+    const lifeInsuranceExpense = tx({
+      kind: 'expense',
+      taxRelevant: false,
+      amountMinor: 120_000_00,
+      deductionCategoryId: 10,
+    });
+
+    const category: DeductionCategoryRow = {
+      id: 10,
+      taxYearId: 1,
+      code: 'life_insurance',
+      name: 'เบี้ยประกันชีวิต',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+      sharedGroupId: null,
+      sortOrder: 1,
+      description: '',
+      isActive: true,
+      isBuiltin: true,
+    };
+
+    const result = computeYear({
+      taxYear: YEAR_NO_METHOD,
+      transactions: [income, lifeInsuranceExpense],
+      deductionCategories: [category],
+      deductionEntries: [],
+      sharedCaps: [],
+      brackets: TAX_2025_BRACKETS,
+    });
+
+    expect(result.totalIncomeMinor).toBe(600_000_00);
+    expect(result.totalDeductionsMinor).toBe(100_000_00); // capped at 100k
+    expect(result.netTaxableMinor).toBe(500_000_00); // 600k - 100k
+    // On 500k net taxable: 0-150k @ 0% (0), 150k-300k @ 5% (7,500), 300k-500k @ 10% (20,000) = 27,500 THB
+    expect(result.taxTotalMinor).toBe(27_500_00);
+  });
+
+  it('enforces shared group caps when combining life + health insurance linked expenses', () => {
+    const income = tx({ kind: 'income', incomeSection: '40_1', amountMinor: 600_000_00 });
+    const lifeExp = tx({
+      kind: 'expense',
+      taxRelevant: false,
+      amountMinor: 90_000_00,
+      deductionCategoryId: 1,
+    });
+    const healthExp = tx({
+      kind: 'expense',
+      taxRelevant: false,
+      amountMinor: 25_000_00,
+      deductionCategoryId: 2,
+    });
+
+    const sharedGroup: SharedCapRow = {
+      id: 100,
+      taxYearId: 1,
+      name: 'Life+Health',
+      capAmountMinor: 100_000_00,
+    };
+
+    const categories: DeductionCategoryRow[] = [
+      {
+        id: 1,
+        taxYearId: 1,
+        code: 'life',
+        name: 'Life',
+        capType: 'shared_group_member',
+        capAmountMinor: null,
+        sharedGroupId: 100,
+        sortOrder: 1,
+        description: '',
+        isActive: true,
+        isBuiltin: true,
+      },
+      {
+        id: 2,
+        taxYearId: 1,
+        code: 'health',
+        name: 'Health',
+        capType: 'shared_group_member',
+        capAmountMinor: 25_000_00,
+        sharedGroupId: 100,
+        sortOrder: 2,
+        description: '',
+        isActive: true,
+        isBuiltin: true,
+      },
+    ];
+
+    const result = computeYear({
+      taxYear: YEAR_NO_METHOD,
+      transactions: [income, lifeExp, healthExp],
+      deductionCategories: categories,
+      deductionEntries: [],
+      sharedCaps: [sharedGroup],
+      brackets: TAX_2025_BRACKETS,
+    });
+
+    // 90k + 25k = 115k -> capped at shared group cap 100k
+    expect(result.totalDeductionsMinor).toBe(100_000_00);
+    expect(result.netTaxableMinor).toBe(500_000_00);
+  });
+});
+

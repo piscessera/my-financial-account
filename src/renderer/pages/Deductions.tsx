@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { computeDeductions } from '../../main/calc/deductions';
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../../main/calc/money';
-import type { DeductionCategoryRow, DeductionEntryRow, SharedCapRow } from '../../main/db/schema';
+import type {
+  DeductionCategoryRow,
+  DeductionEntryRow,
+  SharedCapRow,
+  TransactionRow,
+} from '../../main/db/schema';
+import type { CategorySummaryItem, DeductionSummaryResult } from '../../main/repositories/deductions';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 function capDescription(category: DeductionCategoryRow, group: SharedCapRow | undefined): string {
@@ -84,18 +90,26 @@ export default function Deductions(): JSX.Element {
   const yearState = useWorkingTaxYear();
   const [categories, setCategories] = useState<DeductionCategoryRow[]>([]);
   const [sharedCaps, setSharedCaps] = useState<SharedCapRow[]>([]);
+  const [summary, setSummary] = useState<DeductionSummaryResult | null>(null);
   const [drafts, setDrafts] = useState<Record<number, RowDraft>>({});
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
+  const [drillDown, setDrillDown] = useState<{
+    category: DeductionCategoryRow;
+    transactions: TransactionRow[];
+    loading: boolean;
+  } | null>(null);
 
   const reload = useCallback(async (yearId: number) => {
-    const [cats, ents, caps] = await Promise.all([
+    const [cats, ents, caps, sums] = await Promise.all([
       window.api.deductions.listCategories(),
       window.api.deductions.listEntries(yearId),
       window.api.settings.getSharedCaps(),
+      window.api.deductions.getSummary(yearId),
     ]);
     setCategories(cats);
     setSharedCaps(caps);
+    setSummary(sums);
     setDrafts(
       Object.fromEntries(
         cats.map((c) => {
@@ -116,26 +130,53 @@ export default function Deductions(): JSX.Element {
     if (yearState.status === 'ready') void reload(yearState.year.id);
   }, [yearState, reload]);
 
-  // Build live mock entries from drafts for instant real-time computation
+  async function openDrillDown(category: DeductionCategoryRow): Promise<void> {
+    if (yearState.status !== 'ready') return;
+    setDrillDown({ category, transactions: [], loading: true });
+    try {
+      const txs = await window.api.deductions.getSourceTransactions(yearState.year.id, category.id);
+      setDrillDown({ category, transactions: txs, loading: false });
+    } catch {
+      setDrillDown({ category, transactions: [], loading: false });
+    }
+  }
+
+  const summaryMap = useMemo(
+    () =>
+      new Map<number, CategorySummaryItem>(
+        (summary?.items ?? []).map((s) => [s.category.id, s]),
+      ),
+    [summary],
+  );
+
+  // Build live mock entries from drafts for instant real-time computation (manual + linked)
   const liveEntries = useMemo(() => {
     const result: DeductionEntryRow[] = [];
     for (const c of categories) {
       const draft = drafts[c.id];
-      if (!draft || draft.amountText.trim() === '') continue;
-      const parsed = tryParseBahtToSatang(draft.amountText);
-      if (parsed.ok) {
+      const sumItem = summaryMap.get(c.id);
+      const manualSatang =
+        draft && draft.amountText.trim() !== ''
+          ? tryParseBahtToSatang(draft.amountText).ok
+            ? (tryParseBahtToSatang(draft.amountText) as { ok: true; satang: number }).satang
+            : 0
+          : 0;
+      const linkedSatang = sumItem?.sourceExpenseMinor ?? 0;
+      const totalCombinedSatang = manualSatang + linkedSatang;
+
+      if (totalCombinedSatang > 0 || (draft && draft.countText.trim() !== '')) {
         result.push({
           id: 0,
           taxYearId: yearState.status === 'ready' ? yearState.year.id : 0,
           categoryId: c.id,
-          amountMinor: parsed.satang,
-          count: draft.countText.trim() !== '' ? Number(draft.countText) : null,
+          amountMinor: totalCombinedSatang,
+          count: draft?.countText?.trim() ? Number(draft.countText) : null,
           updatedAt: '',
         });
       }
     }
     return result;
-  }, [categories, drafts, yearState]);
+  }, [categories, drafts, summaryMap, yearState]);
 
   const computed = useMemo(
     () => computeDeductions(categories, liveEntries, sharedCaps),
@@ -372,6 +413,7 @@ export default function Deductions(): JSX.Element {
               <div style={{ padding: '6px 20px' }}>
                 {section.items.map((category, index) => {
                   const draft = drafts[category.id] ?? { amountText: '', countText: '' };
+                  const sumItem = summaryMap.get(category.id);
                   const perCategory = computed.perCategory.find((p) => p.categoryId === category.id);
                   const group =
                     category.sharedGroupId !== null
@@ -381,8 +423,11 @@ export default function Deductions(): JSX.Element {
                     category.sharedGroupId !== null
                       ? computed.sharedGroups.find((g) => g.sharedGroupId === category.sharedGroupId)
                       : undefined;
-                  const overCap = perCategory?.cappedByOwnCap ?? false;
-                  const hasValue = draft.amountText.trim() !== '' && draft.amountText !== '0' && draft.amountText !== '0.00';
+                  const overCap = (perCategory?.cappedByOwnCap ?? false) || (sumItem?.isOverCap ?? false);
+                  const hasValue =
+                    (draft.amountText.trim() !== '' && draft.amountText !== '0' && draft.amountText !== '0.00') ||
+                    (sumItem ? sumItem.sourceExpenseMinor > 0 : false);
+                  const hasLinkedExpenses = sumItem ? sumItem.sourceExpenseMinor > 0 : false;
 
                   return (
                     <div
@@ -404,7 +449,7 @@ export default function Deductions(): JSX.Element {
                       }}
                     >
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--ink)' }}>
                             {category.name}
                           </span>
@@ -422,6 +467,27 @@ export default function Deductions(): JSX.Element {
                               ✓ ใช้สิทธิ
                             </span>
                           )}
+                          {hasLinkedExpenses && (
+                            <button
+                              type="button"
+                              onClick={() => void openDrillDown(category)}
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: 'var(--accent)',
+                                background: 'var(--accent-soft)',
+                                border: 'none',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              📥 ลิงก์จากรายจ่าย {formatSatangAsBaht(sumItem?.sourceExpenseMinor ?? 0)} บาท ({sumItem?.sourceExpenseCount} รายการ) 🔍 ดูรายการ
+                            </button>
+                          )}
                         </div>
                         <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
                           {capDescription(category, group)}
@@ -429,6 +495,12 @@ export default function Deductions(): JSX.Element {
                         {category.description && (
                           <div className="muted" style={{ fontSize: 11.5, marginTop: 2, opacity: 0.8 }}>
                             {category.description}
+                          </div>
+                        )}
+                        {hasLinkedExpenses && (
+                          <div className="muted" style={{ fontSize: 11.5, marginTop: 4, color: 'var(--ink-soft)' }}>
+                            💡 ยอดรวมก่อนเพดาน: <strong>{formatSatangAsBaht((sumItem?.sourceExpenseMinor ?? 0) + (tryParseBahtToSatang(draft.amountText).ok ? (tryParseBahtToSatang(draft.amountText) as { ok: true; satang: number }).satang : 0))} บาท</strong>
+                            {draft.amountText.trim() !== '' && draft.amountText !== '0' && ` (รายจ่าย ${formatSatangAsBaht(sumItem?.sourceExpenseMinor ?? 0)} + กรอกตรงนี้ ${draft.amountText})`}
                           </div>
                         )}
                         {overCap && (
@@ -440,8 +512,8 @@ export default function Deductions(): JSX.Element {
                               marginTop: 4,
                             }}
                           >
-                            ⚠️ ยอดที่กรอกเกินเพดาน — สิทธิที่นำไปคำนวณจริงคือ{' '}
-                            {formatSatangAsBaht(perCategory?.effectiveMinor ?? 0)} บาท
+                            ⚠️ ยอดรวมเกินเพดาน {sumItem?.overCapMinor ? `(ส่วนเกิน ${formatSatangAsBaht(sumItem.overCapMinor)} บาท)` : ''} — สิทธิที่นำไปคำนวณจริงคือ{' '}
+                            {formatSatangAsBaht(sumItem?.effectiveMinor ?? perCategory?.effectiveMinor ?? 0)} บาท
                           </div>
                         )}
                         {category.capType === 'shared_group_member' &&
@@ -480,7 +552,7 @@ export default function Deductions(): JSX.Element {
                       {/* Amount input field */}
                       <div className="field">
                         <label style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>
-                          จำนวนเงิน (บาท)
+                          {hasLinkedExpenses ? '✍️ กรอกเพิ่ม/ยอดตรงนี้ (บาท)' : 'จำนวนเงิน (บาท)'}
                         </label>
                         <input
                           type="text"
@@ -494,7 +566,7 @@ export default function Deductions(): JSX.Element {
                             borderColor: overCap ? 'var(--bad)' : undefined,
                           }}
                           value={draft.amountText}
-                          placeholder="0.00"
+                          placeholder={hasLinkedExpenses ? '0.00 (ยอดเพิ่ม)' : '0.00'}
                           onChange={(e) =>
                             updateDraft(category.id, { amountText: e.target.value })
                           }
@@ -520,6 +592,135 @@ export default function Deductions(): JSX.Element {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Drill-down Modal for Linked Source Expenses */}
+      {drillDown && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: 20,
+          }}
+          onClick={() => setDrillDown(null)}
+        >
+          <div
+            className="panel"
+            style={{
+              maxWidth: 700,
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 16,
+                borderBottom: '1px solid var(--line)',
+                paddingBottom: 12,
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
+                  🔍 รายการรายจ่ายที่เชื่อมโยง: {drillDown.category.name}
+                </h2>
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  รายการรายจ่ายที่ถูกแท็กหมวดลดหย่อนนี้จากเมนู &quot;บันทึกรายรับ-รายจ่าย&quot;
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ padding: '4px 10px', fontSize: 14 }}
+                onClick={() => setDrillDown(null)}
+              >
+                ✕ ปิด
+              </button>
+            </div>
+
+            {drillDown.loading ? (
+              <p className="muted">กำลังโหลดรายการ...</p>
+            ) : drillDown.transactions.length === 0 ? (
+              <div className="empty-state" style={{ padding: '30px 0' }}>
+                <p className="muted">ไม่พบรายการรายจ่ายที่เชื่อมโยงกับหมวดนี้</p>
+              </div>
+            ) : (
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>วันที่</th>
+                      <th>ประเภท/หมวดหมู่</th>
+                      <th>ผู้รับเงิน/แหล่งที่มา</th>
+                      <th>หมายเหตุ</th>
+                      <th className="num">จำนวนเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drillDown.transactions.map((tx) => (
+                      <tr key={tx.id}>
+                        <td>{tx.date}</td>
+                        <td>
+                          <span
+                            className="tag"
+                            style={{
+                              background: tx.taxRelevant ? 'var(--accent-soft)' : 'var(--amber-soft)',
+                              color: tx.taxRelevant ? 'var(--accent)' : 'var(--amber)',
+                            }}
+                          >
+                            {tx.taxRelevant ? 'รายการภาษี' : 'รายการทั่วไป'}
+                          </span>
+                        </td>
+                        <td>{tx.sourcePayer ?? '—'}</td>
+                        <td>{tx.note ?? '—'}</td>
+                        <td className="num" style={{ fontWeight: 600 }}>
+                          {formatSatangAsBaht(tx.amountMinor)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} style={{ fontWeight: 700, textAlign: 'right' }}>
+                        ยอดรวมจากรายจ่ายทั้งหมด ({drillDown.transactions.length} รายการ):
+                      </td>
+                      <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                        {formatSatangAsBaht(
+                          drillDown.transactions.reduce((sum, t) => sum + t.amountMinor, 0),
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                <div className="form-actions" style={{ marginTop: 20 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setDrillDown(null)}
+                  >
+                    ปิดหน้าต่าง
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

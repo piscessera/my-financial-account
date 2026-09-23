@@ -20,20 +20,27 @@ import { addAttachment, listAttachments } from '../repositories/attachments';
 import type { AuditEntry } from '../repositories/auditLog';
 import {
   createCategory,
+  getDeductionSummary,
+  getSourceTransactions,
   listCategories,
   listEntries,
   setCategoryActive,
   setEntry,
   updateCategory,
   type CreateCategoryInput,
+  type DeductionSummaryResult,
   type SetEntryInput,
   type UpdateCategoryInput,
 } from '../repositories/deductions';
 import {
+  addTaxBracket,
+  deleteTaxBracket,
   getBrackets,
   getSharedCaps,
+  resetTaxBracketsToDefault,
   updateBracket,
   updateSharedCap,
+  type NewTaxBracketInput,
   type UpdateBracketBounds,
 } from '../repositories/settings';
 import {
@@ -180,6 +187,10 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       setEntry(ctx.getSqlite(), input),
     'deductions:listEntries': (taxYearId: number): DeductionEntryRow[] =>
       listEntries(ctx.getSqlite(), taxYearId),
+    'deductions:getSummary': (taxYearId: number): DeductionSummaryResult =>
+      getDeductionSummary(ctx.getSqlite(), taxYearId),
+    'deductions:getSourceTransactions': (taxYearId: number, categoryId: number): TransactionRow[] =>
+      getSourceTransactions(ctx.getSqlite(), taxYearId, categoryId),
 
     // `settings` (ANA-0001 §API/backend changes): the management surface — every category
     // (including archived, so Settings can reactivate one), plus create/archive/rename and
@@ -205,6 +216,12 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       rateBp: number,
       bounds?: UpdateBracketBounds,
     ): TaxBracketRow => updateBracket(ctx.getSqlite(), id, rateBp, bounds),
+    'settings:addBracket': (input: NewTaxBracketInput): TaxBracketRow =>
+      addTaxBracket(ctx.getSqlite(), input),
+    'settings:deleteBracket': (id: number): void =>
+      deleteTaxBracket(ctx.getSqlite(), id),
+    'settings:resetBrackets': (taxYearId?: number | null): TaxBracketRow[] =>
+      resetTaxBracketsToDefault(ctx.getSqlite(), taxYearId),
 
     // `calc` (ANA-0001 §API/backend changes): the single figure-producing call every screen
     // (Dashboard live, Summary, unit tests) uses. Always goes through `getYearResult` (AT-4.4)

@@ -1,11 +1,12 @@
 import { Fragment } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
-import type { IncomeSection, TransactionRow } from '../../main/db/schema';
+import type { DeductionCategoryRow, IncomeSection, TransactionRow } from '../../main/db/schema';
 
 interface LedgerTableProps {
   /** Tax-relevant transactions for one year, any order — this component sorts/groups them. */
   readonly transactions: readonly TransactionRow[];
+  readonly deductionCategories?: readonly DeductionCategoryRow[];
   readonly onEdit: (row: TransactionRow) => void;
   readonly onVoid: (row: TransactionRow) => void;
   readonly onShowHistory: (row: TransactionRow) => void;
@@ -68,6 +69,7 @@ function formatShortDate(dateIso: string): string {
  */
 export default function LedgerTable({
   transactions,
+  deductionCategories = [],
   onEdit,
   onVoid,
   onShowHistory,
@@ -150,20 +152,43 @@ export default function LedgerTable({
                     </div>
                   </td>
                 </tr>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{formatShortDate(row.date)}</td>
-                    <td>
-                      {row.reversalOfId !== null ? (
-                        <span className="pill reversal">reversal</span>
-                      ) : (
-                        row.incomeSection && (
-                          <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
-                        )
-                      )}
-                    </td>
-                    <td>{row.sourcePayer ?? '—'}</td>
-                    <td>{row.note ?? '—'}</td>
+                {rows.map((row) => {
+                  const deductionCat = row.deductionCategoryId
+                    ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
+                    : null;
+                  return (
+                    <tr key={row.id}>
+                      <td>{formatShortDate(row.date)}</td>
+                      <td>
+                        {row.reversalOfId !== null ? (
+                          <span className="pill reversal">reversal</span>
+                        ) : (
+                          <>
+                            {row.incomeSection && (
+                              <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
+                            )}
+                            {row.kind === 'expense' && (
+                              <span className="tag" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
+                                รายจ่าย
+                              </span>
+                            )}
+                            {deductionCat && (
+                              <span
+                                className="tag"
+                                style={{
+                                  background: 'var(--accent-soft)',
+                                  color: 'var(--accent)',
+                                  marginLeft: 4,
+                                }}
+                              >
+                                🏷️ {deductionCat.name}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td>{row.sourcePayer ?? '—'}</td>
+                      <td>{row.note ?? '—'}</td>
                     <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
                     <td className="num">{formatSatangAsBaht(row.whtMinor)}</td>
                     <td className="num">
@@ -205,8 +230,9 @@ export default function LedgerTable({
                         </button>
                       )}
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </Fragment>
             );
           })}

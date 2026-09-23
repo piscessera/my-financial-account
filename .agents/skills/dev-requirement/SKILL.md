@@ -18,7 +18,7 @@ description: Receive and structure a new requirement — interview the user, wri
 2. **Interview** the user. One batch, max ~5 questions: problem & who benefits · expected
    usage/trigger · must-have vs nice-to-have · explicitly out of scope · constraints.
    Do not invent requirements — ask.
-3. Write `docs/10-requirements/REQ-NNNN-slug.md` from `.claude/templates/REQ.md`:
+3. Write `docs/10-requirements/REQ-NNNN-slug.md` from `.agents/templates/REQ.md`:
    problem, users & triggers, in scope, **out of scope** (parked ideas noted), acceptance
    criteria (`AC-1…AC-n`, testable statements), constraints, size proposal with reasoning.
 4. **GATE** — "REQ-NNNN ready, proposed size M. approve / change: … / hold".

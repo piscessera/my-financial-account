@@ -10,11 +10,14 @@ import { createTaxYear } from '../taxYears';
 import {
   DeductionError,
   createCategory,
+  getDeductionSummary,
+  getSourceTransactions,
   listCategories,
   setCategoryActive,
   setEntry,
   updateCategory,
 } from '../deductions';
+import { createTransaction } from '../transactions';
 
 type TempDb = ReturnType<typeof openTempDatabase>;
 
@@ -215,3 +218,93 @@ describe('setEntry', () => {
     expect(count.n).toBe(1);
   });
 });
+
+describe('getDeductionSummary & getSourceTransactions (REQ-0007, AT-1.3)', () => {
+  it('aggregates linked expense transactions per category (TC #8, #9)', () => {
+    const year = createTaxYear(temp.sqlite, { year: 2568 }).id;
+    const cat = createCategory(temp.sqlite, {
+      taxYearId: year,
+      code: 'life_insurance',
+      name: 'เบี้ยประกันชีวิต',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+
+    // Create 2 linked expense transactions
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: cat.id,
+      date: '2025-05-10',
+      amountMinor: 50_000_00,
+      note: 'AIA Life Insurance Q1',
+    });
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: cat.id,
+      date: '2025-08-10',
+      amountMinor: 70_000_00,
+      note: 'AIA Life Insurance Q2',
+    });
+
+    // Drill-down source items
+    const sourceTx = getSourceTransactions(temp.sqlite, year, cat.id);
+    expect(sourceTx).toHaveLength(2);
+    expect(sourceTx[0].note).toBe('AIA Life Insurance Q2');
+    expect(sourceTx[1].note).toBe('AIA Life Insurance Q1');
+
+    // Summary calculation
+    const summary = getDeductionSummary(temp.sqlite, year);
+    const item = summary.items.find((i) => i.category.id === cat.id);
+    expect(item).toBeDefined();
+    expect(item?.sourceExpenseMinor).toBe(120_000_00);
+    expect(item?.sourceExpenseCount).toBe(2);
+    expect(item?.totalGrossMinor).toBe(120_000_00);
+    expect(item?.effectiveMinor).toBe(100_000_00); // capped at 100,000 THB
+    expect(item?.isOverCap).toBe(true);
+    expect(item?.overCapMinor).toBe(20_000_00);
+  });
+
+  it('combines linked expenses with manual deduction entries (TC #12)', () => {
+    const year = createTaxYear(temp.sqlite, { year: 2568 }).id;
+    const cat = createCategory(temp.sqlite, {
+      taxYearId: year,
+      code: 'home_loan',
+      name: 'ดอกเบี้ยกู้บ้าน',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+
+    // Linked expense: 40,000 THB
+    createTransaction(temp.sqlite, {
+      taxYearId: year,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'housing',
+      deductionCategoryId: cat.id,
+      date: '2025-03-15',
+      amountMinor: 40_000_00,
+    });
+
+    // Manual entry: 30,000 THB
+    setEntry(temp.sqlite, {
+      taxYearId: year,
+      categoryId: cat.id,
+      amountMinor: 30_000_00,
+    });
+
+    const summary = getDeductionSummary(temp.sqlite, year);
+    const item = summary.items.find((i) => i.category.id === cat.id);
+    expect(item?.sourceExpenseMinor).toBe(40_000_00);
+    expect(item?.manualAmountMinor).toBe(30_000_00);
+    expect(item?.totalGrossMinor).toBe(70_000_00);
+    expect(item?.effectiveMinor).toBe(70_000_00);
+    expect(item?.isOverCap).toBe(false);
+  });
+});
+

@@ -15,7 +15,13 @@
  */
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { CapType, DeductionCategoryRow, DeductionEntryRow } from '../db/schema';
+import type {
+  CapType,
+  DeductionCategoryRow,
+  DeductionEntryRow,
+  TransactionRow,
+} from '../db/schema';
+import { computeDeductions } from '../calc/deductions';
 import { recordMutation } from './auditLog';
 
 export class DeductionError extends Error {
@@ -385,3 +391,170 @@ export function listEntries(
 ): DeductionEntryRow[] {
   return statementsFor(sqlite).selectEntriesByYear.all(taxYearId).map(toEntryRow);
 }
+
+/**
+ * Retrieve active expense transactions contributing to a specific deduction category for a tax year (AT-1.3, TC #9).
+ */
+export function getSourceTransactions(
+  sqlite: BetterSqlite3.Database,
+  taxYearId: number,
+  categoryId: number,
+): TransactionRow[] {
+  const rows = sqlite
+    .prepare(
+      `SELECT * FROM transactions
+       WHERE tax_year_id = ? AND kind = 'expense' AND status = 'active' AND deduction_category_id = ?
+       ORDER BY date DESC, id DESC`,
+    )
+    .all(taxYearId, categoryId);
+
+  return rows.map((raw: any) => ({
+    id: raw.id,
+    taxYearId: raw.tax_year_id,
+    kind: raw.kind,
+    taxRelevant: raw.tax_relevant === 1,
+    incomeSection: raw.income_section,
+    generalCategory: raw.general_category,
+    date: raw.date,
+    amountMinor: raw.amount_minor,
+    currency: raw.currency,
+    whtMinor: raw.wht_minor,
+    sourcePayer: raw.source_payer,
+    payerTaxId: raw.payer_tax_id,
+    note: raw.note,
+    status: raw.status,
+    reversalOfId: raw.reversal_of_id,
+    source: raw.source,
+    deductionCategoryId: raw.deduction_category_id,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  }));
+}
+
+export interface CategorySummaryItem {
+  readonly category: DeductionCategoryRow;
+  readonly manualAmountMinor: number;
+  readonly sourceExpenseMinor: number;
+  readonly sourceExpenseCount: number;
+  readonly totalGrossMinor: number;
+  readonly effectiveMinor: number;
+  readonly isOverCap: boolean;
+  readonly overCapMinor: number;
+  readonly count: number | null;
+}
+
+export interface DeductionSummaryResult {
+  readonly taxYearId: number;
+  readonly items: CategorySummaryItem[];
+  readonly totalGrossMinor: number;
+  readonly totalEffectiveMinor: number;
+  readonly totalOverCapMinor: number;
+}
+
+/**
+ * Retrieve comprehensive deduction summary with auto-aggregated expenses, manual entries, and cap calculations (AT-1.3, TC #8, #10, #11, #12).
+ */
+export function getDeductionSummary(
+  sqlite: BetterSqlite3.Database,
+  taxYearId: number,
+): DeductionSummaryResult {
+  const categories = listCategories(sqlite, taxYearId);
+  const entries = listEntries(sqlite, taxYearId);
+
+  // Fetch all active linked expenses for this year
+  const linkedExpenseRows = sqlite
+    .prepare(
+      `SELECT deduction_category_id, COUNT(*) AS cnt, SUM(amount_minor) AS total_minor
+       FROM transactions
+       WHERE tax_year_id = ? AND kind = 'expense' AND status = 'active' AND deduction_category_id IS NOT NULL
+       GROUP BY deduction_category_id`,
+    )
+    .all(taxYearId) as { deduction_category_id: number; cnt: number; total_minor: number }[];
+
+  const linkedMap = new Map<number, { count: number; totalMinor: number }>();
+  for (const row of linkedExpenseRows) {
+    linkedMap.set(row.deduction_category_id, {
+      count: row.cnt,
+      totalMinor: row.total_minor,
+    });
+  }
+
+  const entryMap = new Map<number, DeductionEntryRow>();
+  for (const entry of entries) {
+    entryMap.set(entry.categoryId, entry);
+  }
+
+  // Build merged entries for calculation
+  const mergedEntries: DeductionEntryRow[] = [];
+  for (const cat of categories) {
+    const manualEntry = entryMap.get(cat.id);
+    const linked = linkedMap.get(cat.id);
+    const manualMinor = manualEntry?.amountMinor ?? 0;
+    const linkedMinor = linked?.totalMinor ?? 0;
+    const totalMinor = manualMinor + linkedMinor;
+
+    if (totalMinor > 0 || manualEntry !== undefined) {
+      mergedEntries.push({
+        id: manualEntry?.id ?? 0,
+        taxYearId,
+        categoryId: cat.id,
+        amountMinor: totalMinor,
+        count: manualEntry?.count ?? null,
+        updatedAt: manualEntry?.updatedAt ?? new Date().toISOString(),
+      });
+    }
+  }
+
+  // Query shared caps for this year
+  const sharedCaps = sqlite
+    .prepare(`SELECT * FROM shared_caps WHERE tax_year_id = ? OR tax_year_id IS NULL ORDER BY name ASC`)
+    .all(taxYearId)
+    .map((r: any) => ({
+      id: r.id,
+      taxYearId: r.tax_year_id,
+      name: r.name,
+      capAmountMinor: r.cap_amount_minor,
+    }));
+
+  const calcResult = computeDeductions(categories, mergedEntries, sharedCaps);
+  const perCatCalc = new Map(calcResult.perCategory.map((p) => [p.categoryId, p]));
+
+  const items: CategorySummaryItem[] = categories.map((cat) => {
+    const manualEntry = entryMap.get(cat.id);
+    const linked = linkedMap.get(cat.id);
+    const manualAmountMinor = manualEntry?.amountMinor ?? 0;
+    const sourceExpenseMinor = linked?.totalMinor ?? 0;
+    const sourceExpenseCount = linked?.count ?? 0;
+    const totalGrossMinor = manualAmountMinor + sourceExpenseMinor;
+
+    const calc = perCatCalc.get(cat.id);
+    const effectiveMinor = calc?.effectiveMinor ?? 0;
+    const isOverCap = totalGrossMinor > effectiveMinor;
+    const overCapMinor = isOverCap ? totalGrossMinor - effectiveMinor : 0;
+
+    return {
+      category: cat,
+      manualAmountMinor,
+      sourceExpenseMinor,
+      sourceExpenseCount,
+      totalGrossMinor,
+      effectiveMinor,
+      isOverCap,
+      overCapMinor,
+      count: manualEntry?.count ?? null,
+    };
+  });
+
+  const totalGrossMinor = items.reduce((sum, item) => sum + item.totalGrossMinor, 0);
+  const totalEffectiveMinor = calcResult.totalMinor;
+  const totalOverCapMinor = items.reduce((sum, item) => sum + item.overCapMinor, 0);
+
+  return {
+    taxYearId,
+    items,
+    totalGrossMinor,
+    totalEffectiveMinor,
+    totalOverCapMinor,
+  };
+}
+

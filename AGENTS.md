@@ -14,7 +14,9 @@ system, 2026-09-12). These instructions apply to every session in this repositor
   - Runtime: **Electron** + TypeScript, Windows desktop app.
   - Main process: Node.js, **`better-sqlite3`** (synchronous SQLite driver) + **Drizzle**
     (type-safe SQL query builder, not a full ORM — money-affecting queries stay explicit SQL).
-  - Renderer: **React** + Vite, no heavy component library.
+  - Renderer: **React** + Vite, no heavy component library. Styling uses Vanilla CSS
+    (`src/renderer/styles.css`) strictly following the design system in `DESIGN.md`
+    (Direction B: "Slate & Amber" — Sarabun body, Chakra Petch headings, JetBrains Mono numbers).
   - IPC: `preload.ts` exposes a narrow typed API via `contextBridge`; the renderer never
     touches SQLite directly — all business logic/invariant enforcement lives in the main
     process.
@@ -26,8 +28,10 @@ system, 2026-09-12). These instructions apply to every session in this repositor
   - Packaging: `electron-builder` (Windows target — NSIS/portable exe, finalized at first
     `/dev-release`).
   - Currency: THB only.
-- **Standards:** Conventional Commits · ESLint + Prettier · single-repo desktop app (not a
-  monorepo — revisit if a second deployable is added).
+- **UX/UI Design System:** `DESIGN.md` (root / `design/DESIGN.md`) is the canonical specification
+  for colors (Slate & Amber tokens), typography pairing, tabular number formatting, component
+  patterns, form states, and Thai localization. All prototypes, analysis UI sections,
+  implementations, and UI reviews must adhere to `DESIGN.md`.
 - **Domain invariants (always):** money as integer minor units or decimal — never float;
   transactions are directly editable while their tax year is open, and every edit is
   audit-logged (before/after values, timestamp); once a tax year is marked filed/closed, its

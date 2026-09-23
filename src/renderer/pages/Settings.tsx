@@ -34,6 +34,14 @@ interface CategoryEditState {
 
 interface BracketEditState {
   readonly id: number;
+  readonly lowerBoundText: string;
+  readonly upperBoundText: string;
+  readonly rateText: string;
+}
+
+interface NewBracketState {
+  readonly lowerBoundText: string;
+  readonly upperBoundText: string;
   readonly rateText: string;
 }
 
@@ -75,6 +83,7 @@ export default function Settings(): JSX.Element {
 
   const [editingCategory, setEditingCategory] = useState<CategoryEditState | null>(null);
   const [editingBracket, setEditingBracket] = useState<BracketEditState | null>(null);
+  const [addingBracket, setAddingBracket] = useState<NewBracketState | null>(null);
   const [addingCategory, setAddingCategory] = useState<NewCategoryState | null>(null);
   const [folderChange, setFolderChange] = useState<FolderChangeState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -236,9 +245,93 @@ export default function Settings(): JSX.Element {
       const rate = Number(editingBracket.rateText);
       if (!Number.isFinite(rate) || rate < 0 || rate > 100)
         throw new Error('กรุณาระบุอัตราภาษีเป็นเปอร์เซ็นต์ 0-100');
-      await window.api.settings.updateBracket(editingBracket.id, Math.round(rate * 100));
+
+      const lowerResult = tryParseBahtToSatang(editingBracket.lowerBoundText);
+      if (!lowerResult.ok) throw new Error(`เงินได้ขั้นต่ำ: ${lowerResult.error.message}`);
+
+      let upperBoundMinor: number | null = null;
+      if (editingBracket.upperBoundText.trim() !== '') {
+        const upperResult = tryParseBahtToSatang(editingBracket.upperBoundText);
+        if (!upperResult.ok) throw new Error(`เงินได้ขั้นสูง: ${upperResult.error.message}`);
+        upperBoundMinor = upperResult.satang;
+      }
+
+      await window.api.settings.updateBracket(editingBracket.id, Math.round(rate * 100), {
+        lowerBoundMinor: lowerResult.satang,
+        upperBoundMinor,
+      });
       setEditingBracket(null);
       setFeedback({ kind: 'ok', message: 'บันทึกอัตราภาษีเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAddBracket(): Promise<void> {
+    if (!addingBracket) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const rate = Number(addingBracket.rateText);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100)
+        throw new Error('กรุณาระบุอัตราภาษีเป็นเปอร์เซ็นต์ 0-100');
+
+      const lowerResult = tryParseBahtToSatang(addingBracket.lowerBoundText);
+      if (!lowerResult.ok) throw new Error(`เงินได้ขั้นต่ำ: ${lowerResult.error.message}`);
+
+      let upperBoundMinor: number | null = null;
+      if (addingBracket.upperBoundText.trim() !== '') {
+        const upperResult = tryParseBahtToSatang(addingBracket.upperBoundText);
+        if (!upperResult.ok) throw new Error(`เงินได้ขั้นสูง: ${upperResult.error.message}`);
+        upperBoundMinor = upperResult.satang;
+      }
+
+      await window.api.settings.addBracket({
+        taxYearId: activeTab === 'year' ? selectedTaxYearId : null,
+        lowerBoundMinor: lowerResult.satang,
+        upperBoundMinor,
+        rateBp: Math.round(rate * 100),
+      });
+      setAddingBracket(null);
+      setFeedback({ kind: 'ok', message: 'เพิ่มขั้นภาษีเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteBracket(id: number): Promise<void> {
+    if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบขั้นภาษีนี้?')) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await window.api.settings.deleteBracket(id);
+      setFeedback({ kind: 'ok', message: 'ลบขั้นภาษีเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResetBrackets(): Promise<void> {
+    if (
+      !window.confirm(
+        'คุณแน่ใจหรือไม่ว่าต้องการคืนค่าอัตราภาษีเป็น 8 ขั้นมาตรฐานตามประมวลรัษฎากร (0% - 35%)?',
+      )
+    )
+      return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await window.api.settings.resetBrackets(activeTab === 'year' ? selectedTaxYearId : null);
+      setFeedback({ kind: 'ok', message: 'คืนค่าอัตราภาษีเป็นมาตรฐาน 8 ขั้นเรียบร้อยแล้ว' });
       await reload();
     } catch (err) {
       setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
@@ -383,20 +476,54 @@ export default function Settings(): JSX.Element {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'baseline',
+              alignItems: 'center',
               flexWrap: 'wrap',
               gap: 8,
               marginBottom: 14,
             }}
           >
-            <span>
-              📈 อัตราภาษีเงินได้บุคคลธรรมดาแบบขั้นบันได {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
-            </span>
-            <span className="muted">อัตราภาษีตามประมวลรัษฎากร (7 ขั้น 0% - 35%)</span>
+            <div>
+              <span>
+                📈 อัตราภาษีเงินได้บุคคลธรรมดาแบบขั้นบันได {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
+              </span>
+              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                กำหนดช่วงเงินได้สุทธิและอัตราภาษี (ค่ามาตรฐานสรรพากร 8 ขั้น: 0% - 35%)
+              </div>
+            </div>
+            {!isYearClosed && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: 13, border: '1px solid var(--line)' }}
+                  disabled={busy}
+                  onClick={() => void handleResetBrackets()}
+                >
+                  🔄 คืนค่ามาตรฐาน (8 ขั้น)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ padding: '6px 14px', fontSize: 13 }}
+                  disabled={busy}
+                  onClick={() =>
+                    setAddingBracket({
+                      lowerBoundText: '',
+                      upperBoundText: '',
+                      rateText: '',
+                    })
+                  }
+                >
+                  + เพิ่มขั้นภาษี
+                </button>
+              </div>
+            )}
           </div>
 
           {brackets.length === 0 ? (
-            <p className="muted">ยังไม่มีข้อมูลอัตราภาษี</p>
+            <div className="empty-state" style={{ padding: '30px 0' }}>
+              <p className="muted">ยังไม่มีข้อมูลอัตราภาษี — กดปุ่ม &quot;คืนค่ามาตรฐาน (8 ขั้น)&quot; เพื่อสร้างอัตราเริ่มต้น</p>
+            </div>
           ) : (
             <table className="bracket-table">
               <thead>
@@ -424,18 +551,32 @@ export default function Settings(): JSX.Element {
                     </td>
                     <td className="right">
                       {!isYearClosed && (
-                        <button
-                          type="button"
-                          className="row-action"
-                          onClick={() =>
-                            setEditingBracket({
-                              id: bracket.id,
-                              rateText: (bracket.rateBp / 100).toFixed(0),
-                            })
-                          }
-                        >
-                          ✏️ แก้ไขอัตรา
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="row-action"
+                            onClick={() =>
+                              setEditingBracket({
+                                id: bracket.id,
+                                lowerBoundText: (bracket.lowerBoundMinor / 100).toFixed(2),
+                                upperBoundText:
+                                  bracket.upperBoundMinor !== null
+                                    ? (bracket.upperBoundMinor / 100).toFixed(2)
+                                    : '',
+                                rateText: (bracket.rateBp / 100).toFixed(0),
+                              })
+                            }
+                          >
+                            ✏️ แก้ไขช่วงและอัตรา
+                          </button>
+                          <button
+                            type="button"
+                            className="row-action muted"
+                            onClick={() => void handleDeleteBracket(bracket.id)}
+                          >
+                            🗑️ ลบ
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -446,17 +587,42 @@ export default function Settings(): JSX.Element {
 
           {editingBracket && (
             <div className="panel" style={{ marginTop: 20, border: '1px solid var(--accent)' }}>
-              <div className="section-label">✏️ กำลังแก้ไขอัตราภาษี</div>
+              <div className="section-label">✏️ กำลังแก้ไขช่วงเงินได้และอัตราภาษี</div>
               <div className="form-grid">
                 <div className="field">
-                  <label>อัตราภาษีใหม่ (%) *</label>
+                  <label>เงินได้สุทธิตั้งแต่ (บาท) *</label>
                   <input
                     type="text"
                     inputMode="decimal"
-                    autoFocus
+                    placeholder="เช่น 0 หรือ 150001"
+                    value={editingBracket.lowerBoundText}
+                    onChange={(e) =>
+                      setEditingBracket({ ...editingBracket, lowerBoundText: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>ถึงเงินได้สุทธิ (บาท) — เว้นว่างหากเป็นขั้นสูงสุด</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="เช่น 300000 (หรือเว้นว่าง)"
+                    value={editingBracket.upperBoundText}
+                    onChange={(e) =>
+                      setEditingBracket({ ...editingBracket, upperBoundText: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>อัตราภาษี (%) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0 - 100"
                     value={editingBracket.rateText}
-                    onChange={(e) => setEditingBracket({ ...editingBracket, rateText: e.target.value })}
+                    onChange={(e) =>
+                      setEditingBracket({ ...editingBracket, rateText: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -475,7 +641,69 @@ export default function Settings(): JSX.Element {
                   disabled={busy}
                   onClick={() => void handleSaveBracketEdit()}
                 >
-                  ✓ บันทึกอัตราภาษี
+                  ✓ บันทึกการแก้ไข
+                </button>
+              </div>
+            </div>
+          )}
+
+          {addingBracket && (
+            <div className="panel" style={{ marginTop: 20, border: '1px solid var(--accent)' }}>
+              <div className="section-label">+ เพิ่มขั้นภาษีใหม่</div>
+              <div className="form-grid">
+                <div className="field">
+                  <label>เงินได้สุทธิตั้งแต่ (บาท) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="เช่น 5000001"
+                    value={addingBracket.lowerBoundText}
+                    onChange={(e) =>
+                      setAddingBracket({ ...addingBracket, lowerBoundText: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>ถึงเงินได้สุทธิ (บาท) — เว้นว่างหากเป็นขั้นสูงสุด</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="เช่น 10000000 (หรือเว้นว่าง)"
+                    value={addingBracket.upperBoundText}
+                    onChange={(e) =>
+                      setAddingBracket({ ...addingBracket, upperBoundText: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>อัตราภาษี (%) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0 - 100 (เช่น 35)"
+                    value={addingBracket.rateText}
+                    onChange={(e) =>
+                      setAddingBracket({ ...addingBracket, rateText: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="form-actions" style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setAddingBracket(null)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busy}
+                  onClick={() => void handleAddBracket()}
+                >
+                  + เพิ่มขั้นภาษี
                 </button>
               </div>
             </div>

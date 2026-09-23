@@ -29,8 +29,8 @@ file. Size L still gets one **audit** at feature close (not per phase).
 
 **review** (acceptance gate):
 - process: PLAN rows in scope done, exit criteria met; every Unit TC case has a real passing
-  test; UI matches the accepted PROTO; traceability chain unbroken; no unrelated changes in
-  the commit range;
+  test; UI matches the accepted PROTO and adheres to `DESIGN.md` (tokens, typography, tabular numbers,
+  semantic colors); traceability chain unbroken; no unrelated changes in the commit range;
 - **invariants first:** every ANA `INV-n` still holds — its TC case passes and the code/DB
   constraint named in the ANA exists; a weakened or deleted invariant test is a **defect**;
 - **code quality** (each item: pass / fail / n.a. with evidence):
