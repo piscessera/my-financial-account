@@ -20,10 +20,14 @@ import type {
 import type { AuditEntry } from '../src/main/repositories/auditLog';
 import type {
   CreateCategoryInput,
+  DeductionSummaryResult,
   SetEntryInput,
   UpdateCategoryInput,
 } from '../src/main/repositories/deductions';
-import type { UpdateBracketBounds } from '../src/main/repositories/settings';
+import type {
+  NewTaxBracketInput,
+  UpdateBracketBounds,
+} from '../src/main/repositories/settings';
 import type {
   CreateReversalInput,
   CreateTransactionInput,
@@ -113,6 +117,12 @@ const api = {
       ipcRenderer.invoke('deductions:setEntry', input),
     listEntries: (taxYearId: number): Promise<DeductionEntryRow[]> =>
       ipcRenderer.invoke('deductions:listEntries', taxYearId),
+    /** Complete aggregated summary for tax year (REQ-0007). */
+    getSummary: (taxYearId: number): Promise<DeductionSummaryResult> =>
+      ipcRenderer.invoke('deductions:getSummary', taxYearId),
+    /** Drill-down list of active expense transactions contributing to category (REQ-0007). */
+    getSourceTransactions: (taxYearId: number, categoryId: number): Promise<TransactionRow[]> =>
+      ipcRenderer.invoke('deductions:getSourceTransactions', taxYearId, categoryId),
   },
   settings: {
     /** Every category, including archived ones (Settings can reactivate them, AC-17). */
@@ -138,6 +148,12 @@ const api = {
       rateBp: number,
       bounds?: UpdateBracketBounds,
     ): Promise<TaxBracketRow> => ipcRenderer.invoke('settings:updateBracket', id, rateBp, bounds),
+    addBracket: (input: NewTaxBracketInput): Promise<TaxBracketRow> =>
+      ipcRenderer.invoke('settings:addBracket', input),
+    deleteBracket: (id: number): Promise<void> =>
+      ipcRenderer.invoke('settings:deleteBracket', id),
+    resetBrackets: (taxYearId?: number | null): Promise<TaxBracketRow[]> =>
+      ipcRenderer.invoke('settings:resetBrackets', taxYearId),
   },
   calc: {
     /** Frozen snapshot for a closed year; a live recompute for an open one (INV-7, AT-4.4). */

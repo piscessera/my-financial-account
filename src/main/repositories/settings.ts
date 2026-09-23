@@ -146,6 +146,54 @@ export function getBrackets(
     .map(toBracketRow);
 }
 
+export const DEFAULT_STATUTORY_BRACKETS = [
+  { lowerBoundMinor: 0, upperBoundMinor: 15_000_000, rateBp: 0, sortOrder: 1 },
+  { lowerBoundMinor: 15_000_000, upperBoundMinor: 30_000_000, rateBp: 500, sortOrder: 2 },
+  { lowerBoundMinor: 30_000_000, upperBoundMinor: 50_000_000, rateBp: 1000, sortOrder: 3 },
+  { lowerBoundMinor: 50_000_000, upperBoundMinor: 75_000_000, rateBp: 1500, sortOrder: 4 },
+  { lowerBoundMinor: 75_000_000, upperBoundMinor: 100_000_000, rateBp: 2000, sortOrder: 5 },
+  { lowerBoundMinor: 100_000_000, upperBoundMinor: 200_000_000, rateBp: 2500, sortOrder: 6 },
+  { lowerBoundMinor: 200_000_000, upperBoundMinor: 500_000_000, rateBp: 3000, sortOrder: 7 },
+  { lowerBoundMinor: 500_000_000, upperBoundMinor: null, rateBp: 3500, sortOrder: 8 },
+] as const;
+
+export function validateBracketHierarchy(brackets: TaxBracketRow[]): void {
+  if (brackets.length === 0) {
+    throw new SettingsError('Tax brackets cannot be empty.');
+  }
+  const sorted = [...brackets].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (sorted[0].lowerBoundMinor !== 0) {
+    throw new SettingsError(
+      `First tax bracket tier must start at 0 satang, got ${sorted[0].lowerBoundMinor}.`,
+    );
+  }
+  for (let i = 0; i < sorted.length; i++) {
+    const b = sorted[i];
+    if (b.upperBoundMinor !== null && b.upperBoundMinor <= b.lowerBoundMinor) {
+      throw new SettingsError(
+        `Bracket tier ${b.sortOrder} upperBoundMinor must be greater than lowerBoundMinor.`,
+      );
+    }
+    if (i < sorted.length - 1) {
+      if (b.upperBoundMinor === null) {
+        throw new SettingsError(
+          `Only the last tax bracket tier can have an open-ended (null) upper bound.`,
+        );
+      }
+      const next = sorted[i + 1];
+      if (next.lowerBoundMinor !== b.upperBoundMinor) {
+        throw new SettingsError(
+          `Gap or overlap between bracket tier ${b.sortOrder} and tier ${next.sortOrder}: ${b.upperBoundMinor} vs ${next.lowerBoundMinor}.`,
+        );
+      }
+    } else {
+      if (b.upperBoundMinor !== null) {
+        throw new SettingsError(`The final tax bracket tier must be open-ended (upper bound null).`);
+      }
+    }
+  }
+}
+
 export interface UpdateBracketBounds {
   readonly lowerBoundMinor?: number;
   /** `null` marks the open-ended top bracket. */
@@ -153,7 +201,7 @@ export interface UpdateBracketBounds {
 }
 
 /**
- * Edit one bracket's rate and/or bounds (AC-11).
+ * Edit one bracket's rate and/or bounds (AC-1, AC-7).
  */
 export function updateBracket(
   sqlite: BetterSqlite3.Database,
@@ -199,6 +247,128 @@ export function updateBracket(
       action: 'update',
       before: before as unknown as Record<string, unknown>,
       after: after as unknown as Record<string, unknown>,
+    });
+    return after;
+  });
+  return run();
+}
+
+export interface NewTaxBracketInput {
+  readonly taxYearId?: number | null;
+  readonly lowerBoundMinor: number;
+  readonly upperBoundMinor?: number | null;
+  readonly rateBp: number;
+  readonly sortOrder?: number;
+}
+
+/**
+ * Add a new tax bracket tier (AT-1.2, TC #2).
+ */
+export function addTaxBracket(
+  sqlite: BetterSqlite3.Database,
+  input: NewTaxBracketInput,
+): TaxBracketRow {
+  const targetYearId = typeof input.taxYearId === 'number' ? input.taxYearId : null;
+  assertYearNotClosed(sqlite, targetYearId);
+
+  if (!Number.isSafeInteger(input.rateBp) || input.rateBp < 0 || input.rateBp > 10000) {
+    throw new SettingsError(`rateBp must be an integer in [0, 10000] basis points.`);
+  }
+  if (!Number.isSafeInteger(input.lowerBoundMinor) || input.lowerBoundMinor < 0) {
+    throw new SettingsError(`lowerBoundMinor must be a non-negative integer.`);
+  }
+  if (input.upperBoundMinor != null && input.upperBoundMinor <= input.lowerBoundMinor) {
+    throw new SettingsError(`upperBoundMinor must be greater than lowerBoundMinor.`);
+  }
+
+  const run = sqlite.transaction(() => {
+    let sortOrder = input.sortOrder;
+    if (sortOrder === undefined) {
+      const existing = getBrackets(sqlite, targetYearId);
+      sortOrder = existing.length + 1;
+    }
+
+    const info = sqlite
+      .prepare(
+        `INSERT INTO tax_brackets (tax_year_id, lower_bound_minor, upper_bound_minor, rate_bp, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        targetYearId,
+        input.lowerBoundMinor,
+        input.upperBoundMinor ?? null,
+        input.rateBp,
+        sortOrder,
+      );
+
+    const created = requireBracket(sqlite, Number(info.lastInsertRowid));
+    recordMutation(sqlite, {
+      entityType: 'setting',
+      entityId: created.id,
+      action: 'create',
+      before: null,
+      after: created as unknown as Record<string, unknown>,
+    });
+    return created;
+  });
+  return run();
+}
+
+/**
+ * Delete a tax bracket tier (AT-1.2, TC #4).
+ */
+export function deleteTaxBracket(sqlite: BetterSqlite3.Database, id: number): void {
+  const run = sqlite.transaction(() => {
+    const before = requireBracket(sqlite, id);
+    assertYearNotClosed(sqlite, before.taxYearId);
+
+    sqlite.prepare(`DELETE FROM tax_brackets WHERE id = ?`).run(id);
+
+    recordMutation(sqlite, {
+      entityType: 'setting',
+      entityId: id,
+      action: 'delete',
+      before: before as unknown as Record<string, unknown>,
+      after: null,
+    });
+  });
+  run();
+}
+
+/**
+ * Reset tax brackets to standard statutory 8 tiers (AT-1.2, TC #5).
+ */
+export function resetTaxBracketsToDefault(
+  sqlite: BetterSqlite3.Database,
+  taxYearId?: number | null,
+): TaxBracketRow[] {
+  const targetYearId = typeof taxYearId === 'number' ? taxYearId : null;
+  assertYearNotClosed(sqlite, targetYearId);
+
+  const run = sqlite.transaction(() => {
+    const existing = getBrackets(sqlite, targetYearId);
+    if (targetYearId !== null) {
+      sqlite.prepare(`DELETE FROM tax_brackets WHERE tax_year_id = ?`).run(targetYearId);
+    } else {
+      sqlite.prepare(`DELETE FROM tax_brackets WHERE tax_year_id IS NULL`).run();
+    }
+
+    const insertStmt = sqlite.prepare(`
+      INSERT INTO tax_brackets (tax_year_id, lower_bound_minor, upper_bound_minor, rate_bp, sort_order)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const b of DEFAULT_STATUTORY_BRACKETS) {
+      insertStmt.run(targetYearId, b.lowerBoundMinor, b.upperBoundMinor, b.rateBp, b.sortOrder);
+    }
+
+    const after = getBrackets(sqlite, targetYearId);
+    recordMutation(sqlite, {
+      entityType: 'setting',
+      entityId: targetYearId ?? 0,
+      action: 'reset_brackets',
+      before: { brackets: existing },
+      after: { brackets: after },
     });
     return after;
   });

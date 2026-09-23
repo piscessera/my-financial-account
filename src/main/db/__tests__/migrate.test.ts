@@ -76,7 +76,12 @@ describe('migrateToLatest', () => {
     expect(handle.migration).toEqual({
       from: 0,
       to: LATEST_SCHEMA_VERSION,
-      applied: ['001-initial-schema', '002-year-scoped-config', '003-recurring-checklist'],
+      applied: [
+        '001-initial-schema',
+        '002-year-scoped-config',
+        '003-recurring-checklist',
+        '004-expense-deduction-linkage',
+      ],
     });
   });
 

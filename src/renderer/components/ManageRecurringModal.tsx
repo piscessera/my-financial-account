@@ -238,9 +238,9 @@ export default function ManageRecurringModal({
                     <th>วันที่</th>
                     <th>ชื่อรายการ</th>
                     <th>หมวด</th>
-                    <th>ยอดตั้งต้น</th>
-                    <th>สถานะ</th>
-                    <th />
+                    <th className="num">ยอดตั้งต้น</th>
+                    <th className="center">สถานะ</th>
+                    <th className="right">การจัดการ</th>
                   </tr>
                 </thead>
                 <tbody>

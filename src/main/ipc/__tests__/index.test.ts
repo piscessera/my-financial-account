@@ -346,3 +346,56 @@ describe('csv:* channels (AT-5.5)', () => {
     expect(content).toContain('balance_amount,20197.50');
   });
 });
+
+describe('settings brackets & deductions summary channels (REQ-0007, AT-2.1)', () => {
+  it('handles bracket add, delete, and reset via IPC', () => {
+    const year = handlers['taxYears:create'](2569);
+    const created = handlers['settings:addBracket']({
+      taxYearId: year.id,
+      lowerBoundMinor: 0,
+      upperBoundMinor: 20_000_000,
+      rateBp: 500,
+      sortOrder: 1,
+    });
+    expect(created.id).toBeGreaterThan(0);
+    expect(handlers['settings:getBrackets'](year.id)).toHaveLength(1);
+
+    handlers['settings:deleteBracket'](created.id);
+    expect(handlers['settings:getBrackets'](year.id)).toHaveLength(0);
+
+    const reset = handlers['settings:resetBrackets'](year.id);
+    expect(reset).toHaveLength(8);
+  });
+
+  it('handles deductions:getSummary and deductions:getSourceTransactions via IPC', () => {
+    const year = handlers['taxYears:create'](2569);
+    const cat = handlers['settings:createCategory']({
+      taxYearId: year.id,
+      code: 'life',
+      name: 'Life Insurance',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+
+    handlers['transactions:create']({
+      taxYearId: year.id,
+      kind: 'expense',
+      taxRelevant: false,
+      generalCategory: 'other',
+      deductionCategoryId: cat.id,
+      date: '2026-04-01',
+      amountMinor: 80_000_00,
+      note: 'Premium',
+    });
+
+    const summary = handlers['deductions:getSummary'](year.id);
+    const catItem = summary.items.find((i) => i.category.id === cat.id);
+    expect(catItem?.sourceExpenseMinor).toBe(80_000_00);
+    expect(catItem?.sourceExpenseCount).toBe(1);
+
+    const sourceTx = handlers['deductions:getSourceTransactions'](year.id, cat.id);
+    expect(sourceTx).toHaveLength(1);
+    expect(sourceTx[0].note).toBe('Premium');
+  });
+});
+

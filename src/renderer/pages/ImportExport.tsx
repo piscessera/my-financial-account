@@ -238,12 +238,12 @@ export default function ImportExport(): JSX.Element {
           <table>
             <thead>
               <tr>
-                <th />
+                <th style={{ width: 40 }} />
                 <th>วันที่</th>
                 <th>ประเภท</th>
                 <th>รายละเอียด</th>
-                <th>จำนวนเงิน</th>
-                <th>สถานะตรวจสอบ</th>
+                <th className="num">จำนวนเงิน</th>
+                <th className="center">สถานะตรวจสอบ</th>
               </tr>
             </thead>
             <tbody>

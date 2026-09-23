@@ -62,12 +62,20 @@ export const transactions = sqliteTable(
     status: text('status').$type<TransactionStatus>().notNull().default('active'),
     reversalOfId: integer('reversal_of_id'),
     source: text('source').$type<TransactionSource>().notNull().default('manual'),
+    deductionCategoryId: integer('deduction_category_id').references(
+      () => deductionCategories.id,
+      { onDelete: 'set null' },
+    ),
     createdAt: text('created_at').notNull().default(UTC_NOW),
     updatedAt: text('updated_at').notNull().default(UTC_NOW),
   },
   (table) => ({
     byTaxYear: index('idx_transactions_tax_year').on(table.taxYearId),
     byReversalOf: index('idx_transactions_reversal_of').on(table.reversalOfId),
+    byDeductionCategory: index('idx_transactions_deduction_category').on(
+      table.taxYearId,
+      table.deductionCategoryId,
+    ),
   }),
 );
 

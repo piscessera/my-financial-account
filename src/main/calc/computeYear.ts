@@ -105,9 +105,46 @@ export function computeYear(input: ComputeYearInput): ComputeYearResult {
           actualExpensesMinor: totalExpenseMinor,
         });
 
+  // Aggregate linked expenses by category (REQ-0007, AT-1.3)
+  const linkedByCat = new Map<number, number>();
+  for (const t of input.transactions) {
+    if (t.status === 'active' && t.kind === 'expense' && t.deductionCategoryId != null) {
+      linkedByCat.set(
+        t.deductionCategoryId,
+        (linkedByCat.get(t.deductionCategoryId) ?? 0) + t.amountMinor,
+      );
+    }
+  }
+
+  // Merge manual deduction entries with linked expenses
+  const mergedEntries: DeductionEntryRow[] = [];
+  const handledCatIds = new Set<number>();
+
+  for (const entry of input.deductionEntries) {
+    const linkedAmount = linkedByCat.get(entry.categoryId) ?? 0;
+    mergedEntries.push({
+      ...entry,
+      amountMinor: entry.amountMinor + linkedAmount,
+    });
+    handledCatIds.add(entry.categoryId);
+  }
+
+  for (const [catId, linkedAmount] of linkedByCat.entries()) {
+    if (!handledCatIds.has(catId)) {
+      mergedEntries.push({
+        id: 0,
+        taxYearId: input.taxYear.id,
+        categoryId: catId,
+        amountMinor: linkedAmount,
+        count: null,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   const deductions = computeDeductions(
     input.deductionCategories,
-    input.deductionEntries,
+    mergedEntries,
     input.sharedCaps,
   );
   const totalDeductionsMinor = deductions.totalMinor;

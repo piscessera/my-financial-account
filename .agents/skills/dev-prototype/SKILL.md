@@ -29,6 +29,7 @@ description: Create and iterate a pre-coding UX/UI prototype — static HTML/CSS
 
 ## Rules
 
+- Prototype mockups must strictly follow `DESIGN.md` tokens, typography (Sarabun, Chakra Petch, JetBrains Mono with tabular-nums), component classes, and semantic color rules.
 - The accepted prototype is the **UI reference** for `dev-implement` and `dev-review` — don't
   promise in the mockup what the design can't deliver.
 - May start before full design approval if the user wants to see screens early — flag it.

@@ -56,6 +56,8 @@ export interface CreateTransactionInput {
   readonly incomeSection?: IncomeSection | null;
   /** Required iff `taxRelevant === false`; must be omitted for a tax-relevant row. */
   readonly generalCategory?: GeneralCategory | null;
+  /** Optional deduction category link for expense transactions (REQ-0007). */
+  readonly deductionCategoryId?: number | null;
   /** `YYYY-MM-DD`. */
   readonly date: string;
   /** Integer satang, non-zero (INV-1). */
@@ -143,6 +145,7 @@ const INSERT_COLUMNS = [
   'payer_tax_id',
   'note',
   'source',
+  'deduction_category_id',
 ].join(', ');
 
 function statementsFor(sqlite: BetterSqlite3.Database): Statements {
@@ -151,11 +154,11 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
 
   const statements: Statements = {
     insert: sqlite.prepare(
-      `INSERT INTO transactions (${INSERT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions (${INSERT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     insertReversal: sqlite.prepare(
       `INSERT INTO transactions (${INSERT_COLUMNS}, reversal_of_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     selectById: sqlite.prepare(`SELECT * FROM transactions WHERE id = ?`),
     selectByTaxYear: sqlite.prepare(
@@ -169,7 +172,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
     updateFields: sqlite.prepare(
       `UPDATE transactions
        SET income_section = ?, general_category = ?, date = ?, amount_minor = ?, wht_minor = ?,
-           source_payer = ?, payer_tax_id = ?, note = ?,
+           source_payer = ?, payer_tax_id = ?, note = ?, deduction_category_id = ?,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
        WHERE id = ?`,
     ),
@@ -195,6 +198,7 @@ interface RawTransactionRow {
   status: 'active' | 'voided';
   reversal_of_id: number | null;
   source: TransactionSource;
+  deduction_category_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -218,6 +222,7 @@ function toTransactionRow(raw: unknown): TransactionRow {
     status: row.status,
     reversalOfId: row.reversal_of_id,
     source: row.source,
+    deductionCategoryId: row.deduction_category_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -236,6 +241,7 @@ export function createTransaction(
 ): TransactionRow {
   assertCreateInput(input);
   const taxRelevant = input.taxRelevant ?? true;
+  const deductionCategoryId = input.kind === 'expense' ? (input.deductionCategoryId ?? null) : null;
 
   const run = sqlite.transaction(() => {
     const info = statementsFor(sqlite).insert.run(
@@ -251,6 +257,7 @@ export function createTransaction(
       input.payerTaxId ?? null,
       input.note ?? null,
       input.source ?? 'manual',
+      deductionCategoryId,
     );
     const row = requireRow(sqlite, Number(info.lastInsertRowid));
     recordMutation(sqlite, {
@@ -324,6 +331,7 @@ export interface UpdateTransactionInput {
   readonly note?: string | null;
   readonly incomeSection?: IncomeSection | null;
   readonly generalCategory?: GeneralCategory | null;
+  readonly deductionCategoryId?: number | null;
 }
 
 /**
@@ -340,6 +348,13 @@ export function updateTransaction(
     const before = requireRow(sqlite, id);
     requireOpenTaxYear(sqlite, before.taxYearId, 'edit');
 
+    const deductionCategoryId =
+      before.kind === 'expense'
+        ? input.deductionCategoryId !== undefined
+          ? input.deductionCategoryId
+          : before.deductionCategoryId
+        : null;
+
     const merged = {
       incomeSection: input.incomeSection !== undefined ? input.incomeSection : before.incomeSection,
       generalCategory:
@@ -350,6 +365,7 @@ export function updateTransaction(
       sourcePayer: input.sourcePayer !== undefined ? input.sourcePayer : before.sourcePayer,
       payerTaxId: input.payerTaxId !== undefined ? input.payerTaxId : before.payerTaxId,
       note: input.note !== undefined ? input.note : before.note,
+      deductionCategoryId,
     };
 
     assertCreateInput({
@@ -361,6 +377,7 @@ export function updateTransaction(
       date: merged.date,
       amountMinor: merged.amountMinor,
       whtMinor: merged.whtMinor,
+      deductionCategoryId: merged.deductionCategoryId,
     });
 
     statementsFor(sqlite).updateFields.run(
@@ -372,6 +389,7 @@ export function updateTransaction(
       merged.sourcePayer,
       merged.payerTaxId,
       merged.note,
+      merged.deductionCategoryId,
       id,
     );
     const after = requireRow(sqlite, id);
@@ -435,6 +453,7 @@ export function createReversal(
       original.payerTaxId,
       input.note ?? `Reversal of transaction #${originalId}`,
       'manual',
+      original.deductionCategoryId,
       originalId,
     );
     const row = requireRow(sqlite, Number(info.lastInsertRowid));

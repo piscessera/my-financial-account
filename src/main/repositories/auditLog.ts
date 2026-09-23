@@ -63,7 +63,15 @@ export type AuditEntityType =
  * - `import` — a row created by the CSV/Excel import path rather than by hand.
  */
 export type AuditAction =
-  'create' | 'update' | 'delete' | 'void' | 'reverse' | 'close' | 'reopen' | 'import';
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'void'
+  | 'reverse'
+  | 'close'
+  | 'reopen'
+  | 'import'
+  | 'reset_brackets';
 
 /** A snapshot of an entity as stored in `before_json` / `after_json`. */
 export type AuditSnapshot = Record<string, unknown>;

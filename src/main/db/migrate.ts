@@ -17,6 +17,7 @@ import type BetterSqlite3 from 'better-sqlite3';
 import { MIGRATION_001_SQL } from './migrations/001-initial-schema';
 import { MIGRATION_002_SQL } from './migrations/002-year-scoped-config';
 import { MIGRATION_003_SQL } from './migrations/003-recurring-checklist';
+import { MIGRATION_004_SQL } from './migrations/004-expense-deduction-linkage';
 
 export interface Migration {
   /** 1-based, contiguous, never reordered. Stored in `PRAGMA user_version`. */
@@ -29,6 +30,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: '001-initial-schema', sql: MIGRATION_001_SQL },
   { version: 2, name: '002-year-scoped-config', sql: MIGRATION_002_SQL },
   { version: 3, name: '003-recurring-checklist', sql: MIGRATION_003_SQL },
+  { version: 4, name: '004-expense-deduction-linkage', sql: MIGRATION_004_SQL },
 ];
 
 /** The schema version this build of the app expects. */

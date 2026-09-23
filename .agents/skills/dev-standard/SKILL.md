@@ -28,6 +28,7 @@ docs/
 ├── PARKING-LOT.md        single ledger of deferred notes/ideas/parked items (orchestrator writes)
 ├── 90-daily-logs/        YYYY-MM-DD.md (append-only)
 └── archive/              closed/superseded docs (never deleted)
+DESIGN.md                 canonical UX/UI design system reference (Slate & Amber tokens, typography, components)
 ```
 
 ## 2. IDs & front-matter
@@ -38,7 +39,7 @@ docs/
   worktree holds a stale INDEX copy — two streams would collide). If a sub-agent needs an ID it
   was not given, it stops and asks the orchestrator.
 - File name: `TYPE-NNNN-slug.md` (kebab-case). Every doc starts from
-  `.claude/templates/<TYPE>.md` and keeps front-matter updated (`status`, `updated`, `links`).
+  `.agents/templates/<TYPE>.md` and keeps front-matter updated (`status`, `updated`, `links`).
 
 ## 3. Status lifecycle
 
@@ -75,7 +76,7 @@ The orchestrator takes `HH:MM` from `date +%H:%M`, never from memory.
 ## 7. Single-writer rule
 
 Dispatched agents never write `docs/INDEX.md`, `docs/PARKING-LOT.md` or the daily log
-(enforced by the PreToolUse guard `.claude/hooks/guard-shared-files.js`). They **return**: files
+(enforced by the PreToolUse guard `.agents/hooks/guard-shared-files.js`). They **return**: files
 created/updated, a 3–5 bullet summary, and one pre-formatted log line. The orchestrator writes
 the registry, the log, and commits.
 
@@ -92,10 +93,15 @@ Still: one-line daily-log entry, and INDEX update if any document was touched.
 immutable posted transactions, exact money types, audit trail). Every INV has ≥1 TC case
 (`Maps to: INV-n`), the implementer never weakens one, and the reviewer checks them first.
 
+**Design system:** `DESIGN.md` (root / `design/DESIGN.md`) specifies the canonical UI system
+(Direction B "Slate & Amber", Chakra Petch headings, Sarabun body, JetBrains Mono numbers, semantic
+status colors, components, responsive rules). All mockups, UI designs, and CSS implementations
+must adhere to `DESIGN.md`.
+
 Every artifact links parents/children in front-matter `links`. Requirement → design → test
 cases → plan tasks → commits → review must form an unbroken chain for any feature.
 Deferred things (REV notes/ideas, REQ out-of-scope items, parked GAPs) go to `docs/PARKING-LOT.md`
-with an owner — never only inside a REV. `node .claude/scripts/validate-docs.js` checks links,
+with an owner — never only inside a REV. `node .agents/scripts/validate-docs.js` checks links,
 IDs vs counters, INDEX rows, IMPL note size, PLAN rows and parking-lot owners; run it at every
 gate and before every commit on main.
 

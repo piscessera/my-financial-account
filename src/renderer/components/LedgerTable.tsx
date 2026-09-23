@@ -1,11 +1,12 @@
 import { Fragment } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
-import type { IncomeSection, TransactionRow } from '../../main/db/schema';
+import type { DeductionCategoryRow, IncomeSection, TransactionRow } from '../../main/db/schema';
 
 interface LedgerTableProps {
   /** Tax-relevant transactions for one year, any order — this component sorts/groups them. */
   readonly transactions: readonly TransactionRow[];
+  readonly deductionCategories?: readonly DeductionCategoryRow[];
   readonly onEdit: (row: TransactionRow) => void;
   readonly onVoid: (row: TransactionRow) => void;
   readonly onShowHistory: (row: TransactionRow) => void;
@@ -32,6 +33,21 @@ const THAI_MONTHS = [
   'ธันวาคม',
 ];
 
+const THAI_SHORT_MONTHS = [
+  'ม.ค.',
+  'ก.พ.',
+  'มี.ค.',
+  'เม.ย.',
+  'พ.ค.',
+  'มิ.ย.',
+  'ก.ค.',
+  'ส.ค.',
+  'ก.ย.',
+  'ต.ค.',
+  'พ.ย.',
+  'ธ.ค.',
+];
+
 function monthKeyOf(dateIso: string): string {
   return dateIso.slice(0, 7); // "YYYY-MM"
 }
@@ -44,7 +60,7 @@ function formatThaiMonthYear(monthKey: string): string {
 function formatShortDate(dateIso: string): string {
   const [year, month, day] = dateIso.split('-');
   const buddhistYearShort = (Number(year) + 543) % 100;
-  return `${day} ${THAI_MONTHS[Number(month) - 1].slice(0, 3)}. ${buddhistYearShort}`;
+  return `${day} ${THAI_SHORT_MONTHS[Number(month) - 1]} ${buddhistYearShort}`;
 }
 
 /**
@@ -53,6 +69,7 @@ function formatShortDate(dateIso: string): string {
  */
 export default function LedgerTable({
   transactions,
+  deductionCategories = [],
   onEdit,
   onVoid,
   onShowHistory,
@@ -110,10 +127,10 @@ export default function LedgerTable({
             <th>ประเภท</th>
             <th>แหล่งที่มา</th>
             <th>หมายเหตุ</th>
-            <th>จำนวนเงิน</th>
-            <th>WHT</th>
-            <th>ยอดสุทธิ</th>
-            <th>สถานะ</th>
+            <th className="num">จำนวนเงิน</th>
+            <th className="num">WHT</th>
+            <th className="num">ยอดสุทธิ</th>
+            <th className="center">สถานะ</th>
             <th>การจัดการ</th>
           </tr>
         </thead>
@@ -135,20 +152,43 @@ export default function LedgerTable({
                     </div>
                   </td>
                 </tr>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{formatShortDate(row.date)}</td>
-                    <td>
-                      {row.reversalOfId !== null ? (
-                        <span className="pill reversal">reversal</span>
-                      ) : (
-                        row.incomeSection && (
-                          <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
-                        )
-                      )}
-                    </td>
-                    <td>{row.sourcePayer ?? '—'}</td>
-                    <td>{row.note ?? '—'}</td>
+                {rows.map((row) => {
+                  const deductionCat = row.deductionCategoryId
+                    ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
+                    : null;
+                  return (
+                    <tr key={row.id}>
+                      <td>{formatShortDate(row.date)}</td>
+                      <td>
+                        {row.reversalOfId !== null ? (
+                          <span className="pill reversal">reversal</span>
+                        ) : (
+                          <>
+                            {row.incomeSection && (
+                              <span className="tag">{INCOME_SECTION_TAGS[row.incomeSection]}</span>
+                            )}
+                            {row.kind === 'expense' && (
+                              <span className="tag" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
+                                รายจ่าย
+                              </span>
+                            )}
+                            {deductionCat && (
+                              <span
+                                className="tag"
+                                style={{
+                                  background: 'var(--accent-soft)',
+                                  color: 'var(--accent)',
+                                  marginLeft: 4,
+                                }}
+                              >
+                                🏷️ {deductionCat.name}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td>{row.sourcePayer ?? '—'}</td>
+                      <td>{row.note ?? '—'}</td>
                     <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
                     <td className="num">{formatSatangAsBaht(row.whtMinor)}</td>
                     <td className="num">
@@ -156,7 +196,7 @@ export default function LedgerTable({
                         row.kind === 'income' ? row.amountMinor - row.whtMinor : row.amountMinor,
                       )}
                     </td>
-                    <td>
+                    <td className="center">
                       <span className={`pill ${row.status}`}>{row.status}</span>
                     </td>
                     <td>
@@ -190,8 +230,9 @@ export default function LedgerTable({
                         </button>
                       )}
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </Fragment>
             );
           })}

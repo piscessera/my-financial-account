@@ -14,7 +14,7 @@ Never delete. Move closed/superseded docs to `docs/archive/<TYPE>/`, add a row t
 - Integration branch is **`main`**. Each executing plan gets branch `plan/PLAN-NNNN-slug` cut from
   latest main and worktree `.worktrees/PLAN-NNNN/` (gitignored) — all coding happens there.
 - **Shared files change only on main, only by the orchestrator:** `docs/INDEX.md`,
-  `docs/PARKING-LOT.md`, `docs/90-daily-logs/`, `CLAUDE.md`, `.claude/`. A feature branch edits
+  `docs/PARKING-LOT.md`, `docs/90-daily-logs/`, `AGENTS.md`, `DESIGN.md`, `.agents/`. A feature branch edits
   only its own plan's documents (PLAN/TC/IMPL/PROTO of that plan) plus code/tests. *Docs* then
   cannot conflict; *code* still can — the planner lists **hot files** and the orchestrator does
   not run two plans with overlapping hot files concurrently.
@@ -22,11 +22,11 @@ Never delete. Move closed/superseded docs to `docs/archive/<TYPE>/`, add a row t
   did: merge `main` into the branch, resolve, re-run tests, then commit. Never force-push.
 - **Merge queue:** one `--no-ff` merge into main at a time; full suite green on main after merge;
   worktree + branch removed; other streams sync main before their next commit.
-- Run state: `.claude/runs/PLAN-NNNN.state` (gitignored) — `plan:`, `branch:`, `worktree:`,
+- Run state: `.agents/runs/PLAN-NNNN.state` (gitignored) — `plan:`, `branch:`, `worktree:`,
   `status: executing|paused|done`, `started: <ISO date>`, `continuations: 0`. The Stop hook
   reads these (ignores states older than 12 h; max 3 continuations per run).
-- **Mechanical gate** = `bash .claude/scripts/gate.sh [--plan PLAN-NNNN --phase Pn] [--dir <worktree>]`
-  (validate-docs + `TEST_CMD` + `LINT_CMD` + optional `SECRETS_CMD` from `.claude/gate.env`).
+- **Mechanical gate** = `bash .agents/scripts/gate.sh [--plan PLAN-NNNN --phase Pn] [--dir <worktree>]`
+  (validate-docs + `TEST_CMD` + `LINT_CMD` + optional `SECRETS_CMD` from `.agents/gate.env`).
   Run it at every phase end, before every merge into main, and before `/dev-release`.
   Paste its summary block into the reviewer payload when a model review follows.
 
@@ -37,9 +37,9 @@ references**, and the sub-agent reads *only* what the payload lists.
 
 Every dispatch prompt contains, in this order:
 
-1. **Role & skill:** "You are `<role>`; run `.claude/skills/<skill>/SKILL.md`."
-2. **Project line (always):** the `Stack`, `Standards` and hosting-constraint bullets from
-   `CLAUDE.md §Project`, verbatim (3–5 lines) — do not assume the sub-agent has CLAUDE.md.
+1. **Role & skill:** "You are `<role>`; run `.agents/skills/<skill>/SKILL.md`."
+2. **Project line (always):** the `Stack`, `Standards`, `UX/UI Design System` and hosting-constraint bullets from
+   `AGENTS.md §Project`, verbatim (3–5 lines) — do not assume the sub-agent has AGENTS.md.
 3. **Allocated IDs** (§2) — e.g. `REV id: REV-0014`.
 4. **Work item excerpt** — the PLAN task row(s), or the REQ/GAP section, verbatim.
 5. **Linked TC cases** — only the rows whose ids the task links, verbatim.

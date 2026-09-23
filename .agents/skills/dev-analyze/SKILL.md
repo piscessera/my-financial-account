@@ -20,8 +20,8 @@ description: Analyze an approved requirement and design the solution — produce
      rounding rule; posted transactions immutable (corrections = reversal entries); every
      balance derivable from its entries and reconciled by a test; every mutation leaves an
      audit trail (who/when/what); currency explicit on every amount,
-   - data model changes, backend/API changes, UI changes (pages, components, states),
-   - hosting/runtime constraints from CLAUDE.md applied explicitly,
+   - data model changes, backend/API changes, UI changes (pages, components, states adhering to `DESIGN.md`),
+   - hosting/runtime constraints from AGENTS.md applied explicitly,
    - **dependencies & risks** (external deps get explicit items),
    - decision table (decision → reason → date).
 3. Write `docs/30-test-cases/TC-NNNN-slug.md` from the template. **Mandatory:**

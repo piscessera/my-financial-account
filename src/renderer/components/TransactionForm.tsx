@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { tryParseBahtToSatang } from '../../main/calc/money';
 import type {
+  DeductionCategoryRow,
   GeneralCategory,
   IncomeSection,
   TransactionKind,
@@ -14,6 +15,7 @@ export interface TransactionFormValues {
   readonly kind: TransactionKind;
   readonly incomeSection: IncomeSection | null;
   readonly generalCategory: GeneralCategory | null;
+  readonly deductionCategoryId: number | null;
   readonly date: string;
   readonly amountMinor: number;
   readonly whtMinor: number;
@@ -84,6 +86,10 @@ export default function TransactionForm({
   const [generalCategory, setGeneralCategory] = useState<GeneralCategory | null>(
     initial?.generalCategory ?? null,
   );
+  const [deductionCategoryId, setDeductionCategoryId] = useState<number | null>(
+    initial?.deductionCategoryId ?? null,
+  );
+  const [deductionCategories, setDeductionCategories] = useState<DeductionCategoryRow[]>([]);
   const [date, setDate] = useState(initial?.date ?? todayIso());
   const [amountText, setAmountText] = useState(
     initial ? (initial.amountMinor / 100).toFixed(2) : '',
@@ -94,6 +100,16 @@ export default function TransactionForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [attachmentPath, setAttachmentPath] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
+
+  useEffect(() => {
+    let unmounted = false;
+    window.api.deductions.listCategories().then((cats) => {
+      if (!unmounted) setDeductionCategories(cats);
+    });
+    return () => {
+      unmounted = true;
+    };
+  }, []);
 
   async function handleChooseAttachment(): Promise<void> {
     const chosen = await window.api.attachments.chooseFile();
@@ -139,6 +155,7 @@ export default function TransactionForm({
         kind,
         incomeSection: taxRelevant ? incomeSection : null,
         generalCategory: taxRelevant ? null : generalCategory,
+        deductionCategoryId: (kind === 'expense' || !taxRelevant) ? deductionCategoryId : null,
         date,
         amountMinor: amountResult.satang,
         whtMinor: taxRelevant ? whtMinor : 0,
@@ -268,6 +285,34 @@ export default function TransactionForm({
               ))}
             </div>
             {errors.generalCategory && <div className="error-msg">{errors.generalCategory}</div>}
+          </div>
+        )}
+
+        {(kind === 'expense' || !taxRelevant) && deductionCategories.length > 0 && (
+          <div className="field span2">
+            <label>🏷️ ใช้เป็นสิทธิลดหย่อนภาษี (Tax Deduction Tag — ไม่บังคับ)</label>
+            <select
+              value={deductionCategoryId ?? ''}
+              onChange={(e) =>
+                setDeductionCategoryId(e.target.value ? Number(e.target.value) : null)
+              }
+              style={{
+                background: 'var(--card-bg, #1a1a24)',
+                color: 'var(--fg, #f0f0f5)',
+                border: '1px solid var(--border, #333)',
+                padding: '8px 12px',
+                borderRadius: 6,
+                fontSize: 14,
+                width: '100%',
+              }}
+            >
+              <option value="">— ไม่ใช้เป็นสิทธิลดหย่อนภาษี —</option>
+              {deductionCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.capAmountMinor ? `(เพดาน ${(c.capAmountMinor / 100).toLocaleString('th-TH')} บาท)` : ''}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
