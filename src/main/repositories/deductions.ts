@@ -403,7 +403,7 @@ export function getSourceTransactions(
   const rows = sqlite
     .prepare(
       `SELECT * FROM transactions
-       WHERE tax_year_id = ? AND kind = 'expense' AND status = 'active' AND deduction_category_id = ?
+       WHERE tax_year_id = ? AND status = 'active' AND deduction_category_id = ?
        ORDER BY date DESC, id DESC`,
     )
     .all(taxYearId, categoryId);
@@ -426,6 +426,7 @@ export function getSourceTransactions(
     reversalOfId: raw.reversal_of_id,
     source: raw.source,
     deductionCategoryId: raw.deduction_category_id,
+    deductionAmountMinor: raw.deduction_amount_minor,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
   }));
@@ -461,12 +462,12 @@ export function getDeductionSummary(
   const categories = listCategories(sqlite, taxYearId);
   const entries = listEntries(sqlite, taxYearId);
 
-  // Fetch all active linked expenses for this year
+  // Fetch all active linked transactions for this year (REQ-0008: COALESCE custom deduction amount)
   const linkedExpenseRows = sqlite
     .prepare(
-      `SELECT deduction_category_id, COUNT(*) AS cnt, SUM(amount_minor) AS total_minor
+      `SELECT deduction_category_id, COUNT(*) AS cnt, SUM(COALESCE(deduction_amount_minor, amount_minor)) AS total_minor
        FROM transactions
-       WHERE tax_year_id = ? AND kind = 'expense' AND status = 'active' AND deduction_category_id IS NOT NULL
+       WHERE tax_year_id = ? AND status = 'active' AND deduction_category_id IS NOT NULL
        GROUP BY deduction_category_id`,
     )
     .all(taxYearId) as { deduction_category_id: number; cnt: number; total_minor: number }[];

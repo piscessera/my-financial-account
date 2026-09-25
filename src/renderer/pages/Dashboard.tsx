@@ -6,6 +6,7 @@ import type {
   DeductionCategoryRow,
   GeneralCategory,
   SharedCapRow,
+  TaxBracketRow,
   TransactionRow,
 } from '../../main/db/schema';
 import CategoryDonutChart, { type DonutSegment } from '../components/CategoryDonutChart';
@@ -49,27 +50,34 @@ function headroomPercent(usedMinor: number, capMinor: number | null): number {
   return Math.min(100, Math.round((usedMinor / capMinor) * 100));
 }
 
-export default function Dashboard(): JSX.Element {
+interface DashboardProps {
+  readonly onNavigateToEntry?: (monthIndex?: number) => void;
+}
+
+export default function Dashboard({ onNavigateToEntry }: DashboardProps): JSX.Element {
   const yearState = useWorkingTaxYear();
   const [result, setResult] = useState<ComputeYearResult | null>(null);
   const [categories, setCategories] = useState<DeductionCategoryRow[]>([]);
   const [sharedCaps, setSharedCaps] = useState<SharedCapRow[]>([]);
+  const [taxBrackets, setTaxBrackets] = useState<TaxBracketRow[]>([]);
   const [allTransactions, setAllTransactions] = useState<TransactionRow[]>([]);
   const [generalTransactions, setGeneralTransactions] = useState<TransactionRow[]>([]);
   const [hasAnyTransactions, setHasAnyTransactions] = useState(false);
 
   const reload = useCallback(async (yearId: number) => {
-    const [computed, cats, caps, transactions] = await Promise.all([
+    const [computed, cats, caps, transactions, brackets] = await Promise.all([
       window.api.calc.computeYear(yearId),
       window.api.deductions.listCategories(),
       window.api.settings.getSharedCaps(),
       window.api.transactions.listByYear(yearId),
+      window.api.settings.getBrackets(yearId),
     ]);
     setResult(computed);
     setCategories(cats);
     setSharedCaps(caps);
+    setTaxBrackets(brackets);
     setAllTransactions(transactions);
-    setGeneralTransactions(transactions.filter((t) => !t.taxRelevant && t.status === 'active'));
+    setGeneralTransactions(transactions.filter((t: TransactionRow) => !t.taxRelevant && t.status === 'active'));
     setHasAnyTransactions(transactions.length > 0);
   }, []);
 
@@ -116,6 +124,33 @@ export default function Dashboard(): JSX.Element {
     }),
   ];
 
+  // Cashflow & Savings calculations
+  const netIncomeMinor = Math.max(0, result.totalIncomeMinor - result.whtTotalMinor);
+  const totalExpenseMinor = generalTransactions.reduce((sum, t) => sum + t.amountMinor, 0);
+  const netSavingsMinor = netIncomeMinor - totalExpenseMinor;
+  const savingsRatePercent = netIncomeMinor > 0 ? (netSavingsMinor / netIncomeMinor) * 100 : 0;
+  const avgMonthlyExpenseMinor = Math.round(totalExpenseMinor / 12);
+
+  // Tax Bracket & Headroom calculations
+  const sortedBrackets = [...taxBrackets].sort((a, b) => a.lowerBoundMinor - b.lowerBoundMinor);
+  const currentBracketIndex = sortedBrackets.findIndex((b) => {
+    if (b.upperBoundMinor === null) return result.netTaxableMinor >= b.lowerBoundMinor;
+    return result.netTaxableMinor >= b.lowerBoundMinor && result.netTaxableMinor <= b.upperBoundMinor;
+  });
+  const currentBracket = currentBracketIndex >= 0 ? sortedBrackets[currentBracketIndex] : sortedBrackets[0];
+  const nextBracket = currentBracketIndex >= 0 && currentBracketIndex + 1 < sortedBrackets.length
+    ? sortedBrackets[currentBracketIndex + 1]
+    : null;
+  const headroomToNextBracket = currentBracket?.upperBoundMinor !== null && currentBracket?.upperBoundMinor !== undefined
+    ? Math.max(0, currentBracket.upperBoundMinor - result.netTaxableMinor)
+    : null;
+
+  // Remaining Deduction Capacity
+  const remainingDeductionCapacityMinor = headroomRows.reduce((sum, r) => {
+    if (r.capMinor === null) return sum;
+    return sum + Math.max(0, r.capMinor - r.usedMinor);
+  }, 0);
+
   const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map(
     (category) => ({
       category,
@@ -161,23 +196,47 @@ export default function Dashboard(): JSX.Element {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <h1>Dashboard — ปีภาษี {yearState.year.year}</h1>
-        <p>ตัวเลขนี้คำนวณสดจากรายการที่บันทึกไว้ ไม่ต้องรอปิดปีถึงจะเห็นภาพรวม (AC-12)</p>
+      <div className="page-head" style={{ marginBottom: 20 }}>
+        <h1>Dashboard — ภาพรวมการเงินและภาษี ปี {yearState.year.year}</h1>
+        <p>วิเคราะห์กระแสเงินสด เงินออมสะสม และสถานะภาษีเงินได้สดจากรายการจริง</p>
       </div>
 
-      <div className="section-label">🧾 ภาษี — คำนวณจากรายการภาษีเท่านั้น</div>
-      <div className="tiles">
+      {/* Financial Health & Cashflow KPI Section */}
+      <div className="section-label">💰 สรุปกระแสเงินสด & เงินออมสะสม (Cashflow & Savings)</div>
+      <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
         <div className="tile accent">
-          <div className="k">รายได้สะสม</div>
+          <div className="k">รายรับสุทธิ (หลังหัก WHT)</div>
+          <div className="v num">{formatSatangAsBaht(netIncomeMinor)}</div>
+        </div>
+        <div className="tile">
+          <div className="k">รายจ่ายทั่วไปสะสม (เฉลี่ย {formatSatangAsBaht(avgMonthlyExpenseMinor)}/ด.)</div>
+          <div className="v num">{formatSatangAsBaht(totalExpenseMinor)}</div>
+        </div>
+        <div className={`tile ${netSavingsMinor >= 0 ? 'good' : 'bad'}`}>
+          <div className="k">{netSavingsMinor >= 0 ? 'เงินออมคงเหลือสุทธิ' : 'ยอดติดลบสะสม'}</div>
+          <div className="v num">
+            {netSavingsMinor < 0 && '-'}{formatSatangAsBaht(Math.abs(netSavingsMinor))}
+          </div>
+        </div>
+        <div className={`tile ${savingsRatePercent >= 15 ? 'good' : savingsRatePercent > 0 ? '' : 'bad'}`}>
+          <div className="k">อัตราการออม (Savings Rate)</div>
+          <div className="v num">{savingsRatePercent.toFixed(1)}%</div>
+        </div>
+      </div>
+
+      {/* Tax Position & Bracket Section */}
+      <div className="section-label">🧾 สถานะภาษี & สิทธิลดหย่อน (Tax & Deduction Overview)</div>
+      <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
+        <div className="tile">
+          <div className="k">รายได้พึงประเมินสะสม</div>
           <div className="v num">{formatSatangAsBaht(result.totalIncomeMinor)}</div>
         </div>
         <div className="tile">
-          <div className="k">ภาษีหัก ณ ที่จ่ายสะสม</div>
+          <div className="k">ภาษีหัก ณ ที่จ่าย (WHT)</div>
           <div className="v num">{formatSatangAsBaht(result.whtTotalMinor)}</div>
         </div>
         <div className="tile">
-          <div className="k">เงินได้สุทธิโดยประมาณ</div>
+          <div className="k">เงินได้สุทธิคำนวณภาษี</div>
           <div className="v num">{formatSatangAsBaht(result.netTaxableMinor)}</div>
         </div>
         <div className={`tile ${result.balance.direction === 'refund' ? 'good' : 'bad'}`}>
@@ -190,8 +249,71 @@ export default function Dashboard(): JSX.Element {
         </div>
       </div>
 
-      {/* 12-Month Cashflow & Tax Trend Graph */}
-      <MonthlyTrendChart transactions={allTransactions} year={yearState.year.year} />
+      {/* Tax Optimization & Bracket Advisor Banner */}
+      <div
+        className="panel"
+        style={{
+          marginBottom: 20,
+          background: 'var(--surface-2)',
+          borderLeft: '4px solid var(--accent)',
+          padding: '16px 20px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14.5, marginBottom: 4 }}>
+              📈 ฐานภาษีปัจจุบัน:{' '}
+              <span className="tag" style={{ fontSize: 13, padding: '3px 10px', background: 'var(--accent)', color: '#fff' }}>
+                {currentBracket ? `${currentBracket.rateBp / 100}%` : '0%'}
+              </span>
+              {currentBracket && (
+                <span className="muted" style={{ marginLeft: 8 }}>
+                  (ช่วงเงินได้สุทธิ {formatSatangAsBaht(currentBracket.lowerBoundMinor)} - {currentBracket.upperBoundMinor !== null ? formatSatangAsBaht(currentBracket.upperBoundMinor) : 'ขึ้นไป'})
+                </span>
+              )}
+            </div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              {nextBracket && headroomToNextBracket !== null ? (
+                <>
+                  เงินได้สุทธิยังห่างจากฐานภาษีถัดไป ({nextBracket.rateBp / 100}%) อีก{' '}
+                  <strong style={{ color: 'var(--ink)' }}>{formatSatangAsBaht(headroomToNextBracket)} บาท</strong>
+                </>
+              ) : (
+                'คุณอยู่ในฐานภาษีสูงสุดตามโครงสร้างภาษีที่กำหนด'
+              )}
+              {remainingDeductionCapacityMinor > 0 && (
+                <> · มีสิทธิลดหย่อนที่ยังเติมได้อีก <strong style={{ color: 'var(--good)' }}>{formatSatangAsBaht(remainingDeductionCapacityMinor)} บาท</strong></>
+              )}
+            </div>
+          </div>
+
+          {onNavigateToEntry && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ fontSize: 12.5, padding: '6px 12px' }}
+              onClick={() => onNavigateToEntry()}
+            >
+              📝 บันทึกรายการเพิ่ม
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 12-Month Cashflow & Tax Trend Graph with click navigation */}
+      <MonthlyTrendChart
+        transactions={allTransactions}
+        year={yearState.year.year}
+        onSelectMonth={onNavigateToEntry}
+      />
 
       {/* Breakdown Donut Charts Side-by-Side */}
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginTop: 20 }}>
@@ -209,13 +331,28 @@ export default function Dashboard(): JSX.Element {
 
       {headroomRows.length > 0 && (
         <div className="panel" style={{ marginTop: 20 }}>
-          <div className="section-label">เพดานค่าลดหย่อน — ใช้ไปแล้ว / คงเหลือ</div>
+          <div
+            className="section-label"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginBottom: 12,
+            }}
+          >
+            <span>🛡️ เพดานค่าลดหย่อน — ใช้ไปแล้ว / เพดานสูงสุด</span>
+            <span className="muted">
+              สิทธิลดหย่อนที่ยังเติมได้อีกรวม: {formatSatangAsBaht(remainingDeductionCapacityMinor)} บาท
+            </span>
+          </div>
           <div className="ded-group">
             {headroomRows.map((row) => {
               const percent = headroomPercent(row.usedMinor, row.capMinor);
               const overCap = row.capMinor !== null && row.usedMinor > row.capMinor;
               return (
-                <div className="ded-row" style={{ gridTemplateColumns: '1fr 160px' }} key={row.key}>
+                <div className="ded-row" style={{ gridTemplateColumns: '1fr 180px' }} key={row.key}>
                   <div>
                     <div className="ded-name">
                       {row.label}{' '}
@@ -247,7 +384,7 @@ export default function Dashboard(): JSX.Element {
       )}
 
       <div className="section-label" style={{ marginTop: 28 }}>
-        🛒 ทั่วไป — ไม่นับภาษี (แยกจากตัวเลขด้านบนโดยสิ้นเชิง, AC-15)
+        🛒 สรุปรายจ่ายทั่วไปตามหมวดหมู่ (ไม่นับภาษี)
       </div>
       <div className="panel">
         <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 0 }}>
@@ -262,3 +399,4 @@ export default function Dashboard(): JSX.Element {
     </div>
   );
 }
+

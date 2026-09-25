@@ -73,6 +73,7 @@ function tx(overrides: Partial<TransactionRow> & Pick<TransactionRow, 'kind'>): 
     status: 'active',
     reversalOfId: null,
     deductionCategoryId: null,
+    deductionAmountMinor: null,
     source: 'manual',
     createdAt: '2026-03-15T00:00:00.000Z',
     updatedAt: '2026-03-15T00:00:00.000Z',
@@ -397,5 +398,52 @@ describe('TC-0007 #10, #11, #13: linked expense deductions & statutory cap enfor
     expect(result.totalDeductionsMinor).toBe(100_000_00);
     expect(result.netTaxableMinor).toBe(500_000_00);
   });
+
+  it('aggregates custom deductionAmountMinor on income and expense (REQ-0008, TC-0008 #7)', () => {
+    const income = tx({
+      kind: 'income',
+      incomeSection: '40_1',
+      amountMinor: 600_000_00,
+      deductionCategoryId: 1,
+      deductionAmountMinor: 10_000_00, // custom deductible 10k from salary
+    });
+
+    const expense = tx({
+      kind: 'expense',
+      amountMinor: 30_000_00,
+      deductionCategoryId: 1,
+      deductionAmountMinor: 20_000_00, // custom deductible 20k from 30k expense
+    });
+
+    const categories: DeductionCategoryRow[] = [
+      {
+        id: 1,
+        taxYearId: 1,
+        code: 'donation',
+        name: 'Donation',
+        capType: 'fixed',
+        capAmountMinor: 100_000_00,
+        sharedGroupId: null,
+        sortOrder: 1,
+        description: '',
+        isActive: true,
+        isBuiltin: true,
+      },
+    ];
+
+    const result = computeYear({
+      taxYear: YEAR_NO_METHOD,
+      transactions: [income, expense],
+      deductionCategories: categories,
+      deductionEntries: [],
+      sharedCaps: [],
+      brackets: TAX_2025_BRACKETS,
+    });
+
+    // 10k (income partial) + 20k (expense partial) = 30k total deductions
+    expect(result.totalDeductionsMinor).toBe(30_000_00);
+    expect(result.netTaxableMinor).toBe(570_000_00);
+  });
 });
+
 

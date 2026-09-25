@@ -7,6 +7,7 @@ interface LedgerTableProps {
   /** Tax-relevant transactions for one year, any order — this component sorts/groups them. */
   readonly transactions: readonly TransactionRow[];
   readonly deductionCategories?: readonly DeductionCategoryRow[];
+  readonly isFiltered?: boolean;
   readonly onEdit: (row: TransactionRow) => void;
   readonly onVoid: (row: TransactionRow) => void;
   readonly onShowHistory: (row: TransactionRow) => void;
@@ -70,6 +71,7 @@ function formatShortDate(dateIso: string): string {
 export default function LedgerTable({
   transactions,
   deductionCategories = [],
+  isFiltered = false,
   onEdit,
   onVoid,
   onShowHistory,
@@ -93,8 +95,8 @@ export default function LedgerTable({
   if (transactions.length === 0) {
     return (
       <div className="empty-state">
-        <div className="icon">🧾</div>
-        <p>ยังไม่มีรายการภาษีในปีนี้</p>
+        <div className="icon">🔍</div>
+        <p>{isFiltered ? 'ไม่พบรายการภาษีที่ตรงกับเงื่อนไขค้นหา' : 'ยังไม่มีรายการภาษีในปีนี้'}</p>
       </div>
     );
   }
@@ -103,15 +105,15 @@ export default function LedgerTable({
     <>
       <div className="tiles" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 18 }}>
         <div className="tile">
-          <div className="k">รวมทั้งปี — รายรับ</div>
+          <div className="k">{isFiltered ? 'ยอดตามตัวกรอง — รายรับ' : 'รวมทั้งปี — รายรับ'}</div>
           <div className="v num">{formatSatangAsBaht(totalIncome)}</div>
         </div>
         <div className="tile">
-          <div className="k">รวมทั้งปี — WHT</div>
+          <div className="k">{isFiltered ? 'ยอดตามตัวกรอง — WHT' : 'รวมทั้งปี — WHT'}</div>
           <div className="v num">{formatSatangAsBaht(totalWht)}</div>
         </div>
         <div className="tile">
-          <div className="k">รวมทั้งปี — ยอดรับสุทธิ</div>
+          <div className="k">{isFiltered ? 'ยอดตามตัวกรอง — รับสุทธิ' : 'รวมทั้งปี — ยอดรับสุทธิ'}</div>
           <div className="v num">{formatSatangAsBaht(totalNetIncome)}</div>
         </div>
         <div className="tile">
@@ -182,6 +184,9 @@ export default function LedgerTable({
                                 }}
                               >
                                 🏷️ {deductionCat.name}
+                                {row.deductionAmountMinor != null &&
+                                  row.deductionAmountMinor < row.amountMinor &&
+                                  ` (ลดหย่อน ${formatSatangAsBaht(row.deductionAmountMinor)})`}
                               </span>
                             )}
                           </>

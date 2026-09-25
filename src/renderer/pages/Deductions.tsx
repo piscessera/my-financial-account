@@ -669,7 +669,8 @@ export default function Deductions(): JSX.Element {
                       <th>ประเภท/หมวดหมู่</th>
                       <th>ผู้รับเงิน/แหล่งที่มา</th>
                       <th>หมายเหตุ</th>
-                      <th className="num">จำนวนเงิน</th>
+                      <th className="num">ยอดรายการ</th>
+                      <th className="num">ยอดลดหย่อน</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -689,8 +690,9 @@ export default function Deductions(): JSX.Element {
                         </td>
                         <td>{tx.sourcePayer ?? '—'}</td>
                         <td>{tx.note ?? '—'}</td>
-                        <td className="num" style={{ fontWeight: 600 }}>
-                          {formatSatangAsBaht(tx.amountMinor)}
+                        <td className="num">{formatSatangAsBaht(tx.amountMinor)}</td>
+                        <td className="num" style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                          {formatSatangAsBaht(tx.deductionAmountMinor ?? tx.amountMinor)}
                         </td>
                       </tr>
                     ))}
@@ -698,11 +700,19 @@ export default function Deductions(): JSX.Element {
                   <tfoot>
                     <tr>
                       <td colSpan={4} style={{ fontWeight: 700, textAlign: 'right' }}>
-                        ยอดรวมจากรายจ่ายทั้งหมด ({drillDown.transactions.length} รายการ):
+                        ยอดรวมทั้งหมด ({drillDown.transactions.length} รายการ):
+                      </td>
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        {formatSatangAsBaht(
+                          drillDown.transactions.reduce((sum, t) => sum + t.amountMinor, 0),
+                        )}
                       </td>
                       <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>
                         {formatSatangAsBaht(
-                          drillDown.transactions.reduce((sum, t) => sum + t.amountMinor, 0),
+                          drillDown.transactions.reduce(
+                            (sum, t) => sum + (t.deductionAmountMinor ?? t.amountMinor),
+                            0,
+                          ),
                         )}
                       </td>
                     </tr>

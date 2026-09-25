@@ -6,6 +6,7 @@ import type { TransactionRow } from '../../main/db/schema';
 interface MonthlyTrendChartProps {
   readonly transactions: readonly TransactionRow[];
   readonly year: number;
+  readonly onSelectMonth?: (monthIndex: number) => void;
 }
 
 interface MonthData {
@@ -36,6 +37,7 @@ const THAI_MONTH_SHORT = [
 export default function MonthlyTrendChart({
   transactions,
   year,
+  onSelectMonth,
 }: MonthlyTrendChartProps): JSX.Element {
   const [hoveredMonth, setHoveredMonth] = useState<MonthData | null>(null);
 
@@ -182,7 +184,8 @@ export default function MonthlyTrendChart({
                 key={m.monthKey}
                 onMouseEnter={() => setHoveredMonth(m)}
                 onMouseLeave={() => setHoveredMonth(null)}
-                style={{ cursor: 'pointer' }}
+                onClick={() => onSelectMonth?.(i)}
+                style={{ cursor: onSelectMonth ? 'pointer' : 'default' }}
               >
                 {/* Hover Background column */}
                 <rect
@@ -268,7 +271,7 @@ export default function MonthlyTrendChart({
               padding: '10px 14px',
               boxShadow: 'var(--shadow)',
               fontSize: '12.5px',
-              minWidth: 190,
+              minWidth: 200,
               zIndex: 10,
               pointerEvents: 'none',
             }}
@@ -279,9 +282,17 @@ export default function MonthlyTrendChart({
                 borderBottom: '1px solid var(--line)',
                 paddingBottom: 4,
                 marginBottom: 6,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
               }}
             >
-              เดือน {hoveredMonth.monthLabel} {year}
+              <span>เดือน {hoveredMonth.monthLabel} {year}</span>
+              {onSelectMonth && (
+                <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 500 }}>
+                  🖱️ คลิกเพื่อเปิดดู
+                </span>
+              )}
             </div>
             <div
               style={{

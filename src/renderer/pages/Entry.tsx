@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
 import type { DeductionCategoryRow, GeneralCategory, TransactionRow } from '../../main/db/schema';
@@ -28,7 +28,56 @@ function transactionLabel(row: TransactionRow): string {
   );
 }
 
-export default function Entry(): JSX.Element {
+interface EntryProps {
+  readonly initialMonth?: number | null;
+}
+
+const THAI_MONTHS = [
+  'มกราคม',
+  'กุมภาพันธ์',
+  'มีนาคม',
+  'เมษายน',
+  'พฤษภาคม',
+  'มิถุนายน',
+  'กรกฎาคม',
+  'สิงหาคม',
+  'กันยายน',
+  'ตุลาคม',
+  'พฤศจิกายน',
+  'ธันวาคม',
+];
+
+const THAI_SHORT_MONTHS = [
+  'ม.ค.',
+  'ก.พ.',
+  'มี.ค.',
+  'เม.ย.',
+  'พ.ค.',
+  'มิ.ย.',
+  'ก.ค.',
+  'ส.ค.',
+  'ก.ย.',
+  'ต.ค.',
+  'พ.ย.',
+  'ธ.ค.',
+];
+
+function monthKeyOf(dateIso: string): string {
+  return dateIso.slice(0, 7); // "YYYY-MM"
+}
+
+function formatThaiMonthYear(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  return `${THAI_MONTHS[month - 1]} ${year + 543}`;
+}
+
+function formatShortDate(dateIso: string): string {
+  const [year, month, day] = dateIso.split('-');
+  const buddhistYearShort = (Number(year) + 543) % 100;
+  return `${day} ${THAI_SHORT_MONTHS[Number(month) - 1]} ${buddhistYearShort}`;
+}
+
+export default function Entry({ initialMonth = null }: EntryProps): JSX.Element {
   const yearState = useWorkingTaxYear();
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [deductionCategories, setDeductionCategories] = useState<DeductionCategoryRow[]>([]);
@@ -38,6 +87,8 @@ export default function Entry(): JSX.Element {
   const [editing, setEditing] = useState<TransactionRow | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'tax' | 'general' | 'all'>('tax');
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(initialMonth ?? null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [history, setHistory] = useState<{ row: TransactionRow; entries: AuditEntry[] } | null>(
     null,
   );
@@ -54,6 +105,12 @@ export default function Entry(): JSX.Element {
   useEffect(() => {
     if (yearState.status === 'ready') void reload(yearState.year.id);
   }, [yearState, reload]);
+
+  useEffect(() => {
+    if (initialMonth !== undefined) {
+      setSelectedMonth(initialMonth);
+    }
+  }, [initialMonth]);
 
   function startEdit(row: TransactionRow): void {
     setEditing(row);
@@ -76,6 +133,7 @@ export default function Entry(): JSX.Element {
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
         deductionCategoryId: values.deductionCategoryId,
+        deductionAmountMinor: values.deductionAmountMinor,
         date: values.date,
         amountMinor: values.amountMinor,
         whtMinor: values.whtMinor,
@@ -115,6 +173,7 @@ export default function Entry(): JSX.Element {
         incomeSection: values.incomeSection,
         generalCategory: values.generalCategory,
         deductionCategoryId: values.deductionCategoryId,
+        deductionAmountMinor: values.deductionAmountMinor,
       });
       setFeedback({ kind: 'ok', message: 'บันทึกการแก้ไขเรียบร้อยแล้ว' });
       setEditing(null);
@@ -153,14 +212,69 @@ export default function Entry(): JSX.Element {
   const yearId = yearState.year.id;
   const taxTransactions = transactions.filter((t) => t.taxRelevant);
   const generalTransactions = transactions.filter((t) => !t.taxRelevant && t.status === 'active');
+
+  // Filter helper
+  function filterRows(rows: TransactionRow[]): TransactionRow[] {
+    const q = searchQuery.trim().toLowerCase();
+    return rows.filter((row) => {
+      // Month check
+      if (selectedMonth !== null) {
+        const monthNum = Number.parseInt(row.date.slice(5, 7), 10) - 1;
+        if (monthNum !== selectedMonth) return false;
+      }
+      // Search check
+      if (!q) return true;
+      const noteMatch = row.note?.toLowerCase().includes(q) ?? false;
+      const payerMatch = row.sourcePayer?.toLowerCase().includes(q) ?? false;
+      const taxIdMatch = row.payerTaxId?.toLowerCase().includes(q) ?? false;
+      const catMatch = row.generalCategory
+        ? GENERAL_CATEGORY_LABELS[row.generalCategory].toLowerCase().includes(q)
+        : false;
+      const dedCat = row.deductionCategoryId
+        ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
+        : null;
+      const dedMatch = dedCat ? dedCat.name.toLowerCase().includes(q) : false;
+      return noteMatch || payerMatch || taxIdMatch || catMatch || dedMatch;
+    });
+  }
+
+  const filteredTaxTransactions = filterRows(taxTransactions);
+  const filteredGeneralTransactions = filterRows(generalTransactions);
+  const isFiltered = selectedMonth !== null || searchQuery.trim().length > 0;
+
+  // Compute month counts for current active tab
+  const activeTabBaseRows =
+    activeTab === 'tax'
+      ? taxTransactions
+      : activeTab === 'general'
+        ? generalTransactions
+        : transactions.filter((t) => t.status === 'active');
+
+  const monthCounts = Array.from({ length: 12 }, (_, i) => {
+    return activeTabBaseRows.filter((t) => {
+      const mIdx = Number.parseInt(t.date.slice(5, 7), 10) - 1;
+      return mIdx === i;
+    }).length;
+  });
+
   const generalTotalsByCategory = (Object.keys(GENERAL_CATEGORY_LABELS) as GeneralCategory[]).map(
     (category) => ({
       category,
-      total: generalTransactions
+      total: filteredGeneralTransactions
         .filter((t) => t.generalCategory === category)
         .reduce((sum, t) => sum + t.amountMinor, 0),
     }),
   );
+
+  // Group filtered general transactions by month
+  const generalByMonth = new Map<string, TransactionRow[]>();
+  for (const row of filteredGeneralTransactions) {
+    const key = monthKeyOf(row.date);
+    const bucket = generalByMonth.get(key);
+    if (bucket) bucket.push(row);
+    else generalByMonth.set(key, [row]);
+  }
+  const generalMonths = [...generalByMonth.keys()].sort().reverse();
 
   return (
     <div className="page">
@@ -194,7 +308,7 @@ export default function Entry(): JSX.Element {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 20,
+          marginBottom: 16,
           flexWrap: 'wrap',
           gap: 12,
         }}
@@ -246,6 +360,55 @@ export default function Entry(): JSX.Element {
         )}
       </div>
 
+      {/* Toolbar: Month Filter Chips & Search Bar */}
+      <div className="toolbar-wrap">
+        <div className="month-chips-container" style={{ margin: 0, flex: '1 1 auto' }}>
+          <button
+            type="button"
+            className={`month-chip${selectedMonth === null ? ' active' : ''}`}
+            onClick={() => setSelectedMonth(null)}
+          >
+            ทั้งหมด
+            <span className="month-chip-count">{activeTabBaseRows.length}</span>
+          </button>
+          {THAI_SHORT_MONTHS.map((label, idx) => {
+            const count = monthCounts[idx];
+            return (
+              <button
+                key={label}
+                type="button"
+                className={`month-chip${selectedMonth === idx ? ' active' : ''}`}
+                onClick={() => setSelectedMonth(selectedMonth === idx ? null : idx)}
+              >
+                {label}
+                {count > 0 && <span className="month-chip-count">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="search-bar-wrap">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="ค้นหา หมายเหตุ, ผู้จ่าย, เลขภาษี..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              title="ล้างคำค้นหา"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Transaction Form (Collapsible or Open on Edit) */}
       {(isFormOpen || editing) && (
         <div style={{ marginBottom: 20 }}>
@@ -276,7 +439,7 @@ export default function Entry(): JSX.Element {
         <>
           <RecurringChecklist
             taxYearId={yearId}
-            yearMonth={`${yearState.year.year}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+            yearMonth={`${yearState.year.year}-${String(selectedMonth !== null ? selectedMonth + 1 : new Date().getMonth() + 1).padStart(2, '0')}`}
             onTransactionCreated={() => void reload(yearId)}
           />
 
@@ -291,7 +454,10 @@ export default function Entry(): JSX.Element {
                 gap: 8,
               }}
             >
-              <span style={{ fontWeight: 600, fontSize: 15 }}>🛒 รายการทั่วไป (ไม่นับภาษี) — ปี {yearState.year.year}</span>
+              <span style={{ fontWeight: 600, fontSize: 15 }}>
+                🛒 รายการทั่วไป (ไม่นับภาษี) — ปี {yearState.year.year}{' '}
+                {selectedMonth !== null && `(เดือน ${THAI_MONTHS[selectedMonth]})`}
+              </span>
               <span className="muted">ไม่ถูกนำไปคำนวณภาษี (AC-14)</span>
             </div>
 
@@ -304,10 +470,13 @@ export default function Entry(): JSX.Element {
               ))}
             </div>
 
-            {generalTransactions.length === 0 ? (
-              <p className="muted">ยังไม่มีรายการทั่วไปในปีนี้</p>
+            {filteredGeneralTransactions.length === 0 ? (
+              <div className="empty-state" style={{ padding: '30px 20px' }}>
+                <div className="icon">🔍</div>
+                <p>{isFiltered ? 'ไม่พบรายการทั่วไปที่ตรงกับเงื่อนไขค้นหา' : 'ยังไม่มีรายการทั่วไปในปีนี้'}</p>
+              </div>
             ) : (
-              <table>
+              <table className="month-ledger">
                 <thead>
                   <tr>
                     <th>วันที่</th>
@@ -319,50 +488,71 @@ export default function Entry(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {generalTransactions.map((row) => {
-                    const deductionCat = row.deductionCategoryId
-                      ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
-                      : null;
+                  {generalMonths.map((monthKey) => {
+                    const rows = generalByMonth.get(monthKey) ?? [];
+                    const monthTotal = rows.reduce((sum, r) => sum + r.amountMinor, 0);
                     return (
-                      <tr key={row.id}>
-                        <td>{row.date}</td>
-                        <td>
-                          {row.generalCategory && (
-                            <span
-                              className="tag"
-                              style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
-                            >
-                              {GENERAL_CATEGORY_LABELS[row.generalCategory]}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {deductionCat ? (
-                            <span
-                              className="tag"
-                              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-                            >
-                              🏷️ {deductionCat.name}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td>{row.note ?? '—'}</td>
-                        <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
-                        <td>
-                          <button type="button" className="row-action" onClick={() => startEdit(row)}>
-                            แก้ไข
-                          </button>
-                          <button
-                            type="button"
-                            className="row-action muted"
-                            onClick={() => void handleVoid(yearId, row)}
-                          >
-                            Void
-                          </button>
-                        </td>
-                      </tr>
+                      <Fragment key={monthKey}>
+                        <tr className="month-row">
+                          <td colSpan={6}>
+                            <div className="month-row-inner">
+                              <span>{formatThaiMonthYear(monthKey)}</span>
+                              <span className="num">
+                                {rows.length} รายการ · รวม {formatSatangAsBaht(monthTotal)}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {rows.map((row) => {
+                          const deductionCat = row.deductionCategoryId
+                            ? deductionCategories.find((c) => c.id === row.deductionCategoryId)
+                            : null;
+                          return (
+                            <tr key={row.id}>
+                              <td>{formatShortDate(row.date)}</td>
+                              <td>
+                                {row.generalCategory && (
+                                  <span
+                                    className="tag"
+                                    style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
+                                  >
+                                    {GENERAL_CATEGORY_LABELS[row.generalCategory]}
+                                  </span>
+                                )}
+                              </td>
+                              <td>
+                                {deductionCat ? (
+                                  <span
+                                    className="tag"
+                                    style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                                  >
+                                    🏷️ {deductionCat.name}
+                                    {row.deductionAmountMinor != null &&
+                                      row.deductionAmountMinor < row.amountMinor &&
+                                      ` (ลดหย่อน ${formatSatangAsBaht(row.deductionAmountMinor)})`}
+                                  </span>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                              <td>{row.note ?? '—'}</td>
+                              <td className="num">{formatSatangAsBaht(row.amountMinor)}</td>
+                              <td className="center">
+                                <button type="button" className="row-action" onClick={() => startEdit(row)}>
+                                  แก้ไข
+                                </button>
+                                <button
+                                  type="button"
+                                  className="row-action muted"
+                                  onClick={() => void handleVoid(yearId, row)}
+                                >
+                                  Void
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -386,12 +576,16 @@ export default function Entry(): JSX.Element {
               marginBottom: 14,
             }}
           >
-            <span style={{ fontWeight: 600, fontSize: 15 }}>🧾 รายการภาษี — ปี {yearState.year.year} (จัดกลุ่มรายเดือน)</span>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>
+              🧾 รายการภาษี — ปี {yearState.year.year}{' '}
+              {selectedMonth !== null && `(เดือน ${THAI_MONTHS[selectedMonth]})`}
+            </span>
             <span className="muted">นำไปรวมคำนวณภาษีเงินได้บุคคลธรรมดา</span>
           </div>
           <LedgerTable
-            transactions={taxTransactions}
+            transactions={filteredTaxTransactions}
             deductionCategories={deductionCategories}
+            isFiltered={isFiltered}
             onEdit={(row) => startEdit(row)}
             onVoid={(row) => void handleVoid(yearId, row)}
             onShowHistory={(row) => void handleShowHistory(row)}
@@ -409,3 +603,4 @@ export default function Entry(): JSX.Element {
     </div>
   );
 }
+

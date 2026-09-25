@@ -37,6 +37,12 @@ type Screen =
 function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
   const [screen, setScreen] = useState<Screen>('dashboard');
   const [selectedYear, setSelectedYear] = useState<TaxYearRow | null>(null);
+  const [entryMonth, setEntryMonth] = useState<number | null>(null);
+
+  function handleNavigateToEntry(month?: number): void {
+    setEntryMonth(month ?? null);
+    setScreen('entry');
+  }
 
   return (
     <>
@@ -73,7 +79,10 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           <a
             href="#"
             className={screen === 'entry' ? 'active' : ''}
-            onClick={() => setScreen('entry')}
+            onClick={() => {
+              setEntryMonth(null);
+              setScreen('entry');
+            }}
           >
             บันทึกรายรับ-รายจ่าย
           </a>
@@ -111,8 +120,8 @@ function AppShell({ info }: { info: DataLocationInfo }): JSX.Element {
           {info.folderPath}
         </div>
       </nav>
-      {screen === 'dashboard' && <Dashboard />}
-      {screen === 'entry' && <Entry />}
+      {screen === 'dashboard' && <Dashboard onNavigateToEntry={handleNavigateToEntry} />}
+      {screen === 'entry' && <Entry initialMonth={entryMonth} />}
       {screen === 'deductions' && <Deductions />}
       {screen === 'settings' && <Settings />}
       {screen === 'taxYears' && (

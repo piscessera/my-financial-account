@@ -105,13 +105,14 @@ export function computeYear(input: ComputeYearInput): ComputeYearResult {
           actualExpensesMinor: totalExpenseMinor,
         });
 
-  // Aggregate linked expenses by category (REQ-0007, AT-1.3)
+  // Aggregate linked transactions by category (REQ-0007, REQ-0008)
   const linkedByCat = new Map<number, number>();
   for (const t of input.transactions) {
-    if (t.status === 'active' && t.kind === 'expense' && t.deductionCategoryId != null) {
+    if (t.status === 'active' && t.deductionCategoryId != null) {
+      const deductionAmount = t.deductionAmountMinor ?? t.amountMinor;
       linkedByCat.set(
         t.deductionCategoryId,
-        (linkedByCat.get(t.deductionCategoryId) ?? 0) + t.amountMinor,
+        (linkedByCat.get(t.deductionCategoryId) ?? 0) + deductionAmount,
       );
     }
   }

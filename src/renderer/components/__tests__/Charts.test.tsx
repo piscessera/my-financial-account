@@ -26,6 +26,7 @@ function makeMockTx(overrides: Partial<TransactionRow> = {}): TransactionRow {
     status: 'active',
     reversalOfId: null,
     deductionCategoryId: null,
+    deductionAmountMinor: null,
     source: 'manual',
     createdAt: '2026-03-15T00:00:00.000Z',
     updatedAt: '2026-03-15T00:00:00.000Z',

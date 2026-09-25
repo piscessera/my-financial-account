@@ -66,6 +66,7 @@ export const transactions = sqliteTable(
       () => deductionCategories.id,
       { onDelete: 'set null' },
     ),
+    deductionAmountMinor: integer('deduction_amount_minor'),
     createdAt: text('created_at').notNull().default(UTC_NOW),
     updatedAt: text('updated_at').notNull().default(UTC_NOW),
   },
