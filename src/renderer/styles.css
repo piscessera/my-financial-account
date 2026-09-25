@@ -528,3 +528,136 @@ button.dropzone {
   cursor: pointer;
   width: 100%;
 }
+
+/* ---- Search & Filter Toolbar ---- */
+.toolbar-wrap {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.search-bar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 240px;
+  max-width: 420px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  padding: 8px 32px 8px 34px !important;
+  border: 1px solid var(--line);
+  border-radius: 999px !important;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+.search-clear-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.search-clear-btn:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.month-chips-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+}
+.month-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.month-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.month-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.month-chip-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+}
+.month-chip.active .month-chip-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--accent-ink);
+}
+
+/* ---- Dashboard Financial Insights ---- */
+.dashboard-pillar-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.insight-highlight-box {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--accent);
+  font-size: 13.5px;
+}
+.insight-highlight-box.good {
+  border-left-color: var(--good);
+  background: var(--good-soft);
+  color: var(--good);
+}
+.insight-highlight-box.amber {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
