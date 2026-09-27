@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { openDatabase, type DatabaseHandle } from '../client';
 import { getSchemaVersion, LATEST_SCHEMA_VERSION, migrateToLatest } from '../migrate';
+import { MIGRATION_006_SQL } from '../migrations/006-normalize-transaction-dates';
 
 const EXPECTED_TABLES = [
   'attachments',
@@ -82,6 +83,7 @@ describe('migrateToLatest', () => {
         '003-recurring-checklist',
         '004-expense-deduction-linkage',
         '005-custom-deduction-amount',
+        '006-normalize-transaction-dates',
       ],
     });
   });
@@ -122,5 +124,25 @@ describe('migrateToLatest', () => {
     for (const column of moneyColumns) {
       expect(column.column_type).toBe('INTEGER');
     }
+  });
+
+  it('normalizes Buddhist Era dates to Christian Era in migration 006', () => {
+    const yearId = handle.sqlite
+      .prepare(`INSERT INTO tax_years (year, status) VALUES (2569, 'open')`)
+      .run().lastInsertRowid;
+    const txId = handle.sqlite
+      .prepare(
+        `INSERT INTO transactions (tax_year_id, kind, tax_relevant, general_category, date, amount_minor)
+         VALUES (?, 'expense', 0, 'other', '2569-09-15', 50000)`,
+      )
+      .run(yearId).lastInsertRowid;
+
+    // Run migration 006 SQL manually to verify the normalization script
+    handle.sqlite.exec(MIGRATION_006_SQL);
+
+    const updated = handle.sqlite
+      .prepare(`SELECT date FROM transactions WHERE id = ?`)
+      .get(txId) as { date: string };
+    expect(updated.date).toBe('2026-09-15');
   });
 });

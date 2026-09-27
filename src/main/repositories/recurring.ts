@@ -16,13 +16,23 @@ import type {
   TransactionStatus,
 } from '../db/schema';
 import { recordMutation } from './auditLog';
-import { createTransaction, voidTransaction } from './transactions';
+import { createTransaction, normalizeDateToCe, voidTransaction } from './transactions';
 
 export class RecurringError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RecurringError';
   }
+}
+
+export function normalizeYearMonthToCe(yearMonth: string): string {
+  if (!/^\d{4}-\d{2}$/.test(yearMonth)) return yearMonth;
+  const [yearStr, month] = yearMonth.split('-');
+  const y = Number(yearStr);
+  if (y >= 2400) {
+    return `${String(y - 543).padStart(4, '0')}-${month}`;
+  }
+  return yearMonth;
 }
 
 export interface CreateRecurringTemplateInput {
@@ -256,10 +266,11 @@ export function getMonthlyChecklist(
   sqlite: BetterSqlite3.Database,
   yearMonth: string,
 ): MonthlyChecklistItem[] {
+  const safeYearMonth = normalizeYearMonthToCe(yearMonth);
   const templates = listTemplates(sqlite, false);
   const logs = sqlite
     .prepare(`SELECT * FROM recurring_monthly_logs WHERE year_month = ?`)
-    .all(yearMonth)
+    .all(safeYearMonth)
     .map(toLogRow);
 
   const logByTemplateId = new Map<number, RecurringMonthlyLogRow>();
@@ -295,7 +306,7 @@ export function getMonthlyChecklist(
         reversalOfId: raw.reversal_of_id ? Number(raw.reversal_of_id) : null,
         deductionCategoryId: raw.deduction_category_id ? Number(raw.deduction_category_id) : null,
         deductionAmountMinor: raw.deduction_amount_minor ? Number(raw.deduction_amount_minor) : null,
-        source: (raw.source as any) ?? 'manual',
+        source: (raw.source as TransactionSource) ?? 'manual',
         createdAt: String(raw.created_at),
         updatedAt: String(raw.updated_at),
       });
@@ -322,6 +333,9 @@ export function recordRecurringItem(
   sqlite: BetterSqlite3.Database,
   input: RecordRecurringInput,
 ): { log: RecurringMonthlyLogRow; transaction: TransactionRow } {
+  const safeYearMonth = normalizeYearMonthToCe(input.yearMonth);
+  const safeDate = normalizeDateToCe(input.date);
+
   const run = sqlite.transaction(() => {
     const template = requireTemplate(sqlite, input.templateId);
     const amountMinor =
@@ -334,7 +348,7 @@ export function recordRecurringItem(
       kind: template.kind,
       taxRelevant: false,
       generalCategory: template.generalCategory,
-      date: input.date,
+      date: safeDate,
       amountMinor,
       note: input.note !== undefined ? input.note : (template.defaultNote || template.name),
     });
@@ -346,11 +360,11 @@ export function recordRecurringItem(
          ON CONFLICT (template_id, year_month)
          DO UPDATE SET status = 'completed', transaction_id = excluded.transaction_id, recorded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
       )
-      .run(template.id, input.yearMonth, transaction.id);
+      .run(template.id, safeYearMonth, transaction.id);
 
     const logRaw = sqlite
       .prepare(`SELECT * FROM recurring_monthly_logs WHERE template_id = ? AND year_month = ?`)
-      .get(template.id, input.yearMonth);
+      .get(template.id, safeYearMonth);
     const log = toLogRow(logRaw);
 
     recordMutation(sqlite, {
@@ -370,6 +384,7 @@ export function skipRecurringItem(
   templateId: number,
   yearMonth: string,
 ): RecurringMonthlyLogRow {
+  const safeYearMonth = normalizeYearMonthToCe(yearMonth);
   const run = sqlite.transaction(() => {
     requireTemplate(sqlite, templateId);
     sqlite
@@ -379,11 +394,11 @@ export function skipRecurringItem(
          ON CONFLICT (template_id, year_month)
          DO UPDATE SET status = 'skipped', transaction_id = NULL, recorded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
       )
-      .run(templateId, yearMonth);
+      .run(templateId, safeYearMonth);
 
     const logRaw = sqlite
       .prepare(`SELECT * FROM recurring_monthly_logs WHERE template_id = ? AND year_month = ?`)
-      .get(templateId, yearMonth);
+      .get(templateId, safeYearMonth);
     const log = toLogRow(logRaw);
 
     recordMutation(sqlite, {
@@ -402,10 +417,11 @@ export function undoRecurringItem(
   templateId: number,
   yearMonth: string,
 ): void {
+  const safeYearMonth = normalizeYearMonthToCe(yearMonth);
   const run = sqlite.transaction(() => {
     const existingRaw = sqlite
       .prepare(`SELECT * FROM recurring_monthly_logs WHERE template_id = ? AND year_month = ?`)
-      .get(templateId, yearMonth);
+      .get(templateId, safeYearMonth);
     if (!existingRaw) return;
 
     const log = toLogRow(existingRaw);
@@ -419,7 +435,7 @@ export function undoRecurringItem(
 
     sqlite
       .prepare(`DELETE FROM recurring_monthly_logs WHERE template_id = ? AND year_month = ?`)
-      .run(templateId, yearMonth);
+      .run(templateId, safeYearMonth);
 
     recordMutation(sqlite, {
       entityType: 'recurring_monthly_log',

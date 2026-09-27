@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 
 import { formatSatangAsBaht } from '../../main/calc/money';
 import type { DeductionCategoryRow, IncomeSection, TransactionRow } from '../../main/db/schema';
+import { formatShortDate, formatThaiMonthYear } from '../lib/dateUtils';
 
 interface LedgerTableProps {
   /** Tax-relevant transactions for one year, any order — this component sorts/groups them. */
@@ -19,49 +20,8 @@ const INCOME_SECTION_TAGS: Record<IncomeSection, string> = {
   '40_5_8': '40(5)-(8)',
 };
 
-const THAI_MONTHS = [
-  'มกราคม',
-  'กุมภาพันธ์',
-  'มีนาคม',
-  'เมษายน',
-  'พฤษภาคม',
-  'มิถุนายน',
-  'กรกฎาคม',
-  'สิงหาคม',
-  'กันยายน',
-  'ตุลาคม',
-  'พฤศจิกายน',
-  'ธันวาคม',
-];
-
-const THAI_SHORT_MONTHS = [
-  'ม.ค.',
-  'ก.พ.',
-  'มี.ค.',
-  'เม.ย.',
-  'พ.ค.',
-  'มิ.ย.',
-  'ก.ค.',
-  'ส.ค.',
-  'ก.ย.',
-  'ต.ค.',
-  'พ.ย.',
-  'ธ.ค.',
-];
-
 function monthKeyOf(dateIso: string): string {
   return dateIso.slice(0, 7); // "YYYY-MM"
-}
-
-function formatThaiMonthYear(monthKey: string): string {
-  const [year, month] = monthKey.split('-').map(Number);
-  return `${THAI_MONTHS[month - 1]} ${year + 543}`;
-}
-
-function formatShortDate(dateIso: string): string {
-  const [year, month, day] = dateIso.split('-');
-  const buddhistYearShort = (Number(year) + 543) % 100;
-  return `${day} ${THAI_SHORT_MONTHS[Number(month) - 1]} ${buddhistYearShort}`;
 }
 
 /**

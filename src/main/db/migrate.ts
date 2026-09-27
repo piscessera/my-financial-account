@@ -19,6 +19,7 @@ import { MIGRATION_002_SQL } from './migrations/002-year-scoped-config';
 import { MIGRATION_003_SQL } from './migrations/003-recurring-checklist';
 import { MIGRATION_004_SQL } from './migrations/004-expense-deduction-linkage';
 import { MIGRATION_005_SQL } from './migrations/005-custom-deduction-amount';
+import { MIGRATION_006_SQL } from './migrations/006-normalize-transaction-dates';
 
 export interface Migration {
   /** 1-based, contiguous, never reordered. Stored in `PRAGMA user_version`. */
@@ -33,6 +34,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 3, name: '003-recurring-checklist', sql: MIGRATION_003_SQL },
   { version: 4, name: '004-expense-deduction-linkage', sql: MIGRATION_004_SQL },
   { version: 5, name: '005-custom-deduction-amount', sql: MIGRATION_005_SQL },
+  { version: 6, name: '006-normalize-transaction-dates', sql: MIGRATION_006_SQL },
 ];
 
 /** The schema version this build of the app expects. */

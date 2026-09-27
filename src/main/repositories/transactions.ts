@@ -76,6 +76,16 @@ export interface CreateTransactionInput {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+export function normalizeDateToCe(dateStr: string): string {
+  if (!DATE_RE.test(dateStr)) return dateStr;
+  const [yearStr, month, day] = dateStr.split('-');
+  const y = Number(yearStr);
+  if (y >= 2400) {
+    return `${String(y - 543).padStart(4, '0')}-${month}-${day}`;
+  }
+  return dateStr;
+}
+
 function assertCreateInput(input: CreateTransactionInput): void {
   const taxRelevant = input.taxRelevant ?? true;
 
@@ -260,26 +270,30 @@ export function createTransaction(
   sqlite: BetterSqlite3.Database,
   input: CreateTransactionInput,
 ): TransactionRow {
-  assertCreateInput(input);
-  const taxRelevant = input.taxRelevant ?? true;
-  const deductionCategoryId = input.deductionCategoryId ?? null;
+  const normalizedInput: CreateTransactionInput = {
+    ...input,
+    date: normalizeDateToCe(input.date),
+  };
+  assertCreateInput(normalizedInput);
+  const taxRelevant = normalizedInput.taxRelevant ?? true;
+  const deductionCategoryId = normalizedInput.deductionCategoryId ?? null;
   const deductionAmountMinor =
-    deductionCategoryId != null ? (input.deductionAmountMinor ?? null) : null;
+    deductionCategoryId != null ? (normalizedInput.deductionAmountMinor ?? null) : null;
 
   const run = sqlite.transaction(() => {
     const info = statementsFor(sqlite).insert.run(
-      input.taxYearId,
-      input.kind,
+      normalizedInput.taxYearId,
+      normalizedInput.kind,
       taxRelevant ? 1 : 0,
-      input.incomeSection ?? null,
-      input.generalCategory ?? null,
-      input.date,
-      input.amountMinor,
-      input.whtMinor ?? 0,
-      input.sourcePayer ?? null,
-      input.payerTaxId ?? null,
-      input.note ?? null,
-      input.source ?? 'manual',
+      normalizedInput.incomeSection ?? null,
+      normalizedInput.generalCategory ?? null,
+      normalizedInput.date,
+      normalizedInput.amountMinor,
+      normalizedInput.whtMinor ?? 0,
+      normalizedInput.sourcePayer ?? null,
+      normalizedInput.payerTaxId ?? null,
+      normalizedInput.note ?? null,
+      normalizedInput.source ?? 'manual',
       deductionCategoryId,
       deductionAmountMinor,
     );
@@ -389,7 +403,7 @@ export function updateTransaction(
       incomeSection: input.incomeSection !== undefined ? input.incomeSection : before.incomeSection,
       generalCategory:
         input.generalCategory !== undefined ? input.generalCategory : before.generalCategory,
-      date: input.date ?? before.date,
+      date: input.date !== undefined ? normalizeDateToCe(input.date) : before.date,
       amountMinor: input.amountMinor ?? before.amountMinor,
       whtMinor: input.whtMinor ?? before.whtMinor,
       sourcePayer: input.sourcePayer !== undefined ? input.sourcePayer : before.sourcePayer,

@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ComputeYearResult } from '../../main/calc/computeYear';
 import { formatSatangAsBaht } from '../../main/calc/money';
 import type { TaxBracketRow, TransactionRow } from '../../main/db/schema';
+import { normalizeDateToCe } from '../lib/dateUtils';
 import { useWorkingTaxYear } from '../lib/useWorkingTaxYear';
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('th-TH', {
+  const normalized = normalizeDateToCe(iso.slice(0, 10)) + iso.slice(10);
+  return new Date(normalized).toLocaleDateString('th-TH', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

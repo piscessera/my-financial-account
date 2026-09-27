@@ -48,11 +48,15 @@ sub-agents receive their IDs in the dispatch payload.
 | ANA-0009 | Transaction list UX enhancement and Dashboard financial insights — design | analysis | implemented | S | REQ-0009, TC-0009 | 2026-09-23 |
 | TC-0009 | Transaction list UX enhancement and Dashboard financial insights — test cases | test-cases | implemented | — | ANA-0009, REQ-0009 | 2026-09-23 |
 
+| REQ-0010 | Date format consistency and Christian Era (CE) normalization for transaction date pickers | requirement | implemented | S | ANA-0010, TC-0010 | 2026-09-27 |
+| ANA-0010 | Date format consistency and Christian Era (CE) normalization — design | analysis | implemented | S | REQ-0010, TC-0010 | 2026-09-27 |
+| TC-0010 | Date format consistency and Christian Era (CE) normalization — test cases | test-cases | implemented | — | ANA-0010, REQ-0010 | 2026-09-27 |
+
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 10 | 10 | 10 | 2 | 8 | 1 | 4 | 3 |
+| 11 | 11 | 11 | 2 | 8 | 1 | 4 | 3 |
 
 ## Status vocabulary
 

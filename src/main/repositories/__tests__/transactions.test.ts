@@ -12,6 +12,7 @@ import {
   createTransaction,
   getTransaction,
   listByYear,
+  updateTransaction,
   voidTransaction,
 } from '../transactions';
 
@@ -305,6 +306,33 @@ describe('createTransaction — REQ-0008: custom deduction amount & INV-8', () =
         amountMinor: 15_000_00,
       }),
     ).toThrow(TransactionError);
+  });
+});
+
+describe('createTransaction / updateTransaction — Buddhist Era date normalization', () => {
+  it('normalizes Buddhist Era date (2569-09-15) to Christian Era (2026-09-15) on create', () => {
+    const row = createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2569-09-15',
+      amountMinor: 5_000_000,
+    });
+    expect(row.date).toBe('2026-09-15');
+  });
+
+  it('normalizes Buddhist Era date on update', () => {
+    const row = createTransaction(temp.sqlite, {
+      taxYearId,
+      kind: 'income',
+      incomeSection: '40_1',
+      date: '2026-03-15',
+      amountMinor: 5_000_000,
+    });
+    const updated = updateTransaction(temp.sqlite, row.id, {
+      date: '2569-09-20',
+    });
+    expect(updated.date).toBe('2026-09-20');
   });
 });
 

@@ -406,9 +406,9 @@ export function getSourceTransactions(
        WHERE tax_year_id = ? AND status = 'active' AND deduction_category_id = ?
        ORDER BY date DESC, id DESC`,
     )
-    .all(taxYearId, categoryId);
+    .all(taxYearId, categoryId) as RawTransactionRow[];
 
-  return rows.map((raw: any) => ({
+  return rows.map((raw) => ({
     id: raw.id,
     taxYearId: raw.tax_year_id,
     kind: raw.kind,
@@ -507,15 +507,16 @@ export function getDeductionSummary(
   }
 
   // Query shared caps for this year
-  const sharedCaps = sqlite
-    .prepare(`SELECT * FROM shared_caps WHERE tax_year_id = ? OR tax_year_id IS NULL ORDER BY name ASC`)
-    .all(taxYearId)
-    .map((r: any) => ({
-      id: r.id,
-      taxYearId: r.tax_year_id,
-      name: r.name,
-      capAmountMinor: r.cap_amount_minor,
-    }));
+  const sharedCaps = (
+    sqlite
+      .prepare(`SELECT * FROM shared_caps WHERE tax_year_id = ? OR tax_year_id IS NULL ORDER BY name ASC`)
+      .all(taxYearId) as { id: number; tax_year_id: number | null; name: string; cap_amount_minor: number }[]
+  ).map((r) => ({
+    id: r.id,
+    taxYearId: r.tax_year_id,
+    name: r.name,
+    capAmountMinor: r.cap_amount_minor,
+  }));
 
   const calcResult = computeDeductions(categories, mergedEntries, sharedCaps);
   const perCatCalc = new Map(calcResult.perCategory.map((p) => [p.categoryId, p]));
