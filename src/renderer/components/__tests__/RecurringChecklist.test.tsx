@@ -25,7 +25,7 @@ describe('REQ-0005 / TC-0005: RecurringChecklist and ManageRecurringModal UI', (
     );
 
     expect(html).toContain('รายการประจำเดือน');
-    expect(html).toContain('2026-03');
+    expect(html).toContain('มีนาคม 2569');
     expect(html).toContain('⚙️ จัดการแม่แบบ');
   });
 

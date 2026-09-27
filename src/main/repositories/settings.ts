@@ -68,25 +68,90 @@ function requireSharedCap(sqlite: BetterSqlite3.Database, id: number): SharedCap
   return toSharedCapRow(raw);
 }
 
-/** Edit a shared group's total ceiling (e.g. life + health insurance's combined 100,000 cap). */
-export function updateSharedCap(
+export interface CreateSharedCapInput {
+  readonly taxYearId?: number | null;
+  readonly name: string;
+  readonly capAmountMinor: number;
+}
+
+export interface UpdateSharedCapInput {
+  readonly name?: string;
+  readonly capAmountMinor?: number;
+}
+
+/** Create a new shared cap group (AT-1.1, TC #4). */
+export function createSharedCap(
   sqlite: BetterSqlite3.Database,
-  id: number,
-  newCapAmountMinor: number,
+  input: CreateSharedCapInput,
 ): SharedCapRow {
-  if (!Number.isSafeInteger(newCapAmountMinor) || newCapAmountMinor < 0) {
+  const targetYearId = typeof input.taxYearId === 'number' ? input.taxYearId : null;
+  assertYearNotClosed(sqlite, targetYearId);
+
+  const trimmedName = input.name.trim();
+  if (trimmedName.length === 0) {
+    throw new SettingsError('name is required for shared cap group.');
+  }
+  if (!Number.isSafeInteger(input.capAmountMinor) || input.capAmountMinor < 0) {
     throw new SettingsError(
-      `newCapAmountMinor must be a non-negative integer, got ${String(newCapAmountMinor)}.`,
+      `capAmountMinor must be a non-negative integer, got ${String(input.capAmountMinor)}.`,
     );
   }
 
   const run = sqlite.transaction(() => {
+    const info = sqlite
+      .prepare(`INSERT INTO shared_caps (tax_year_id, name, cap_amount_minor) VALUES (?, ?, ?)`)
+      .run(targetYearId, trimmedName, input.capAmountMinor);
+
+    const created = requireSharedCap(sqlite, Number(info.lastInsertRowid));
+    recordMutation(sqlite, {
+      entityType: 'setting',
+      entityId: created.id,
+      action: 'create',
+      before: null,
+      after: created as unknown as Record<string, unknown>,
+    });
+    return created;
+  });
+  return run();
+}
+
+/** Edit a shared group's total ceiling and/or name (AT-1.1, TC #5). */
+export function updateSharedCap(
+  sqlite: BetterSqlite3.Database,
+  id: number,
+  inputOrAmount: number | UpdateSharedCapInput,
+): SharedCapRow {
+  const run = sqlite.transaction(() => {
     const before = requireSharedCap(sqlite, id);
     assertYearNotClosed(sqlite, before.taxYearId);
 
+    let name = before.name;
+    let capAmountMinor = before.capAmountMinor;
+
+    if (typeof inputOrAmount === 'number') {
+      capAmountMinor = inputOrAmount;
+    } else {
+      if (inputOrAmount.name !== undefined) {
+        const trimmed = inputOrAmount.name.trim();
+        if (trimmed.length === 0) {
+          throw new SettingsError('name cannot be empty.');
+        }
+        name = trimmed;
+      }
+      if (inputOrAmount.capAmountMinor !== undefined) {
+        capAmountMinor = inputOrAmount.capAmountMinor;
+      }
+    }
+
+    if (!Number.isSafeInteger(capAmountMinor) || capAmountMinor < 0) {
+      throw new SettingsError(
+        `capAmountMinor must be a non-negative integer, got ${String(capAmountMinor)}.`,
+      );
+    }
+
     sqlite
-      .prepare(`UPDATE shared_caps SET cap_amount_minor = ? WHERE id = ?`)
-      .run(newCapAmountMinor, id);
+      .prepare(`UPDATE shared_caps SET name = ?, cap_amount_minor = ? WHERE id = ?`)
+      .run(name, capAmountMinor, id);
 
     const after = requireSharedCap(sqlite, id);
     recordMutation(sqlite, {
@@ -99,6 +164,36 @@ export function updateSharedCap(
     return after;
   });
   return run();
+}
+
+/** Delete a shared cap group (AT-1.1, TC #6, #7). */
+export function deleteSharedCap(sqlite: BetterSqlite3.Database, id: number): void {
+  const run = sqlite.transaction(() => {
+    const before = requireSharedCap(sqlite, id);
+    assertYearNotClosed(sqlite, before.taxYearId);
+
+    // Check if any deduction_categories still reference this shared group
+    const refCountRow = sqlite
+      .prepare(`SELECT COUNT(*) AS cnt FROM deduction_categories WHERE shared_group_id = ?`)
+      .get(id) as { cnt: number };
+
+    if (refCountRow && refCountRow.cnt > 0) {
+      throw new SettingsError(
+        `ไม่สามารถลบกลุ่มนี้ได้ เนื่องจากยังมีหมวดหมู่ค่าลดหย่อน (${refCountRow.cnt} รายการ) ผูกอยู่กับกลุ่มนี้`,
+      );
+    }
+
+    sqlite.prepare(`DELETE FROM shared_caps WHERE id = ?`).run(id);
+
+    recordMutation(sqlite, {
+      entityType: 'setting',
+      entityId: id,
+      action: 'delete',
+      before: before as unknown as Record<string, unknown>,
+      after: null,
+    });
+  });
+  run();
 }
 
 interface RawTaxBracketRow {

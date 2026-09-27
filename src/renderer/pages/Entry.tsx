@@ -32,49 +32,16 @@ interface EntryProps {
   readonly initialMonth?: number | null;
 }
 
-const THAI_MONTHS = [
-  'มกราคม',
-  'กุมภาพันธ์',
-  'มีนาคม',
-  'เมษายน',
-  'พฤษภาคม',
-  'มิถุนายน',
-  'กรกฎาคม',
-  'สิงหาคม',
-  'กันยายน',
-  'ตุลาคม',
-  'พฤศจิกายน',
-  'ธันวาคม',
-];
-
-const THAI_SHORT_MONTHS = [
-  'ม.ค.',
-  'ก.พ.',
-  'มี.ค.',
-  'เม.ย.',
-  'พ.ค.',
-  'มิ.ย.',
-  'ก.ค.',
-  'ส.ค.',
-  'ก.ย.',
-  'ต.ค.',
-  'พ.ย.',
-  'ธ.ค.',
-];
+import {
+  THAI_MONTHS,
+  THAI_SHORT_MONTHS,
+  ceYearFromTaxYear,
+  formatShortDate,
+  formatThaiMonthYear,
+} from '../lib/dateUtils';
 
 function monthKeyOf(dateIso: string): string {
   return dateIso.slice(0, 7); // "YYYY-MM"
-}
-
-function formatThaiMonthYear(monthKey: string): string {
-  const [year, month] = monthKey.split('-').map(Number);
-  return `${THAI_MONTHS[month - 1]} ${year + 543}`;
-}
-
-function formatShortDate(dateIso: string): string {
-  const [year, month, day] = dateIso.split('-');
-  const buddhistYearShort = (Number(year) + 543) % 100;
-  return `${day} ${THAI_SHORT_MONTHS[Number(month) - 1]} ${buddhistYearShort}`;
 }
 
 export default function Entry({ initialMonth = null }: EntryProps): JSX.Element {
@@ -439,7 +406,7 @@ export default function Entry({ initialMonth = null }: EntryProps): JSX.Element 
         <>
           <RecurringChecklist
             taxYearId={yearId}
-            yearMonth={`${yearState.year.year}-${String(selectedMonth !== null ? selectedMonth + 1 : new Date().getMonth() + 1).padStart(2, '0')}`}
+            yearMonth={`${ceYearFromTaxYear(yearState.year.year)}-${String(selectedMonth !== null ? selectedMonth + 1 : new Date().getMonth() + 1).padStart(2, '0')}`}
             onTransactionCreated={() => void reload(yearId)}
           />
 

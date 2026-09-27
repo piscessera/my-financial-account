@@ -15,7 +15,7 @@ import type { ComputeYearResult } from '../calc/computeYear';
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../calc/money';
 import { recordMutation } from './auditLog';
 import type { GeneralCategory, IncomeSection, TransactionKind, TransactionRow } from '../db/schema';
-import { createTransaction, listByYear, type CreateTransactionInput } from './transactions';
+import { createTransaction, listByYear, normalizeDateToCe, type CreateTransactionInput } from './transactions';
 import { createTaxYear, listTaxYears } from './taxYears';
 
 export class CsvError extends Error {
@@ -229,7 +229,7 @@ function validateRow(raw: Record<string, string>): {
       taxRelevant,
       incomeSection,
       generalCategory,
-      date: raw.date,
+      date: normalizeDateToCe(raw.date),
       amountMinor: amountResult.satang,
       whtMinor: whtResult.satang,
       sourcePayer: raw.source_payer === '' ? null : raw.source_payer,

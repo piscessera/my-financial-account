@@ -34,14 +34,18 @@ import {
 } from '../repositories/deductions';
 import {
   addTaxBracket,
+  createSharedCap,
+  deleteSharedCap,
   deleteTaxBracket,
   getBrackets,
   getSharedCaps,
   resetTaxBracketsToDefault,
   updateBracket,
   updateSharedCap,
+  type CreateSharedCapInput,
   type NewTaxBracketInput,
   type UpdateBracketBounds,
+  type UpdateSharedCapInput,
 } from '../repositories/settings';
 import {
   createReversal,
@@ -207,8 +211,14 @@ export function createDomainIpcHandlers(ctx: DomainIpcContext) {
       setCategoryActive(ctx.getSqlite(), id, isActive),
     'settings:getSharedCaps': (taxYearId?: number | null): SharedCapRow[] =>
       getSharedCaps(ctx.getSqlite(), taxYearId),
-    'settings:updateSharedCap': (id: number, newCapAmountMinor: number): SharedCapRow =>
-      updateSharedCap(ctx.getSqlite(), id, newCapAmountMinor),
+    'settings:createSharedCap': (input: CreateSharedCapInput): SharedCapRow =>
+      createSharedCap(ctx.getSqlite(), input),
+    'settings:updateSharedCap': (
+      id: number,
+      input: number | UpdateSharedCapInput,
+    ): SharedCapRow => updateSharedCap(ctx.getSqlite(), id, input),
+    'settings:deleteSharedCap': (id: number): void =>
+      deleteSharedCap(ctx.getSqlite(), id),
     'settings:getBrackets': (taxYearId?: number | null): TaxBracketRow[] =>
       getBrackets(ctx.getSqlite(), taxYearId),
     'settings:updateBracket': (

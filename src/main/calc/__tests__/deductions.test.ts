@@ -159,3 +159,61 @@ describe('mixed categories', () => {
     expect(result.totalMinor).toBe(70_000_00);
   });
 });
+
+describe('TC-0011 #8, #9: Insurance Grouping and Sub-cap calculation', () => {
+  it('TC #8: enforces individual sub-caps and group ceiling when both items are fully utilized', () => {
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'ประกัน (รวม)', capAmountMinor: 100_000_00 };
+    const life = category({
+      id: 1,
+      capType: 'shared_group_member',
+      sharedGroupId: 1,
+      capAmountMinor: 100_000_00,
+    });
+    const health = category({
+      id: 2,
+      capType: 'shared_group_member',
+      sharedGroupId: 1,
+      capAmountMinor: 25_000_00,
+    });
+
+    const result = computeDeductions(
+      [life, health],
+      [entry(1, 100_000_00), entry(2, 25_000_00)],
+      [group],
+    );
+
+    expect(result.perCategory.find((p) => p.categoryId === 1)?.effectiveMinor).toBe(100_000_00);
+    expect(result.perCategory.find((p) => p.categoryId === 2)?.effectiveMinor).toBe(25_000_00);
+    expect(result.sharedGroups[0].rawTotalMinor).toBe(125_000_00);
+    expect(result.sharedGroups[0].cappedTotalMinor).toBe(100_000_00);
+    expect(result.totalMinor).toBe(100_000_00);
+  });
+
+  it('TC #9: calculates full sum when combined usage is below group ceiling', () => {
+    const group: SharedCapRow = { id: 1, taxYearId: null, name: 'ประกัน (รวม)', capAmountMinor: 100_000_00 };
+    const life = category({
+      id: 1,
+      capType: 'shared_group_member',
+      sharedGroupId: 1,
+      capAmountMinor: 100_000_00,
+    });
+    const health = category({
+      id: 2,
+      capType: 'shared_group_member',
+      sharedGroupId: 1,
+      capAmountMinor: 25_000_00,
+    });
+
+    const result = computeDeductions(
+      [life, health],
+      [entry(1, 40_000_00), entry(2, 20_000_00)],
+      [group],
+    );
+
+    expect(result.perCategory.find((p) => p.categoryId === 1)?.effectiveMinor).toBe(40_000_00);
+    expect(result.perCategory.find((p) => p.categoryId === 2)?.effectiveMinor).toBe(20_000_00);
+    expect(result.sharedGroups[0].rawTotalMinor).toBe(60_000_00);
+    expect(result.sharedGroups[0].cappedTotalMinor).toBe(60_000_00);
+    expect(result.totalMinor).toBe(60_000_00);
+  });
+});

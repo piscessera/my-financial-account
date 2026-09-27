@@ -8,6 +8,7 @@ import type {
   TransactionKind,
   TransactionRow,
 } from '../../main/db/schema';
+import { normalizeDateToCe } from '../lib/dateUtils';
 
 /** What the form collects, already validated and money-converted (satang, INV-1). */
 export interface TransactionFormValues {
@@ -101,7 +102,7 @@ export default function TransactionForm({
         : '',
   );
   const [deductionCategories, setDeductionCategories] = useState<DeductionCategoryRow[]>([]);
-  const [date, setDate] = useState(initial?.date ?? todayIso());
+  const [date, setDate] = useState(initial?.date ? normalizeDateToCe(initial.date) : todayIso());
   const [amountText, setAmountText] = useState(
     initial ? (initial.amountMinor / 100).toFixed(2) : '',
   );
@@ -201,7 +202,7 @@ export default function TransactionForm({
         generalCategory: taxRelevant ? null : generalCategory,
         deductionCategoryId,
         deductionAmountMinor,
-        date,
+        date: normalizeDateToCe(date.trim()),
         amountMinor: amountResult.satang,
         whtMinor: taxRelevant ? whtMinor : 0,
         sourcePayer: taxRelevant && sourcePayer.trim() !== '' ? sourcePayer.trim() : null,

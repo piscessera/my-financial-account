@@ -29,6 +29,20 @@ function formatBracketRange(bracket: TaxBracketRow): string {
 interface CategoryEditState {
   readonly id: number;
   readonly name: string;
+  readonly description: string;
+  readonly capType: CapType;
+  readonly capAmountText: string;
+  readonly sharedGroupId: number | null;
+}
+
+interface SharedCapEditState {
+  readonly id: number;
+  readonly name: string;
+  readonly capAmountText: string;
+}
+
+interface NewSharedCapState {
+  readonly name: string;
   readonly capAmountText: string;
 }
 
@@ -61,6 +75,11 @@ const BLANK_NEW_CATEGORY: NewCategoryState = {
   description: '',
 };
 
+const BLANK_NEW_SHARED_CAP: NewSharedCapState = {
+  name: '',
+  capAmountText: '',
+};
+
 type SettingsSection = 'brackets' | 'deductions' | 'storage';
 
 type FolderChangeState =
@@ -82,9 +101,11 @@ export default function Settings(): JSX.Element {
   const [brackets, setBrackets] = useState<TaxBracketRow[]>([]);
 
   const [editingCategory, setEditingCategory] = useState<CategoryEditState | null>(null);
+  const [editingSharedCap, setEditingSharedCap] = useState<SharedCapEditState | null>(null);
   const [editingBracket, setEditingBracket] = useState<BracketEditState | null>(null);
   const [addingBracket, setAddingBracket] = useState<NewBracketState | null>(null);
   const [addingCategory, setAddingCategory] = useState<NewCategoryState | null>(null);
+  const [addingSharedCap, setAddingSharedCap] = useState<NewSharedCapState | null>(null);
   const [folderChange, setFolderChange] = useState<FolderChangeState | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; message: string } | null>(null);
@@ -164,16 +185,96 @@ export default function Settings(): JSX.Element {
     return sharedCaps.find((g) => g.id === id)?.name ?? `กลุ่ม #${id}`;
   }
 
+  async function handleAddSharedCap(): Promise<void> {
+    if (!addingSharedCap) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      if (addingSharedCap.name.trim() === '') throw new Error('กรุณาระบุชื่อกลุ่มเพดานร่วม');
+      if (addingSharedCap.capAmountText.trim() === '') throw new Error('กรุณาระบุเพดานกลุ่มรวม (บาท)');
+      const amountResult = tryParseBahtToSatang(addingSharedCap.capAmountText);
+      if (!amountResult.ok) throw new Error(amountResult.error.message);
+
+      await window.api.settings.createSharedCap({
+        taxYearId: activeTab === 'year' ? selectedTaxYearId : null,
+        name: addingSharedCap.name.trim(),
+        capAmountMinor: amountResult.satang,
+      });
+      setAddingSharedCap(null);
+      setFeedback({ kind: 'ok', message: 'เพิ่มกลุ่มเพดานร่วมเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveSharedCapEdit(): Promise<void> {
+    if (!editingSharedCap) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      if (editingSharedCap.name.trim() === '') throw new Error('กรุณาระบุชื่อกลุ่มเพดานร่วม');
+      if (editingSharedCap.capAmountText.trim() === '') throw new Error('กรุณาระบุเพดานกลุ่มรวม (บาท)');
+      const amountResult = tryParseBahtToSatang(editingSharedCap.capAmountText);
+      if (!amountResult.ok) throw new Error(amountResult.error.message);
+
+      await window.api.settings.updateSharedCap(editingSharedCap.id, {
+        name: editingSharedCap.name.trim(),
+        capAmountMinor: amountResult.satang,
+      });
+      setEditingSharedCap(null);
+      setFeedback({ kind: 'ok', message: 'บันทึกกลุ่มเพดานร่วมเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteSharedCap(id: number): Promise<void> {
+    if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบกลุ่มเพดานร่วมนี้?')) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await window.api.settings.deleteSharedCap(id);
+      setFeedback({ kind: 'ok', message: 'ลบกลุ่มเพดานร่วมเรียบร้อยแล้ว' });
+      await reload();
+    } catch (err) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSaveCategoryEdit(): Promise<void> {
     if (!editingCategory) return;
     setBusy(true);
     setFeedback(null);
     try {
-      const amountResult = tryParseBahtToSatang(editingCategory.capAmountText || '0');
-      if (!amountResult.ok) throw new Error(amountResult.error.message);
+      if (editingCategory.name.trim() === '') throw new Error('กรุณาระบุชื่อหมวดหมู่');
+      const needsAmount = editingCategory.capType !== 'shared_group_member';
+      let capAmountMinor: number | null = null;
+      if (editingCategory.capAmountText.trim() !== '') {
+        const amountResult = tryParseBahtToSatang(editingCategory.capAmountText);
+        if (!amountResult.ok) throw new Error(amountResult.error.message);
+        capAmountMinor = amountResult.satang;
+      } else if (needsAmount) {
+        throw new Error('กรุณาระบุค่าเพดาน');
+      }
+
+      if (editingCategory.capType === 'shared_group_member' && editingCategory.sharedGroupId === null) {
+        throw new Error('กรุณาเลือกกลุ่มที่จะรวมเพดานด้วย');
+      }
+
       await window.api.settings.updateCategory(editingCategory.id, {
-        name: editingCategory.name,
-        capAmountMinor: editingCategory.capAmountText.trim() === '' ? null : amountResult.satang,
+        name: editingCategory.name.trim(),
+        description: editingCategory.description.trim(),
+        capType: editingCategory.capType,
+        capAmountMinor,
+        sharedGroupId: editingCategory.capType === 'shared_group_member' ? editingCategory.sharedGroupId : null,
       });
       setEditingCategory(null);
       setFeedback({ kind: 'ok', message: 'บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว' });
@@ -714,6 +815,214 @@ export default function Settings(): JSX.Element {
       {/* SECTION 2: Deduction Caps */}
       {activeSection === 'deductions' && (
         <div className="panel">
+          {/* Shared Cap Groups Section */}
+          <div
+            className="section-label"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginBottom: 10,
+            }}
+          >
+            <div>
+              <span>
+                🛡️ กลุ่มเพดานร่วม (Shared Cap Groups) {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
+              </span>
+              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                กำหนดกลุ่มเพดานรวมสำหรับหมวดหมู่ที่ต้องนับสิทธิ์ลดหย่อนรวมกันไม่ให้เกินเพดานที่กำหนด เช่น ประกันชีวิตและประกันสุขภาพ
+              </div>
+            </div>
+            {!isYearClosed && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '6px 14px', fontSize: 13 }}
+                disabled={busy}
+                onClick={() => setAddingSharedCap(BLANK_NEW_SHARED_CAP)}
+              >
+                + เพิ่มกลุ่มเพดานร่วมใหม่
+              </button>
+            )}
+          </div>
+
+          {sharedCaps.length === 0 ? (
+            <div className="empty-state" style={{ padding: '20px 0', marginBottom: 24 }}>
+              <p className="muted">ยังไม่มีกลุ่มเพดานร่วม — กดปุ่ม &quot;+ เพิ่มกลุ่มเพดานร่วมใหม่&quot; เพื่อสร้างกลุ่มเพดานรวม</p>
+            </div>
+          ) : (
+            <table style={{ marginBottom: 24 }}>
+              <thead>
+                <tr>
+                  <th>ชื่อกลุ่มเพดานร่วม</th>
+                  <th className="num">เพดานกลุ่มรวม (บาท)</th>
+                  <th>หมวดหมู่สมาชิกในกลุ่ม</th>
+                  <th className="right">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sharedCaps.map((group) => {
+                  const memberCategories = categories.filter((c) => c.sharedGroupId === group.id);
+                  return (
+                    <tr key={group.id}>
+                      <td style={{ fontWeight: 600 }}>{group.name}</td>
+                      <td className="num">{formatSatangAsBaht(group.capAmountMinor)}</td>
+                      <td>
+                        {memberCategories.length > 0 ? (
+                          <div style={{ fontSize: 13 }}>
+                            <span className="tag" style={{ marginRight: 6 }}>
+                              {memberCategories.length} หมวดหมู่
+                            </span>
+                            <span className="muted">
+                              {memberCategories
+                                .map((c) =>
+                                  c.capAmountMinor !== null
+                                    ? `${c.name} (sub-cap ${formatSatangAsBaht(c.capAmountMinor)})`
+                                    : c.name,
+                                )
+                                .join(', ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>
+                            (ยังไม่มีหมวดหมู่ผูกเข้ากลุ่มนี้)
+                          </span>
+                        )}
+                      </td>
+                      <td className="right">
+                        {!isYearClosed && (
+                          <div style={{ display: 'inline-flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              className="row-action"
+                              onClick={() =>
+                                setEditingSharedCap({
+                                  id: group.id,
+                                  name: group.name,
+                                  capAmountText: (group.capAmountMinor / 100).toFixed(2),
+                                })
+                              }
+                            >
+                              ✏️ แก้ไข
+                            </button>
+                            <button
+                              type="button"
+                              className="row-action muted"
+                              onClick={() => void handleDeleteSharedCap(group.id)}
+                            >
+                              🗑️ ลบ
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+
+          {addingSharedCap && (
+            <div className="panel" style={{ marginBottom: 24, border: '1px solid var(--accent)' }}>
+              <div className="section-label">+ เพิ่มกลุ่มเพดานร่วมใหม่</div>
+              <div className="form-grid">
+                <div className="field">
+                  <label>ชื่อกลุ่มเพดานร่วม *</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น กลุ่มประกันชีวิตและสุขภาพ"
+                    value={addingSharedCap.name}
+                    onChange={(e) =>
+                      setAddingSharedCap({ ...addingSharedCap, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>เพดานกลุ่มรวม (บาท) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="เช่น 100000"
+                    value={addingSharedCap.capAmountText}
+                    onChange={(e) =>
+                      setAddingSharedCap({ ...addingSharedCap, capAmountText: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="form-actions" style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setAddingSharedCap(null)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busy}
+                  onClick={() => void handleAddSharedCap()}
+                >
+                  + เพิ่มกลุ่มเพดานร่วม
+                </button>
+              </div>
+            </div>
+          )}
+
+          {editingSharedCap && (
+            <div className="panel" style={{ marginBottom: 24, border: '1px solid var(--accent)' }}>
+              <div className="section-label">✏️ กำลังแก้ไขกลุ่มเพดานร่วม: {editingSharedCap.name}</div>
+              <div className="form-grid">
+                <div className="field">
+                  <label>ชื่อกลุ่มเพดานร่วม *</label>
+                  <input
+                    type="text"
+                    value={editingSharedCap.name}
+                    onChange={(e) =>
+                      setEditingSharedCap({ ...editingSharedCap, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field">
+                  <label>เพดานกลุ่มรวม (บาท) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editingSharedCap.capAmountText}
+                    onChange={(e) =>
+                      setEditingSharedCap({ ...editingSharedCap, capAmountText: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="form-actions" style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setEditingSharedCap(null)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busy}
+                  onClick={() => void handleSaveSharedCapEdit()}
+                >
+                  ✓ บันทึกการแก้ไข
+                </button>
+              </div>
+            </div>
+          )}
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '24px 0' }} />
+
+          {/* Deduction Categories Section */}
           <div
             className="section-label"
             style={{
@@ -725,18 +1034,25 @@ export default function Settings(): JSX.Element {
               marginBottom: 14,
             }}
           >
-            <span>
-              🛡️ เพดานสิทธิค่าลดหย่อน {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
-            </span>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ padding: '6px 14px', fontSize: 13 }}
-              disabled={isYearClosed}
-              onClick={() => setAddingCategory(BLANK_NEW_CATEGORY)}
-            >
-              + เพิ่มหมวดหมู่ใหม่
-            </button>
+            <div>
+              <span>
+                📋 รายการหมวดหมู่ค่าลดหย่อน {activeTab === 'year' && selectedTaxYear ? `(ปี ${selectedTaxYear.year})` : '(ค่าเริ่มต้น)'}
+              </span>
+              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                รายการค่าลดหย่อนและเพดานเฉพาะรายการ หรือการผูกเข้ากับกลุ่มเพดานร่วม
+              </div>
+            </div>
+            {!isYearClosed && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '6px 14px', fontSize: 13 }}
+                disabled={busy}
+                onClick={() => setAddingCategory(BLANK_NEW_CATEGORY)}
+              >
+                + เพิ่มหมวดหมู่ใหม่
+              </button>
+            )}
           </div>
 
           <table>
@@ -789,10 +1105,13 @@ export default function Settings(): JSX.Element {
                               setEditingCategory({
                                 id: category.id,
                                 name: category.name,
+                                description: category.description ?? '',
+                                capType: category.capType,
                                 capAmountText:
                                   category.capAmountMinor !== null
                                     ? (category.capAmountMinor / 100).toFixed(2)
                                     : '',
+                                sharedGroupId: category.sharedGroupId,
                               })
                             }
                           >
@@ -831,21 +1150,72 @@ export default function Settings(): JSX.Element {
               </div>
               <div className="form-grid">
                 <div className="field span2">
-                  <label>ชื่อหมวดหมู่</label>
+                  <label>ชื่อหมวดหมู่ *</label>
                   <input
                     type="text"
                     value={editingCategory.name}
                     onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
                   />
                 </div>
+                <div className="field span2">
+                  <label>รูปแบบเพดาน</label>
+                  <div className="chip-row">
+                    {(['fixed', 'per_count', 'shared_group_member'] as CapType[]).map((capType) => (
+                      <button
+                        type="button"
+                        key={capType}
+                        className={`chip${editingCategory.capType === capType ? ' active' : ''}`}
+                        onClick={() => setEditingCategory({ ...editingCategory, capType })}
+                      >
+                        {CAP_TYPE_LABELS[capType]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {editingCategory.capType === 'shared_group_member' && (
+                  <div className="field">
+                    <label>กลุ่มที่จะรวมเพดานด้วย *</label>
+                    <select
+                      value={editingCategory.sharedGroupId ?? ''}
+                      onChange={(e) =>
+                        setEditingCategory({
+                          ...editingCategory,
+                          sharedGroupId: e.target.value === '' ? null : Number(e.target.value),
+                        })
+                      }
+                    >
+                      <option value="">— เลือกกลุ่ม —</option>
+                      {sharedCaps.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="field">
-                  <label>ค่าเพดานใหม่ (บาท)</label>
+                  <label>
+                    {editingCategory.capType === 'shared_group_member'
+                      ? 'sub-cap ของตัวเอง (ถ้ามี)'
+                      : 'ค่าเพดาน (บาท) *'}
+                  </label>
                   <input
                     type="text"
                     inputMode="decimal"
+                    placeholder="0.00"
                     value={editingCategory.capAmountText}
                     onChange={(e) =>
                       setEditingCategory({ ...editingCategory, capAmountText: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="field span2">
+                  <label>คำอธิบาย / อ้างอิงกฎหมาย (ถ้ามี)</label>
+                  <input
+                    type="text"
+                    value={editingCategory.description}
+                    onChange={(e) =>
+                      setEditingCategory({ ...editingCategory, description: e.target.value })
                     }
                   />
                 </div>
@@ -865,7 +1235,7 @@ export default function Settings(): JSX.Element {
                   disabled={busy}
                   onClick={() => void handleSaveCategoryEdit()}
                 >
-                  บันทึกการเปลี่ยนแปลง
+                  ✓ บันทึกการเปลี่ยนแปลง
                 </button>
               </div>
             </div>

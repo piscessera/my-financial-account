@@ -7,6 +7,8 @@ import { openTempDatabase } from '../../db/__tests__/helpers';
 import {
   SettingsError,
   addTaxBracket,
+  createSharedCap,
+  deleteSharedCap,
   deleteTaxBracket,
   getBrackets,
   getSharedCaps,
@@ -59,10 +61,52 @@ describe('shared caps', () => {
     ]);
   });
 
-  it('updateSharedCap edits the group total and audit-logs it', () => {
-    const id = insertSharedCap('Life+Health Insurance', 100_000_00);
-    const updated = updateSharedCap(temp.sqlite, id, 120_000_00);
+  it('createSharedCap creates a group and audit-logs it (TC #4, #10)', () => {
+    const created = createSharedCap(temp.sqlite, {
+      name: 'ประกัน (รวม)',
+      capAmountMinor: 100_000_00,
+    });
+    expect(created.id).toBeGreaterThan(0);
+    expect(created.name).toBe('ประกัน (รวม)');
+    expect(created.capAmountMinor).toBe(100_000_00);
 
+    const log = temp.sqlite
+      .prepare(`SELECT * FROM audit_log WHERE entity_type = 'setting' AND action = 'create' AND entity_id = ?`)
+      .get(created.id) as { entity_id: number };
+    expect(log.entity_id).toBe(created.id);
+  });
+
+  it('createSharedCap supports year-specific groups (TC #4)', () => {
+    const yearId = Number(
+      temp.sqlite.prepare(`INSERT INTO tax_years (year, status) VALUES (2025, 'open')`).run().lastInsertRowid,
+    );
+    const created = createSharedCap(temp.sqlite, {
+      taxYearId: yearId,
+      name: 'ปี 2025 ประกัน',
+      capAmountMinor: 150_000_00,
+    });
+    expect(created.taxYearId).toBe(yearId);
+    const yearCaps = getSharedCaps(temp.sqlite, yearId);
+    expect(yearCaps.some((c) => c.name === 'ปี 2025 ประกัน')).toBe(true);
+  });
+
+  it('createSharedCap rejects empty name or negative cap (TC #12)', () => {
+    expect(() =>
+      createSharedCap(temp.sqlite, { name: '   ', capAmountMinor: 100_00 }),
+    ).toThrow(SettingsError);
+    expect(() =>
+      createSharedCap(temp.sqlite, { name: 'Valid', capAmountMinor: -1 }),
+    ).toThrow(SettingsError);
+  });
+
+  it('updateSharedCap edits both name and cap total and audit-logs it (TC #5, #10)', () => {
+    const id = insertSharedCap('Life+Health Insurance', 100_000_00);
+    const updated = updateSharedCap(temp.sqlite, id, {
+      name: 'ประกันชีวิตและสุขภาพ',
+      capAmountMinor: 120_000_00,
+    });
+
+    expect(updated.name).toBe('ประกันชีวิตและสุขภาพ');
     expect(updated.capAmountMinor).toBe(120_000_00);
     const row = temp.sqlite
       .prepare(
@@ -72,7 +116,54 @@ describe('shared caps', () => {
     expect(row.n).toBe(1);
   });
 
-  it('rejects a negative cap', () => {
+  it('updateSharedCap supports number argument for backwards compatibility', () => {
+    const id = insertSharedCap('Group', 100_000_00);
+    const updated = updateSharedCap(temp.sqlite, id, 150_000_00);
+    expect(updated.capAmountMinor).toBe(150_000_00);
+  });
+
+  it('deleteSharedCap deletes unreferenced group and audit-logs it (TC #6, #10)', () => {
+    const id = insertSharedCap('Unused Group', 50_000_00);
+    deleteSharedCap(temp.sqlite, id);
+    expect(getSharedCaps(temp.sqlite).some((c) => c.id === id)).toBe(false);
+
+    const log = temp.sqlite
+      .prepare(`SELECT * FROM audit_log WHERE entity_type = 'setting' AND action = 'delete' AND entity_id = ?`)
+      .get(id) as { entity_id: number };
+    expect(log.entity_id).toBe(id);
+  });
+
+  it('deleteSharedCap blocks deleting a group when categories reference it (TC #7)', () => {
+    const groupId = insertSharedCap('Insurance Group', 100_000_00);
+    temp.sqlite.prepare(`
+      INSERT INTO deduction_categories (code, name, cap_type, cap_amount_minor, shared_group_id, sort_order, description, is_builtin)
+      VALUES ('life', 'ประกันชีวิต', 'shared_group_member', 10000000, ?, 1, '', 0)
+    `).run(groupId);
+
+    expect(() => deleteSharedCap(temp.sqlite, groupId)).toThrow(/ยังมีหมวดหมู่ค่าลดหย่อน/);
+    expect(getSharedCaps(temp.sqlite).some((c) => c.id === groupId)).toBe(true);
+  });
+
+  it('closed tax year rejects shared cap mutations (TC #11)', () => {
+    const yearId = Number(
+      temp.sqlite
+        .prepare(`INSERT INTO tax_years (year, status, closed_at) VALUES (2024, 'closed', '2025-03-31T00:00:00.000Z')`)
+        .run().lastInsertRowid,
+    );
+    const capId = Number(
+      temp.sqlite.prepare(`INSERT INTO shared_caps (tax_year_id, name, cap_amount_minor) VALUES (?, 'Closed Group', 10000)`).run(yearId).lastInsertRowid,
+    );
+
+    expect(() =>
+      createSharedCap(temp.sqlite, { taxYearId: yearId, name: 'New Group', capAmountMinor: 10000 }),
+    ).toThrow(/closed tax year/);
+    expect(() =>
+      updateSharedCap(temp.sqlite, capId, { capAmountMinor: 20000 }),
+    ).toThrow(/closed tax year/);
+    expect(() => deleteSharedCap(temp.sqlite, capId)).toThrow(/closed tax year/);
+  });
+
+  it('rejects a negative cap (TC #12)', () => {
     const id = insertSharedCap('Group', 100_00);
     expect(() => updateSharedCap(temp.sqlite, id, -1)).toThrow(SettingsError);
   });

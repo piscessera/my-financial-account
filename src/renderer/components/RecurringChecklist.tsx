@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { formatSatangAsBaht, tryParseBahtToSatang } from '../../main/calc/money';
 import type { MonthlyChecklistItem } from '../../main/repositories/recurring';
+import { formatThaiMonthYear, normalizeYearMonthToCe } from '../lib/dateUtils';
 import ManageRecurringModal from './ManageRecurringModal';
 
 interface RecurringChecklistProps {
@@ -23,6 +24,7 @@ export default function RecurringChecklist({
   yearMonth,
   onTransactionCreated,
 }: RecurringChecklistProps): JSX.Element {
+  const safeYearMonth = normalizeYearMonthToCe(yearMonth);
   const [checklist, setChecklist] = useState<MonthlyChecklistItem[]>([]);
   const [showManageModal, setShowManageModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -32,12 +34,12 @@ export default function RecurringChecklist({
 
   const loadChecklist = useCallback(async () => {
     try {
-      const items = await window.api.recurring.getMonthlyChecklist(yearMonth);
+      const items = await window.api.recurring.getMonthlyChecklist(safeYearMonth);
       setChecklist(items);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [yearMonth]);
+  }, [safeYearMonth]);
 
   useEffect(() => {
     void loadChecklist();
@@ -64,10 +66,10 @@ export default function RecurringChecklist({
     setError(null);
     try {
       const dateDay = String(item.template.dueDay).padStart(2, '0');
-      const dateStr = `${yearMonth}-${dateDay}`;
+      const dateStr = `${safeYearMonth}-${dateDay}`;
       await window.api.recurring.record({
         templateId: item.template.id,
-        yearMonth,
+        yearMonth: safeYearMonth,
         taxYearId,
         date: dateStr,
         amountMinor: item.template.defaultAmountMinor,
@@ -91,10 +93,10 @@ export default function RecurringChecklist({
       if (!parsed.ok) throw new Error(parsed.error.message);
 
       const dateDay = String(quickRecord.dueDay).padStart(2, '0');
-      const dateStr = `${yearMonth}-${dateDay}`;
+      const dateStr = `${safeYearMonth}-${dateDay}`;
       await window.api.recurring.record({
         templateId: quickRecord.templateId,
-        yearMonth,
+        yearMonth: safeYearMonth,
         taxYearId,
         date: dateStr,
         amountMinor: parsed.satang,
@@ -114,7 +116,7 @@ export default function RecurringChecklist({
     setBusy(true);
     setError(null);
     try {
-      await window.api.recurring.skip(templateId, yearMonth);
+      await window.api.recurring.skip(templateId, safeYearMonth);
       await loadChecklist();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -127,7 +129,7 @@ export default function RecurringChecklist({
     setBusy(true);
     setError(null);
     try {
-      await window.api.recurring.undo(templateId, yearMonth);
+      await window.api.recurring.undo(templateId, safeYearMonth);
       await loadChecklist();
       onTransactionCreated();
     } catch (err) {
@@ -176,7 +178,7 @@ export default function RecurringChecklist({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>
-                รายการประจำเดือน ({yearMonth})
+                รายการประจำเดือน ({formatThaiMonthYear(safeYearMonth)})
               </span>
               <div style={{ display: 'inline-flex', gap: 6 }}>
                 {completedCount > 0 && (
