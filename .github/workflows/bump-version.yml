@@ -1,0 +1,59 @@
+name: Bump Version on Main
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump package.json version
+        id: bump
+        run: |
+          BUMP_TYPE="patch"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+
+          if [[ "$COMMIT_MSG" =~ "#major" ]]; then
+            BUMP_TYPE="major"
+          elif [[ "$COMMIT_MSG" =~ "#minor" ]]; then
+            BUMP_TYPE="minor"
+          fi
+
+          NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version)
+          echo "NEW_TAG=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Push commit and tag
+        run: |
+          TAG="${{ steps.bump.outputs.NEW_TAG }}"
+          git add package.json package-lock.json
+          git commit -m "chore(version): bump to $TAG [skip ci]"
+          git tag "$TAG"
+          git push origin main
+          git push origin "$TAG"
