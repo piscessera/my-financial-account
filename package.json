@@ -16,7 +16,29 @@
     "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "package": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.piscessera.myfinancialaccount",
+    "productName": "My Financial Account",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis"
+        },
+        {
+          "target": "portable"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

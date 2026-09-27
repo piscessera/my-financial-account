@@ -1,0 +1,61 @@
+name: Release Windows App
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Publish mode'
+        required: true
+        default: 'draft'
+        type: choice
+        options:
+          - draft
+          - published
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Extract version from package.json
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=v$VERSION" >> $GITHUB_ENV
+
+      - name: Compile frontend bundle
+        run: npm run build
+
+      - name: Build Setup EXE and Portable EXE
+        run: npm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub Release with Exe Files
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
+          draft: ${{ github.event.inputs.release_type == 'draft' }}
+          generate_release_notes: true
+          files: |
+            release/*.exe
+            release/*.exe.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
