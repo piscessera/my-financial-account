@@ -154,21 +154,26 @@ describe('setCategoryActive — TC-0001 #38/#39: archive and reactivate', () => 
   });
 });
 
-describe('updateCategory — TC-0001 #40: rename', () => {
-  it('renames a category; cap and existing entries are unaffected', () => {
+describe('updateCategory — TC-0011 #1, #2, #3, #10, #11, #12', () => {
+  it('renames a category and updates description; cap and existing entries are unaffected (TC #1)', () => {
     const category = createCategory(temp.sqlite, {
       code: 'donation',
       name: 'เงินบริจาคทั่วไป',
       capType: 'fixed',
       capAmountMinor: 100_000_00,
+      description: 'เดิม',
     });
     const year = createTaxYear(temp.sqlite, { year: 2569 }).id;
     setEntry(temp.sqlite, { taxYearId: year, categoryId: category.id, amountMinor: 20_000_00 });
 
-    const renamed = updateCategory(temp.sqlite, category.id, { name: 'เงินบริจาคการศึกษา' });
+    const updated = updateCategory(temp.sqlite, category.id, {
+      name: 'เงินบริจาคการศึกษา',
+      description: 'หักลดหย่อนได้ตามจ่ายจริง',
+    });
 
-    expect(renamed.name).toBe('เงินบริจาคการศึกษา');
-    expect(renamed.capAmountMinor).toBe(100_000_00);
+    expect(updated.name).toBe('เงินบริจาคการศึกษา');
+    expect(updated.description).toBe('หักลดหย่อนได้ตามจ่ายจริง');
+    expect(updated.capAmountMinor).toBe(100_000_00);
     const entryAfter = temp.sqlite
       .prepare(
         `SELECT amount_minor FROM deduction_entries WHERE tax_year_id = ? AND category_id = ?`,
@@ -177,7 +182,7 @@ describe('updateCategory — TC-0001 #40: rename', () => {
     expect(entryAfter.amount_minor).toBe(20_000_00);
   });
 
-  it("can also change a fixed/per_count category's cap amount", () => {
+  it("can also change a fixed/per_count category's cap amount (TC #1)", () => {
     const category = createCategory(temp.sqlite, {
       code: 'donation',
       name: 'เงินบริจาค',
@@ -186,6 +191,109 @@ describe('updateCategory — TC-0001 #40: rename', () => {
     });
     const updated = updateCategory(temp.sqlite, category.id, { capAmountMinor: 150_000_00 });
     expect(updated.capAmountMinor).toBe(150_000_00);
+  });
+
+  it('converts a fixed category to shared_group_member with group and sub-cap (TC #2)', () => {
+    const groupId = insertSharedCap('ประกัน (รวม)', 100_000_00);
+    const category = createCategory(temp.sqlite, {
+      code: 'health',
+      name: 'ประกันสุขภาพ',
+      capType: 'fixed',
+      capAmountMinor: 25_000_00,
+    });
+
+    const updated = updateCategory(temp.sqlite, category.id, {
+      capType: 'shared_group_member',
+      sharedGroupId: groupId,
+      capAmountMinor: 25_000_00,
+    });
+
+    expect(updated.capType).toBe('shared_group_member');
+    expect(updated.sharedGroupId).toBe(groupId);
+    expect(updated.capAmountMinor).toBe(25_000_00);
+  });
+
+  it('rejects shared_group_member with missing or nonexistent sharedGroupId (TC #3)', () => {
+    const category = createCategory(temp.sqlite, {
+      code: 'health',
+      name: 'ประกันสุขภาพ',
+      capType: 'fixed',
+      capAmountMinor: 25_000_00,
+    });
+
+    expect(() =>
+      updateCategory(temp.sqlite, category.id, {
+        capType: 'shared_group_member',
+        sharedGroupId: null,
+      }),
+    ).toThrow(DeductionError);
+
+    expect(() =>
+      updateCategory(temp.sqlite, category.id, {
+        capType: 'shared_group_member',
+        sharedGroupId: 99999,
+      }),
+    ).toThrow(DeductionError);
+  });
+
+  it('converts a shared_group_member back to fixed with sharedGroupId cleared', () => {
+    const groupId = insertSharedCap('ประกัน (รวม)', 100_000_00);
+    const category = createCategory(temp.sqlite, {
+      code: 'health',
+      name: 'ประกันสุขภาพ',
+      capType: 'shared_group_member',
+      sharedGroupId: groupId,
+      capAmountMinor: 25_000_00,
+    });
+
+    const updated = updateCategory(temp.sqlite, category.id, {
+      capType: 'fixed',
+      capAmountMinor: 30_000_00,
+    });
+
+    expect(updated.capType).toBe('fixed');
+    expect(updated.sharedGroupId).toBeNull();
+    expect(updated.capAmountMinor).toBe(30_000_00);
+  });
+
+  it('audit-logs category update with before and after state (TC #10)', () => {
+    const category = createCategory(temp.sqlite, {
+      code: 'donation',
+      name: 'เงินบริจาค',
+      capType: 'fixed',
+      capAmountMinor: 100_000_00,
+    });
+    updateCategory(temp.sqlite, category.id, { name: 'เงินบริจาคทั่วไป 2' });
+
+    const log = temp.sqlite
+      .prepare(
+        `SELECT * FROM audit_log WHERE entity_type = 'deduction_category' AND entity_id = ? AND action = 'update'`,
+      )
+      .get(category.id) as { before_json: string; after_json: string };
+
+    expect(log).toBeDefined();
+    expect(log.before_json).toContain('เงินบริจาค');
+    expect(log.after_json).toContain('เงินบริจาคทั่วไป 2');
+  });
+
+  it('closed tax year rejects category updates (TC #11)', () => {
+    const yearId = Number(
+      temp.sqlite
+        .prepare(`INSERT INTO tax_years (year, status) VALUES (2024, 'open')`)
+        .run().lastInsertRowid,
+    );
+    const cat = createCategory(temp.sqlite, {
+      taxYearId: yearId,
+      code: 'closed_cat',
+      name: 'หมวดหมู่ปีปิด',
+      capType: 'fixed',
+      capAmountMinor: 50000,
+    });
+    temp.sqlite
+      .prepare(`UPDATE tax_years SET status = 'closed', closed_at = '2025-03-31T00:00:00.000Z' WHERE id = ?`)
+      .run(yearId);
+
+    expect(() => updateCategory(temp.sqlite, cat.id, { name: 'New Name' })).toThrow(/closed tax year/);
   });
 });
 

@@ -52,11 +52,18 @@ sub-agents receive their IDs in the dispatch payload.
 | ANA-0010 | Date format consistency and Christian Era (CE) normalization — design | analysis | implemented | S | REQ-0010, TC-0010 | 2026-09-27 |
 | TC-0010 | Date format consistency and Christian Era (CE) normalization — test cases | test-cases | implemented | — | ANA-0010, REQ-0010 | 2026-09-27 |
 
+| REQ-0011 | Deduction ceiling customization, description editing, and shared cap grouping management | requirement | implemented | M | ANA-0011, TC-0011, PLAN-0008, IMPL-0003, REV-0004 | 2026-09-27 |
+| ANA-0011 | Deduction ceiling customization, description editing, and shared cap grouping management — design | analysis | implemented | M | REQ-0011, TC-0011, PLAN-0008 | 2026-09-27 |
+| TC-0011 | Deduction ceiling customization, description editing, and shared cap grouping management — test cases | test-cases | implemented | — | ANA-0011, REQ-0011, PLAN-0008 | 2026-09-27 |
+| PLAN-0008 | Deduction ceiling customization, description editing, and shared cap grouping management | plan | implemented | M | ANA-0011, TC-0011, REQ-0011, IMPL-0003, REV-0004 | 2026-09-27 |
+| IMPL-0003 | Deduction ceiling customization, description editing, and shared cap grouping management | implementation | implemented | — | PLAN-0008 | 2026-09-27 |
+| REV-0004 | PLAN-0008 close — deduction ceiling customization and shared cap grouping acceptance review | review | implemented | — | PLAN-0008, ANA-0011, TC-0011, REQ-0011 | 2026-09-27 |
+
 ## ID counters (next value to use)
 
 | REQ | ANA | TC | PROTO | PLAN | GAP | REV | IMPL |
 |-----|-----|----|-------|------|-----|-----|------|
-| 11 | 11 | 11 | 2 | 8 | 1 | 4 | 3 |
+| 12 | 12 | 12 | 2 | 9 | 1 | 5 | 4 |
 
 ## Status vocabulary
 

@@ -25,8 +25,10 @@ import type {
   UpdateCategoryInput,
 } from '../src/main/repositories/deductions';
 import type {
+  CreateSharedCapInput,
   NewTaxBracketInput,
   UpdateBracketBounds,
+  UpdateSharedCapInput,
 } from '../src/main/repositories/settings';
 import type {
   CreateReversalInput,
@@ -139,8 +141,14 @@ const api = {
       ipcRenderer.invoke('settings:setCategoryActive', id, isActive),
     getSharedCaps: (taxYearId?: number | null): Promise<SharedCapRow[]> =>
       ipcRenderer.invoke('settings:getSharedCaps', taxYearId),
-    updateSharedCap: (id: number, newCapAmountMinor: number): Promise<SharedCapRow> =>
-      ipcRenderer.invoke('settings:updateSharedCap', id, newCapAmountMinor),
+    createSharedCap: (input: CreateSharedCapInput): Promise<SharedCapRow> =>
+      ipcRenderer.invoke('settings:createSharedCap', input),
+    updateSharedCap: (
+      id: number,
+      input: number | UpdateSharedCapInput,
+    ): Promise<SharedCapRow> => ipcRenderer.invoke('settings:updateSharedCap', id, input),
+    deleteSharedCap: (id: number): Promise<void> =>
+      ipcRenderer.invoke('settings:deleteSharedCap', id),
     getBrackets: (taxYearId?: number | null): Promise<TaxBracketRow[]> =>
       ipcRenderer.invoke('settings:getBrackets', taxYearId),
     updateBracket: (

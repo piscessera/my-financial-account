@@ -48,8 +48,10 @@ export interface CreateCategoryInput {
 
 export interface UpdateCategoryInput {
   readonly name?: string;
-  /** Ignored (never sent to the DB) for `shared_group_member` sub-caps — see note below. */
+  readonly description?: string;
+  readonly capType?: CapType;
   readonly capAmountMinor?: number | null;
+  readonly sharedGroupId?: number | null;
 }
 
 function assertYearNotClosed(sqlite: BetterSqlite3.Database, taxYearId: number | null | undefined): void {
@@ -119,7 +121,7 @@ function statementsFor(sqlite: BetterSqlite3.Database): Statements {
       `SELECT * FROM deduction_categories ORDER BY sort_order ASC, id ASC`,
     ),
     updateCategoryFields: sqlite.prepare(
-      `UPDATE deduction_categories SET name = ?, cap_amount_minor = ? WHERE id = ?`,
+      `UPDATE deduction_categories SET name = ?, description = ?, cap_type = ?, cap_amount_minor = ?, shared_group_id = ? WHERE id = ?`,
     ),
     updateCategoryActive: sqlite.prepare(
       `UPDATE deduction_categories SET is_active = ? WHERE id = ?`,
@@ -247,9 +249,8 @@ export function getCategory(
 }
 
 /**
- * `sharedGroupId` never change here — that would be a different category, not an edit) — its
- * `capAmountMinor` sub-cap *can* still be adjusted through this same field. Audit-logs as
- * `update` (INV-4).
+ * Update an existing category (name, description, capType, capAmountMinor/sub-cap, sharedGroupId).
+ * Audit-logs as `update` (INV-4).
  */
 export function updateCategory(
   sqlite: BetterSqlite3.Database,
@@ -261,20 +262,47 @@ export function updateCategory(
     assertYearNotClosed(sqlite, before.taxYearId);
 
     const name =
-      input.name !== undefined && input.name.trim().length > 0 ? input.name : before.name;
-    const capAmountMinor =
+      input.name !== undefined && input.name.trim().length > 0 ? input.name.trim() : before.name;
+    const description =
+      input.description !== undefined ? input.description.trim() : before.description;
+    const capType = input.capType !== undefined ? input.capType : before.capType;
+
+    let sharedGroupId: number | null =
+      input.sharedGroupId !== undefined ? input.sharedGroupId : before.sharedGroupId;
+    const capAmountMinor: number | null =
       input.capAmountMinor !== undefined ? input.capAmountMinor : before.capAmountMinor;
+
+    if (capType === 'shared_group_member') {
+      if (sharedGroupId == null) {
+        throw new DeductionError('sharedGroupId is required when capType is "shared_group_member".');
+      }
+      const groupExists = sqlite
+        .prepare(`SELECT id FROM shared_caps WHERE id = ?`)
+        .get(sharedGroupId);
+      if (!groupExists) {
+        throw new DeductionError(`shared_caps row ${sharedGroupId} not found.`);
+      }
+    } else {
+      sharedGroupId = null;
+      if (capAmountMinor == null) {
+        throw new DeductionError(`capAmountMinor is required for capType "${capType}".`);
+      }
+    }
 
     if (capAmountMinor != null && (!Number.isSafeInteger(capAmountMinor) || capAmountMinor < 0)) {
       throw new DeductionError(
         `capAmountMinor must be a non-negative integer, got ${String(capAmountMinor)}.`,
       );
     }
-    if (before.capType !== 'shared_group_member' && capAmountMinor == null) {
-      throw new DeductionError(`capAmountMinor is required for capType "${before.capType}".`);
-    }
 
-    statementsFor(sqlite).updateCategoryFields.run(name, capAmountMinor, id);
+    statementsFor(sqlite).updateCategoryFields.run(
+      name,
+      description,
+      capType,
+      capAmountMinor,
+      sharedGroupId,
+      id,
+    );
     const after = requireCategory(sqlite, id);
     recordMutation(sqlite, {
       entityType: 'deduction_category',
@@ -390,6 +418,29 @@ export function listEntries(
   taxYearId: number,
 ): DeductionEntryRow[] {
   return statementsFor(sqlite).selectEntriesByYear.all(taxYearId).map(toEntryRow);
+}
+
+interface RawTransactionRow {
+  id: number;
+  tax_year_id: number;
+  kind: 'income' | 'expense';
+  tax_relevant: number;
+  income_section: '40_1' | '40_2' | '40_5_8' | null;
+  general_category: 'food' | 'shopping' | 'housing' | 'other' | null;
+  date: string;
+  amount_minor: number;
+  currency: string;
+  wht_minor: number;
+  source_payer: string | null;
+  payer_tax_id: string | null;
+  note: string | null;
+  status: 'active' | 'voided';
+  reversal_of_id: number | null;
+  source: 'manual' | 'import';
+  deduction_category_id: number | null;
+  deduction_amount_minor: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /**

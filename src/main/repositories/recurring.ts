@@ -13,6 +13,7 @@ import type {
   RecurringTemplateRow,
   TransactionKind,
   TransactionRow,
+  TransactionSource,
   TransactionStatus,
 } from '../db/schema';
 import { recordMutation } from './auditLog';

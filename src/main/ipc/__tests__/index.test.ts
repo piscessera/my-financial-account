@@ -242,25 +242,40 @@ describe('deductions/settings channels (AT-3.4)', () => {
     expect(handlers['settings:getCaps']()).toHaveLength(1);
   });
 
-  it('settings:updateCategory renames', () => {
+  it('settings:updateCategory renames, updates description and capType', () => {
     const category = handlers['settings:createCategory']({
       code: 'donation',
       name: 'เงินบริจาค',
       capType: 'fixed',
       capAmountMinor: 100_000_00,
     });
-    const renamed = handlers['settings:updateCategory'](category.id, { name: 'บริจาคใหม่' });
-    expect(renamed.name).toBe('บริจาคใหม่');
+    const updated = handlers['settings:updateCategory'](category.id, {
+      name: 'บริจาคใหม่',
+      description: 'คำอธิบายใหม่',
+      capAmountMinor: 200_000_00,
+    });
+    expect(updated.name).toBe('บริจาคใหม่');
+    expect(updated.description).toBe('คำอธิบายใหม่');
+    expect(updated.capAmountMinor).toBe(200_000_00);
   });
 
-  it('settings:getSharedCaps/updateSharedCap round-trip', () => {
-    const id = temp.sqlite
-      .prepare(`INSERT INTO shared_caps (name, cap_amount_minor) VALUES (?, ?)`)
-      .run('Life+Health', 100_000_00).lastInsertRowid as number;
-
+  it('settings:createSharedCap/getSharedCaps/updateSharedCap/deleteSharedCap round-trip', () => {
+    const created = handlers['settings:createSharedCap']({
+      name: 'ประกัน (รวม)',
+      capAmountMinor: 100_000_00,
+    });
+    expect(created.id).toBeGreaterThan(0);
     expect(handlers['settings:getSharedCaps']()).toHaveLength(1);
-    const updated = handlers['settings:updateSharedCap'](id, 120_000_00);
+
+    const updated = handlers['settings:updateSharedCap'](created.id, {
+      name: 'ประกันชีวิตและสุขภาพ (รวม)',
+      capAmountMinor: 120_000_00,
+    });
+    expect(updated.name).toBe('ประกันชีวิตและสุขภาพ (รวม)');
     expect(updated.capAmountMinor).toBe(120_000_00);
+
+    handlers['settings:deleteSharedCap'](created.id);
+    expect(handlers['settings:getSharedCaps']()).toHaveLength(0);
   });
 
   it('settings:getBrackets/updateBracket round-trip', () => {

@@ -79,7 +79,7 @@ if (fs.existsSync(indexPath)) {
   for (const id of ids.keys()) if (!indexed.has(id)) err(`INDEX.md: ${id} exists on disk but has no row`);
   for (const id of indexed) if (!ids.has(id) && !/archived/.test((idx.split(id)[1] || '').split('\n')[0])) warn(`INDEX.md: row ${id} but no file (not tombstoned)`);
   // counters ≥ max id per type
-  const ctr = idx.match(/\|\s*REQ\s*\|\s*ANA[^\n]*\n\|[-| ]+\n\|([^\n]+)/);
+  const ctr = idx.match(/\|\s*REQ\s*\|\s*ANA[^\r\n]*\r?\n\|[-| ]+\r?\n\|([^\r\n]+)/);
   if (ctr) {
     const vals = ctr[1].split('|').map((s) => s.trim()).filter(Boolean).map(Number);
     TYPES.forEach((t, i) => {
